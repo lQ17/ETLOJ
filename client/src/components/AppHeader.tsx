@@ -67,7 +67,7 @@ export default function AppHeader() {
                     用户管理
                   </Menu.Item>
                 )}
-                <Menu.Item key="logout" onClick={logout}>
+                <Menu.Item key="logout" onClick={() => { logout(); navigate("/"); }}>
                   退出登录
                 </Menu.Item>
               </Menu>

@@ -1,9 +1,9 @@
-import { IsString, IsEmail, IsNotEmpty, IsOptional, IsIn } from "class-validator";
+import { IsString, IsEmail, IsOptional, IsIn, IsBoolean } from "class-validator";
 
-export class CreateUserDto {
+export class UpdateUserDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  username: string;
+  username?: string;
 
   @IsOptional()
   @IsEmail()
@@ -20,4 +20,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsIn(["USER", "ADMIN", "TEACHER"])
   role?: "USER" | "ADMIN" | "TEACHER";
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

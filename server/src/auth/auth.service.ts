@@ -10,9 +10,14 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async login(username: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { username } });
+  async login(account: string, password: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ username: account }, { email: account }, { phone: account }],
+      },
+    });
     if (!user) throw new UnauthorizedException("用户名或密码错误");
+    if (!user.isActive) throw new UnauthorizedException("账号已被停用，请联系管理员");
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException("用户名或密码错误");

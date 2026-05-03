@@ -31,3 +31,6 @@ logs/
 server/prisma/migrations/
 
 # Problem testcases are version-controlled (important OJ data)
+
+# Local manual (contains credentials)
+manual.md
