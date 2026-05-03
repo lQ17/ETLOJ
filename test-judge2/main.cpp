@@ -1,0 +1,1 @@
+#include <bits/stdc++.h>\nusing namespace std;\nint main(){int n;cin>>n;vector<string> a(n);for(int i=0;i<n;i++) cin>>a[i];sort(a.begin(),a.end(),[](const string& x,const string& y){return x+y>y+x;});for(auto&s:a) cout<<s;cout<<endl;return 0;}

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from "@nestjs/common";
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query, ParseIntPipe, UseGuards, Req } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
@@ -24,6 +24,23 @@ export class UserController {
     return this.userService.findAll(query);
   }
 
+  // ---- "me" routes MUST come before ":id" routes ----
+  @Patch("me/profile")
+  updateMyProfile(@Req() req: any, @Body() body: any) {
+    return this.userService.updateProfile(req.user.id, {
+      email: body.email,
+      phone: body.phone,
+      avatar: body.avatar,
+      signature: body.signature,
+    });
+  }
+
+  @Patch("me/security")
+  updateMySecurity(@Req() req: any, @Body() body: any) {
+    return this.userService.updatePassword(req.user.id, body.oldPassword, body.newPassword);
+  }
+
+  // ---- parameterized ":id" routes come after ----
   @Get(":id")
   @Roles("ADMIN")
   findOne(@Param("id", ParseIntPipe) id: number) {

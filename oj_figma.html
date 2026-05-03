@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETL OJ - 高效算法训练平台</title>
+    <!-- 引入 Inter 字体以匹配设计规范 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* 颜色系统 */
+            --primary: #111111;
+            --primary-active: #242424;
+            --primary-disabled: #e5e7eb;
+            --ink: #111111;
+            --body: #374151;
+            --muted: #6b7280;
+            --muted-soft: #898989;
+            --hairline: #e5e7eb;
+            --hairline-soft: #f3f4f6;
+            --canvas: #ffffff;
+            --surface-soft: #f8f9fa;
+            --surface-card: #f5f5f5;
+            --surface-strong: #e5e7eb;
+            --surface-dark: #101010;
+            --on-primary: #ffffff;
+            --on-dark: #ffffff;
+            --on-dark-soft: #a1a1aa;
+            
+            /* 语义与强调色 */
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --badge-emerald: #34d399;
+            --badge-orange: #fb923c;
+            
+            /* 圆角系统 */
+            --rounded-xs: 4px;
+            --rounded-sm: 6px;
+            --rounded-md: 8px;
+            --rounded-lg: 12px;
+            --rounded-xl: 16px;
+            --rounded-pill: 9999px;
+            --rounded-full: 50%;
+
+            /* 间距系统 */
+            --space-xs: 8px;
+            --space-sm: 12px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-section: 96px;
+        }
+
+        /* 全局重置 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--canvas);
+            color: var(--body);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        /* ---------------- 排版系统 (模拟 Cal Sans) ---------------- */
+        .display-xl { font-size: 64px; font-weight: 600; line-height: 1.05; letter-spacing: -2px; color: var(--ink); }
+        .display-lg { font-size: 48px; font-weight: 600; line-height: 1.1; letter-spacing: -1.5px; color: var(--ink); }
+        .display-md { font-size: 36px; font-weight: 600; line-height: 1.15; letter-spacing: -1px; color: var(--ink); }
+        .title-md { font-size: 18px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+        .title-sm { font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+        .body-md { font-size: 16px; font-weight: 400; color: var(--body); }
+        .body-sm { font-size: 14px; font-weight: 400; color: var(--body); }
+        .caption { font-size: 13px; font-weight: 500; color: var(--muted); }
+        .code { font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+
+        /* ---------------- 基础组件 ---------------- */
+        
+        /* 按钮 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            height: 40px;
+            padding: 0 20px;
+            border-radius: var(--rounded-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--on-primary);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-active);
+        }
+        .btn-secondary {
+            background-color: var(--canvas);
+            color: var(--ink);
+            border: 1px solid var(--hairline);
+        }
+        .btn-secondary:hover {
+            background-color: var(--surface-soft);
+        }
+        .btn-text {
+            background: transparent;
+            color: var(--ink);
+            padding: 0 12px;
+        }
+
+        /* 胶囊导航 (nav-pill-group) */
+        .nav-pill-group {
+            display: inline-flex;
+            background-color: var(--surface-soft);
+            padding: 6px;
+            border-radius: var(--rounded-pill);
+            gap: 4px;
+        }
+        .nav-pill-group .pill {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            border-radius: var(--rounded-pill);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .nav-pill-group .pill.active {
+            background-color: var(--canvas);
+            color: var(--ink);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* 徽章 (badge-pill) */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: var(--rounded-pill);
+            background-color: var(--surface-card);
+            color: var(--ink);
+        }
+        .badge-easy { background-color: #d1fae5; color: #065f46; } /* 绿 */
+        .badge-medium { background-color: #fef3c7; color: #92400e; } /* 黄 */
+        .badge-hard { background-color: #fee2e2; color: #991b1b; } /* 红 */
+
+        /* ---------------- 页面布局 ---------------- */
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+
+        /* 顶部导航 */
+        .top-nav {
+            height: 64px;
+            background-color: var(--canvas);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--hairline-soft);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 48px;
+        }
+        .brand {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: var(--ink);
+        }
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+        .nav-links a {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            transition: color 0.2s;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--ink);
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 英雄区 (Hero) */
+        .hero-section {
+            padding: var(--space-section) 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        /* 右侧模拟卡片 */
+        .hero-mockup-card {
+            background-color: var(--canvas);
+            border: 1px solid var(--hairline);
+            border-radius: var(--rounded-xl);
+            padding: var(--space-lg);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .mockup-header {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--hairline);
+            padding-bottom: 12px;
+        }
+        .mockup-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background-color: var(--surface-strong);
+        }
+        .mockup-code {
+            background-color: var(--surface-soft);
+            border-radius: var(--rounded-md);
+            padding: 16px;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .mockup-code .keyword { color: #8b5cf6; }
+        .mockup-code .func { color: #3b82f6; }
+        .mockup-code .string { color: #10b981; }
+
+        /* 内容区：题库列表 */
+        .content-section {
+            padding: 0 0 var(--space-section) 0;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: var(--space-xl);
+        }
+        
+        .problem-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .problem-row {
+            display: grid;
+            grid-template-columns: 60px 2fr 1fr 100px 120px;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--hairline);
+            background-color: var(--canvas);
+            transition: background-color 0.2s;
+        }
+        .problem-row:hover {
+            background-color: var(--surface-soft);
+        }
+        .problem-row.header-row {
+            background-color: var(--surface-soft);
+            border-bottom: none;
+            border-radius: var(--rounded-lg) var(--rounded-lg) 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .problem-row:last-child {
+            border-bottom: 1px solid var(--hairline);
+            border-radius: 0 0 var(--rounded-lg) var(--rounded-lg);
+        }
+        
+        .prob-id { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+        .prob-title { color: var(--ink); font-weight: 500; font-size: 15px; }
+        .prob-title:hover { text-decoration: underline; cursor: pointer; }
+        
+        /* 极简进度条 */
+        .pass-rate-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .progress-bar {
+            width: 80px;
+            height: 4px;
+            background-color: var(--surface-strong);
+            border-radius: var(--rounded-pill);
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--ink);
+            border-radius: var(--rounded-pill);
+        }
+        .rate-text {
+            font-size: 13px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 底部 */
+        .footer {
+            background-color: var(--surface-dark);
+            color: var(--on-dark-soft);
+            padding: 64px 0;
+            margin-top: auto;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 48px;
+        }
+        .footer-brand {
+            color: var(--on-dark);
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 16px;
+        }
+        .footer-desc {
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 300px;
+        }
+        .footer-col h4 {
+            color: var(--on-dark);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .footer-col ul {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .footer-col a {
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .footer-col a:hover {
+            color: var(--on-dark);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部导航 -->
+    <nav class="top-nav">
+        <div class="container" style="display: flex; justify-content: space-between; width: 100%;">
+            <div class="nav-left">
+                <div class="brand">ETLOJ</div>
+                <div class="nav-links">
+                    <a href="#" class="active">题库</a>
+                    <a href="#">比赛</a>
+                    <a href="#">状态</a>
+                    <a href="#">讨论</a>
+                </div>
+            </div>
+            <div class="nav-right">
+                <button class="btn btn-text">登录</button>
+                <button class="btn btn-primary">注册</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 英雄区 -->
+    <section class="container hero-section">
+        <div class="hero-content">
+            <h1 class="display-xl">专注算法，<br>纯粹的训练体验。</h1>
+            <p class="body-md" style="color: var(--muted); font-size: 18px;">
+                摒弃繁杂，回归代码本身。提供毫秒级评测、多语言支持与干净的界面，帮助你更专注地提升编程能力。
+            </p>
+            <div class="hero-actions">
+                <button class="btn btn-primary">开始刷题</button>
+                <button class="btn btn-secondary">浏览题单</button>
+            </div>
+        </div>
+        
+        <div class="hero-mockup-card">
+            <div class="mockup-header">
+                <div class="mockup-dot" style="background-color: #ef4444;"></div>
+                <div class="mockup-dot" style="background-color: #f59e0b;"></div>
+                <div class="mockup-dot" style="background-color: #10b981;"></div>
+                <span style="margin-left: 8px; font-size: 12px; color: var(--muted); font-family: 'Inter';">solution.cpp</span>
+            </div>
+            <div class="mockup-code">
+<span class="keyword">#include</span> <span class="string">&lt;iostream&gt;</span>
+<span class="keyword">using namespace</span> std;
+
+<span class="keyword">int</span> <span class="func">main</span>() {
+    <span class="keyword">int</span> a, b;
+    cin &gt;&gt; a &gt;&gt; b;
+    cout &lt;&lt; a + b &lt;&lt; endl;
+    <span class="keyword">return</span> 0;
+}
+            </div>
+            <div style="background-color: var(--surface-card); padding: 12px 16px; border-radius: var(--rounded-md); display: flex; justify-content: space-between; align-items: center;">
+                <span class="caption" style="color: var(--success); display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Accepted
+                </span>
+                <span class="code" style="color: var(--muted); font-size: 12px;">2ms / 312KB</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 题库列表区 -->
+    <section class="container content-section">
+        <div class="section-header">
+            <div>
+                <h2 class="display-md" style="margin-bottom: 16px;">题目列表</h2>
+                <div class="nav-pill-group">
+                    <div class="pill active">全部题目</div>
+                    <div class="pill">基础算法</div>
+                    <div class="pill">数据结构</div>
+                    <div class="pill">动态规划</div>
+                    <div class="pill">图论</div>
+                </div>
+            </div>
+            <button class="btn btn-secondary">随机一题</button>
+        </div>
+
+        <div class="problem-list">
+            <!-- 表头 -->
+            <div class="problem-row header-row">
+                <div>#</div>
+                <div>题目</div>
+                <div>通过率</div>
+                <div>难度</div>
+                <div style="text-align: right;">操作</div>
+            </div>
+
+            <!-- 列表项 -->
+            <div class="problem-row">
+                <div class="prob-id">1000</div>
+                <div class="prob-title">A+B Problem</div>
+                <div class="pass-rate-wrapper">
+                    <div class="progress-bar"><div class="progress-fill" style="width: 82%;"></div></div>
+                    <span class="rate-text">82%</span>
+                </div>
+                <div><span class="badge badge-easy">简单</span></div>
+                <div style="text-align: right;"><button class="btn btn-text" style="padding: 0; color: var(--muted);">去解答 &rarr;</button></div>
+            </div>
+
+            <div class="problem-row">
+                <div class="prob-id">1001</div>
+                <div class="prob-title">两数之和</div>
+                <div class="pass-rate-wrapper">
+                    <div class="progress-bar"><div class="progress-fill" style="width: 65%;"></div></div>
+                    <span class="rate-text">65%</span>
+                </div>
+                <div><span class="badge badge-easy">简单</span></div>
+                <div style="text-align: right;"><button class="btn btn-text" style="padding: 0; color: var(--muted);">去解答 &rarr;</button></div>
+            </div>
+
+            <div class="problem-row">
+                <div class="prob-id">1002</div>
+                <div class="prob-title">最长上升子序列 (LIS)</div>
+                <div class="pass-rate-wrapper">
+                    <div class="progress-bar"><div class="progress-fill" style="width: 41%;"></div></div>
+                    <span class="rate-text">41%</span>
+                </div>
+                <div><span class="badge badge-medium">中等</span></div>
+                <div style="text-align: right;"><button class="btn btn-text" style="padding: 0; color: var(--muted);">去解答 &rarr;</button></div>
+            </div>
+
+            <div class="problem-row">
+                <div class="prob-id">1003</div>
+                <div class="prob-title">线段树区间修改与查询</div>
+                <div class="pass-rate-wrapper">
+                    <div class="progress-bar"><div class="progress-fill" style="width: 28%;"></div></div>
+                    <span class="rate-text">28%</span>
+                </div>
+                <div><span class="badge badge-hard">困难</span></div>
+                <div style="text-align: right;"><button class="btn btn-text" style="padding: 0; color: var(--muted);">去解答 &rarr;</button></div>
+            </div>
+            
+            <div class="problem-row">
+                <div class="prob-id">1004</div>
+                <div class="prob-title">Dijkstra 最短路径</div>
+                <div class="pass-rate-wrapper">
+                    <div class="progress-bar"><div class="progress-fill" style="width: 53%;"></div></div>
+                    <span class="rate-text">53%</span>
+                </div>
+                <div><span class="badge badge-medium">中等</span></div>
+                <div style="text-align: right;"><button class="btn btn-text" style="padding: 0; color: var(--muted);">去解答 &rarr;</button></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container footer-grid">
+            <div>
+                <div class="footer-brand">ETLOJ</div>
+                <p class="footer-desc">
+                    极简、专注的现代在线评测系统。<br>
+                    为热爱代码的人提供最好的练习体验。
+                </p>
+            </div>
+            <div class="footer-col">
+                <h4>平台</h4>
+                <ul>
+                    <li><a href="#">题库</a></li>
+                    <li><a href="#">比赛</a></li>
+                    <li><a href="#">关于我们</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>资源</h4>
+                <ul>
+                    <li><a href="#">文档</a></li>
+                    <li><a href="#">API</a></li>
+                    <li><a href="#">GitHub</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

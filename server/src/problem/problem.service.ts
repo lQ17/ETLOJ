@@ -54,9 +54,13 @@ export class ProblemService {
     });
   }
 
-  async findAll(query: QueryProblemDto) {
+  async findAll(query: QueryProblemDto, isAdmin = false) {
     const { page = 1, pageSize = 20, difficulty, keyword, tag } = query;
     const where: any = {};
+
+    if (!isAdmin) {
+      where.isPublic = true;
+    }
 
     if (difficulty) where.difficulty = difficulty;
     if (keyword) {
@@ -69,11 +73,14 @@ export class ProblemService {
       where.tags = { contains: `"${tag}"` };
     }
 
+    const pageNum = Number(page) || 1;
+    const sizeNum = Number(pageSize) || 20;
+
     const [items, total] = await Promise.all([
       this.prisma.problem.findMany({
         where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip: (pageNum - 1) * sizeNum,
+        take: sizeNum,
         orderBy: { id: "asc" },
         select: {
           id: true,
@@ -91,12 +98,15 @@ export class ProblemService {
     ]);
 
     // 统计每题 AC 数量
-    const acCounts = await this.prisma.submission.groupBy({
-      by: ["problemId"],
-      where: { status: "AC", problemId: { in: items.map((p) => p.id) } },
-      _count: { id: true },
-    });
-    const acMap = new Map(acCounts.map((a) => [a.problemId, a._count.id]));
+    let acMap = new Map<number, number>();
+    if (items.length > 0) {
+      const acCounts = await this.prisma.submission.groupBy({
+        by: ["problemId"],
+        where: { status: "AC", problemId: { in: items.map((p) => p.id) } },
+        _count: { id: true },
+      });
+      acMap = new Map(acCounts.map((a) => [a.problemId, a._count.id]));
+    }
 
     const enriched = items.map((p) => ({
       ...p,
@@ -108,8 +118,8 @@ export class ProblemService {
     return { items: enriched, total, page, pageSize };
   }
 
-  async findOne(idOrSlug: number | string) {
-    const problem = await this.resolveProblem(idOrSlug);
+  async findOne(idOrSlug: number | string, isAdmin = false) {
+    const problem = await this.resolveProblem(idOrSlug, isAdmin);
     let markdown = "";
     try {
       markdown = fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");
@@ -120,17 +130,18 @@ export class ProblemService {
     return { ...problem, markdown };
   }
 
-  private async resolveProblem(idOrSlug: number | string) {
+  private async resolveProblem(idOrSlug: number | string, isAdmin = false) {
     const where = typeof idOrSlug === "number"
       ? { id: idOrSlug }
       : { slug: idOrSlug };
     const problem = await this.prisma.problem.findUnique({ where });
-    if (!problem) throw new NotFoundException("题目不存在");
+    if (!problem) throw new NotFoundException("该题目已被删除或不存在");
+    if (!isAdmin && !problem.isPublic) throw new NotFoundException("该题目已被停用，暂不可见");
     return problem;
   }
 
   async getMarkdown(idOrSlug: number | string) {
-    const problem = await this.resolveProblem(idOrSlug);
+    const problem = await this.resolveProblem(idOrSlug, true);
 
     try {
       return fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");
@@ -140,7 +151,7 @@ export class ProblemService {
   }
 
   async update(idOrSlug: number | string, dto: UpdateProblemDto) {
-    const problem = await this.resolveProblem(idOrSlug);
+    const problem = await this.resolveProblem(idOrSlug, true);
 
     if (dto.markdown) {
       fs.mkdirSync(this.getProblemDir(problem.slug), { recursive: true });
@@ -162,7 +173,7 @@ export class ProblemService {
   }
 
   async delete(idOrSlug: number | string) {
-    const problem = await this.resolveProblem(idOrSlug);
+    const problem = await this.resolveProblem(idOrSlug, true);
 
     const dir = this.getProblemDir(problem.slug);
     try {
@@ -174,7 +185,7 @@ export class ProblemService {
   }
 
   async saveTestcases(idOrSlug: number | string, testcases: { input: string; output: string }[]) {
-    const problem = await this.resolveProblem(idOrSlug);
+    const problem = await this.resolveProblem(idOrSlug, true);
 
     const tcDir = this.getTestcasesDir(problem.slug);
     fs.mkdirSync(tcDir, { recursive: true });

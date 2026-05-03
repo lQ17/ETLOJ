@@ -15,4 +15,10 @@ export const userApi = {
   remove: (id: number) => client.delete(`/users/${id}`),
 
   toggleActive: (id: number) => client.patch(`/users/${id}/toggle-active`),
+
+  updateProfile: (data: { email?: string; phone?: string; avatar?: string; signature?: string }) =>
+    client.patch("/users/me/profile", data),
+
+  updateSecurity: (data: { oldPassword?: string; newPassword?: string }) =>
+    client.patch("/users/me/security", data),
 };

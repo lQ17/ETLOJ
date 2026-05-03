@@ -246,6 +246,7 @@ function localRunOneTest(
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      killSignal: "SIGKILL"
     });
     const elapsed = Date.now() - start;
     const stdout = result.stdout ?? "";
@@ -300,6 +301,10 @@ async function judgeGoJudge(task: JudgeTask): Promise<JudgeResult> {
   let maxMemory = 0;
   const totalCount = testcases.length;
 
+  if (totalCount === 0) {
+    return { submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+  }
+
   for (const tc of testcases) {
     const r = await goJudgeRunOneTest(language, compiled.binary, code, tc.input, timeLimit, memoryLimit);
 
@@ -309,8 +314,8 @@ async function judgeGoJudge(task: JudgeTask): Promise<JudgeResult> {
     else if (r.status === "MemoryLimitExceeded") caseStatus = "MLE";
     else if (r.exitCode !== 0) caseStatus = "RE";
     else {
-      const stdout = r.stdout.trim();
-      const expected = tc.expectedOutput.trim();
+      const stdout = (r.stdout || "").trim().replace(/\r\n/g, "\n");
+      const expected = (tc.expectedOutput || "").trim().replace(/\r\n/g, "\n");
       if (stdout !== expected) caseStatus = "WA";
     }
 
@@ -354,6 +359,10 @@ async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
     let maxTime = 0;
     const totalCount = testcases.length;
 
+    if (totalCount === 0) {
+      return { submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+    }
+
     for (const tc of testcases) {
       const r = await localRunOneTest(language, compiled.exePath!, tc.input, timeLimit);
 
@@ -362,8 +371,8 @@ async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
       if (r.status === "TLE") caseStatus = "TLE";
       else if (r.exitCode !== 0) caseStatus = "RE";
       else {
-        const stdout = r.stdout.trim();
-        const expected = tc.expectedOutput.trim();
+        const stdout = (r.stdout || "").trim().replace(/\r\n/g, "\n");
+        const expected = (tc.expectedOutput || "").trim().replace(/\r\n/g, "\n");
         if (stdout !== expected) caseStatus = "WA";
       }
 
@@ -430,15 +439,32 @@ async function main() {
       const result = await client.brPop(QUEUE_KEY, 0);
       if (!result) continue;
 
-      const task: JudgeTask = JSON.parse(result.element);
+      let task: JudgeTask | null = null;
+      try {
+        task = JSON.parse(result.element);
+      } catch (e) {
+        console.error("Parse error:", e);
+        continue;
+      }
+
       console.log(`[#${task.submissionId}] ${task.language} | ${task.testcases.length} cases`);
 
-      const judgeResult = await judge(task);
-      console.log(`  → ${judgeResult.status} (${judgeResult.timeUsed}ms, ${judgeResult.memoryUsed}KB)`);
-
-      await reportResult(judgeResult);
+      try {
+        const judgeResult = await judge(task);
+        console.log(`  → ${judgeResult.status} (${judgeResult.timeUsed}ms, ${judgeResult.memoryUsed}KB)`);
+        await reportResult(judgeResult);
+      } catch (err: any) {
+        console.error("Judge execution error:", err);
+        await reportResult({
+          submissionId: task.submissionId,
+          status: "SE",
+          timeUsed: 0,
+          memoryUsed: 0,
+          score: 0,
+        });
+      }
     } catch (err) {
-      console.error("Judge error:", err);
+      console.error("Redis pull error:", err);
     }
   }
 }

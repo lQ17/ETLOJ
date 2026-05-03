@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { authApi } from "../api/auth";
 
-type User = { id: number; username: string; role: string };
+type User = { id: number; username: string; role: string; email?: string; phone?: string; avatar?: string; signature?: string };
 
 interface AuthState {
   user: User | null;
@@ -20,7 +20,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (account, password) => {
     const res: any = await authApi.login(account, password);
     localStorage.setItem("token", res.access_token);
-    set({ token: res.access_token, user: res.user });
+    set({ token: res.access_token });
+    // Fetch full profile (including avatar) immediately after login
+    const user: any = await authApi.getProfile();
+    set({ user });
   },
 
   logout: () => {

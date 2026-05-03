@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards,
+  Body, Param, Query, UseGuards, Req
 } from "@nestjs/common";
 import { ProblemService } from "./problem.service";
 import { CreateProblemDto } from "./dto/create-problem.dto";
@@ -28,14 +28,16 @@ export class ProblemController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Query() query: QueryProblemDto) {
-    return this.problemService.findAll(query);
+  findAll(@Query() query: QueryProblemDto, @Req() req: any) {
+    const isAdmin = req.user.role === "ADMIN" || req.user.role === "TEACHER";
+    return this.problemService.findAll(query, isAdmin);
   }
 
   @Get(":id")
   @UseGuards(JwtAuthGuard)
-  findOne(@Param("id") id: string) {
-    return this.problemService.findOne(parseIdOrSlug(id));
+  findOne(@Param("id") id: string, @Req() req: any) {
+    const isAdmin = req.user.role === "ADMIN" || req.user.role === "TEACHER";
+    return this.problemService.findOne(parseIdOrSlug(id), isAdmin);
   }
 
   @Patch(":id")

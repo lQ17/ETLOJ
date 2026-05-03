@@ -58,6 +58,12 @@ export default function AppHeader() {
           <Dropdown
             droplist={
               <Menu>
+                <Menu.Item key="profile" onClick={() => navigate(`/profile/${user.username}`)}>
+                  个人主页
+                </Menu.Item>
+                <Menu.Item key="settings" onClick={() => navigate("/settings")}>
+                  个人设置
+                </Menu.Item>
                 {(user.role === "ADMIN" || user.role === "TEACHER") && (
                   <Menu.Item key="admin-problems" onClick={() => navigate("/admin/problems")}>
                     题目管理
@@ -75,7 +81,11 @@ export default function AppHeader() {
             }
           >
             <Space style={{ cursor: "pointer" }}>
-              <IconUser />
+              {user.avatar ? (
+                <img src={user.avatar} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} alt="avatar" />
+              ) : (
+                <IconUser />
+              )}
               <span>{user.username}</span>
               <Tag color={roleColors[user.role]}>{user.role}</Tag>
             </Space>

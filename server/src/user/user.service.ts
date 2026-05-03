@@ -22,7 +22,7 @@ export class UserService {
 
     return this.prisma.user.create({
       data: { username, email, phone, password: hashed, role: role as any },
-      select: { id: true, username: true, email: true, phone: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
     });
   }
 
@@ -47,7 +47,7 @@ export class UserService {
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
-        select: { id: true, username: true, email: true, phone: true, role: true, isActive: true, createdAt: true },
+        select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
       }),
       this.prisma.user.count({ where }),
     ]);
@@ -58,12 +58,98 @@ export class UserService {
   async findById(id: number) {
     return this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, username: true, email: true, phone: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
     });
   }
 
   async findByUsername(username: string) {
     return this.prisma.user.findUnique({ where: { username } });
+  }
+
+  async getPublicProfile(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: { id: true, username: true, avatar: true, signature: true, role: true, createdAt: true },
+    });
+    if (!user) throw new NotFoundException('用户不存在');
+
+    // Count total AC problems (distinct)
+    const acCount = await this.prisma.submission.groupBy({
+      by: ['problemId'],
+      where: { userId: user.id, status: 'AC' },
+    });
+    const totalSubmissions = await this.prisma.submission.count({ where: { userId: user.id } });
+
+    return {
+      ...user,
+      solvedCount: acCount.length,
+      totalSubmissions,
+    };
+  }
+
+  async getProfileStats(username: string) {
+    const user = await this.prisma.user.findUnique({ where: { username } });
+    if (!user) throw new NotFoundException('用户不存在');
+
+    // 1. Submission status distribution (pie chart)
+    const statusCounts = await this.prisma.submission.groupBy({
+      by: ['status'],
+      where: { userId: user.id, status: { notIn: ['PENDING', 'JUDGING'] } },
+      _count: true,
+    });
+    const statusDistribution = statusCounts.map((s) => ({ name: s.status, value: s._count }));
+
+    // 2. Heatmap data: daily submission count for the past year
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const dailySubs = await this.prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+      SELECT DATE(created_at) as date, COUNT(*) as count
+      FROM submissions
+      WHERE user_id = ${user.id} AND created_at >= ${oneYearAgo}
+      GROUP BY DATE(created_at)
+      ORDER BY date
+    `;
+    const heatmapData = dailySubs.map((d) => [d.date, Number(d.count)]);
+
+    // 3. Radar: AC count per difficulty
+    const difficultyStats = await this.prisma.$queryRaw<Array<{ difficulty: string; count: bigint }>>`
+      SELECT p.difficulty, COUNT(DISTINCT s.problem_id) as count
+      FROM submissions s
+      JOIN problems p ON s.problem_id = p.id
+      WHERE s.user_id = ${user.id} AND s.status = 'AC'
+      GROUP BY p.difficulty
+    `;
+    const radarData: Record<string, number> = { EASY: 0, MEDIUM: 0, HARD: 0 };
+    difficultyStats.forEach((d) => { radarData[d.difficulty] = Number(d.count); });
+
+    // 4. AC problem list
+    const acProblems = await this.prisma.$queryRaw<Array<{ problem_id: number; slug: string; title: string; difficulty: string }>>`
+      SELECT DISTINCT s.problem_id, p.slug, p.title, p.difficulty
+      FROM submissions s
+      JOIN problems p ON s.problem_id = p.id
+      WHERE s.user_id = ${user.id} AND s.status = 'AC'
+      ORDER BY s.problem_id
+    `;
+
+    // 5. Attempted but not AC
+    const attemptedProblems = await this.prisma.$queryRaw<Array<{ problem_id: number; slug: string; title: string; difficulty: string }>>`
+      SELECT DISTINCT s.problem_id, p.slug, p.title, p.difficulty
+      FROM submissions s
+      JOIN problems p ON s.problem_id = p.id
+      WHERE s.user_id = ${user.id}
+        AND s.problem_id NOT IN (
+          SELECT DISTINCT problem_id FROM submissions WHERE user_id = ${user.id} AND status = 'AC'
+        )
+      ORDER BY s.problem_id
+    `;
+
+    return {
+      statusDistribution,
+      heatmapData,
+      radarData,
+      acProblems,
+      attemptedProblems,
+    };
   }
 
   async update(id: number, data: { username?: string; email?: string; phone?: string; password?: string; role?: string; isActive?: boolean }) {
@@ -93,7 +179,7 @@ export class UserService {
     return this.prisma.user.update({
       where: { id },
       data: updateData,
-      select: { id: true, username: true, email: true, phone: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
     });
   }
 
@@ -109,7 +195,45 @@ export class UserService {
     return this.prisma.user.update({
       where: { id },
       data: { isActive: !user.isActive },
-      select: { id: true, username: true, email: true, phone: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
     });
+  }
+
+  async updateProfile(id: number, data: { email?: string; phone?: string; avatar?: string; signature?: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException("用户不存在");
+
+    if (data.email || data.phone) {
+      const conditions: any[] = [];
+      if (data.email) conditions.push({ email: data.email });
+      if (data.phone) conditions.push({ phone: data.phone });
+      const conflict = await this.prisma.user.findFirst({
+        where: { OR: conditions, NOT: { id } },
+      });
+      if (conflict) throw new ConflictException("邮箱或手机号已被占用");
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data,
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
+    });
+  }
+
+  async updatePassword(id: number, oldPassword?: string, newPassword?: string) {
+    if (!oldPassword || !newPassword) throw new ConflictException("需要提供旧密码和新密码");
+
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException("用户不存在");
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) throw new ConflictException("旧密码不正确");
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: hashed },
+    });
+    return { success: true };
   }
 }

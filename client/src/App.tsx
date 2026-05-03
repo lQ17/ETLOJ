@@ -10,6 +10,8 @@ import LoginPage from "./pages/login";
 import AdminUsersPage from "./pages/admin/users";
 import AdminProblemsPage from "./pages/admin/problems";
 import RecordsPage from "./pages/records";
+import ProfilePage from "./pages/profile";
+import SettingsPage from "./pages/settings";
 import { useAuthStore } from "./stores/auth";
 
 const { Content } = Layout;
@@ -52,6 +54,8 @@ function App() {
           <Route path="/ranking" element={<RankingPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/problems" element={<AdminProblemsPage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
+          <Route path="/settings/*" element={<SettingsPage />} />
         </Routes>
       </Content>
     </Layout>

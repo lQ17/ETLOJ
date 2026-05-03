@@ -51,6 +51,25 @@
 ### 示例数据
 - [x] P1012 [NOIP 1998 提高组] 拼数（含 2 组测试数据）
 
+### 个人中心 — 设置中心（阶段 A ✅）
+- [x] 个人资料管理（头像 Base64 上传与预览、昵称、个性签名、邮箱、手机号）
+- [x] 账号安全中心（bcrypt 旧密码校验 + 新密码修改）
+- [x] 后端 `PATCH /api/users/me/profile` 和 `me/security` 接口
+- [x] `GET /api/auth/profile` 返回数据库最新用户记录（含 avatar）
+- [x] 登录后自动获取完整 profile（含头像），无需刷新页面
+- [x] User 表 avatar 字段升级为 LongText，body 限制 5MB
+- [x] NestJS 路由优先级修复（me/* 路由置于 :id 路由之前）
+- [x] AppHeader 下拉菜单入口（个人主页 + 个人设置）
+
+### 个人中心 — 个人主页数据大屏（阶段 B ✅）
+- [x] 公开 Profile API（`GET /api/profile/:username` + `/stats`，无需登录）
+- [x] 用户信息卡片（头像、用户名、签名、注册时间、已解题数、总提交数）
+- [x] 提交统计饼图（ECharts 环形图，展示 AC/WA/TLE/MLE/RE/CE 占比）
+- [x] GitHub 风格活跃度热力图（ECharts Calendar Heatmap，过去一年每日提交）
+- [x] 能力雷达图（按 EASY/MEDIUM/HARD 三维度展示 AC 题数）
+- [x] 题目墙（已通过 + 尝试过两个 Tab，带难度标签，可跳转题目详情）
+- [x] 响应式布局 + 高级 CSS（渐变数字、sticky 侧边栏）
+
 ## 待开发
 
 ### 核心功能

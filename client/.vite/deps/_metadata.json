@@ -1,0 +1,102 @@
+{
+  "hash": "eaa46596",
+  "configHash": "4b2ac3dd",
+  "lockfileHash": "03cfba12",
+  "browserHash": "3c7b16bf",
+  "optimized": {
+    "@arco-design/web-react": {
+      "src": "../../node_modules/@arco-design/web-react/es/index.js",
+      "file": "@arco-design_web-react.js",
+      "fileHash": "7c3d3925",
+      "needsInterop": false
+    },
+    "@arco-design/web-react/icon": {
+      "src": "../../node_modules/@arco-design/web-react/icon/index.es.js",
+      "file": "@arco-design_web-react_icon.js",
+      "fileHash": "b3c3cb12",
+      "needsInterop": false
+    },
+    "@monaco-editor/react": {
+      "src": "../../node_modules/@monaco-editor/react/dist/index.mjs",
+      "file": "@monaco-editor_react.js",
+      "fileHash": "54a4f19f",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "58cfe1b7",
+      "needsInterop": false
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "81fc397b",
+      "needsInterop": true
+    },
+    "react-markdown": {
+      "src": "../../node_modules/react-markdown/index.js",
+      "file": "react-markdown.js",
+      "fileHash": "35201c4e",
+      "needsInterop": false
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "f73a0bb8",
+      "needsInterop": false
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "54365419",
+      "needsInterop": true
+    },
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "839be6e2",
+      "needsInterop": true
+    },
+    "rehype-katex": {
+      "src": "../../node_modules/rehype-katex/index.js",
+      "file": "rehype-katex.js",
+      "fileHash": "dd39db01",
+      "needsInterop": false
+    },
+    "remark-math": {
+      "src": "../../node_modules/remark-math/index.js",
+      "file": "remark-math.js",
+      "fileHash": "54a526c8",
+      "needsInterop": false
+    },
+    "zustand": {
+      "src": "../../node_modules/zustand/esm/index.mjs",
+      "file": "zustand.js",
+      "fileHash": "8423f2b9",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "IconOriginalSize-CI4yLFVF": {
+      "file": "IconOriginalSize-CI4yLFVF.js",
+      "isDynamicEntry": false
+    },
+    "chunk-CYJPkc-J": {
+      "file": "chunk-CYJPkc-J.js",
+      "isDynamicEntry": false
+    },
+    "dev-CfhIsFdA": {
+      "file": "dev-CfhIsFdA.js",
+      "isDynamicEntry": false
+    },
+    "lib-BD99nxYW": {
+      "file": "lib-BD99nxYW.js",
+      "isDynamicEntry": false
+    },
+    "react-dom-iaMw4cp5": {
+      "file": "react-dom-iaMw4cp5.js",
+      "isDynamicEntry": false
+    }
+  }
+}

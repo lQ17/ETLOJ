@@ -1,0 +1,156 @@
+/* ========== Profile Page Styles ========== */
+.profile-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.profile-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+/* ---- Cards ---- */
+.profile-card {
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  overflow: hidden;
+}
+
+.card-title {
+  margin: 0 0 8px !important;
+  display: flex;
+  align-items: center;
+  font-weight: 600 !important;
+}
+
+/* ---- User Card ---- */
+.user-card {
+  position: sticky;
+  top: 80px;
+}
+
+.user-card-inner {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.user-avatar {
+  margin-bottom: 16px;
+  border: 3px solid var(--color-border-2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-name {
+  margin: 0 !important;
+  font-weight: 700 !important;
+}
+
+.user-handle {
+  font-size: 13px;
+}
+
+.user-divider {
+  margin: 16px 0 !important;
+}
+
+.user-meta {
+  width: 100%;
+  text-align: left;
+}
+
+.meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.meta-icon {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--color-text-3);
+}
+
+/* ---- Stat Row ---- */
+.stat-row {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.stat-cell {
+  padding: 8px 0;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #165dff, #0fc6c2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--color-text-3);
+  margin-top: 2px;
+}
+
+/* ---- Problem Wall ---- */
+.problem-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 0;
+}
+
+.problem-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 8px;
+  border-left: 3px solid;
+  background: var(--color-fill-1);
+  color: var(--color-text-1);
+  text-decoration: none;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.problem-tag:hover {
+  background: var(--color-fill-3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.problem-tag-title {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 12px 8px 32px;
+  }
+
+  .user-card {
+    position: static;
+    margin-bottom: 16px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+}

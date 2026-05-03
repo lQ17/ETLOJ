@@ -7,6 +7,12 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api");
   app.enableCors();
+  
+  // Increase payload limit for Base64 image uploads
+  const express = require('express');
+  app.use(express.json({ limit: '5mb' }));
+  app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
