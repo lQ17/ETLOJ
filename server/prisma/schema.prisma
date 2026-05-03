@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  TEACHER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SubmissionStatus {
+  PENDING
+  JUDGING
+  AC
+  WA
+  TLE
+  MLE
+  RE
+  CE
+  SE
+}
+
+enum ContestMode {
+  ACM
+  OI
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique @db.VarChar(50)
+  email     String    @unique @db.VarChar(100)
+  password  String    @db.VarChar(255)
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  submissions Submission[]
+  contestRanks ContestRank[]
+
+  @@map("users")
+}
+
+model Problem {
+  id          Int        @id @default(autoincrement())
+  slug        String     @unique @db.VarChar(100)
+  title       String     @db.VarChar(200)
+  difficulty  Difficulty @default(EASY)
+  timeLimit   Int        @default(1000) @map("time_limit")
+  memoryLimit Int        @default(256) @map("memory_limit")
+  filePath    String     @map("file_path") @db.VarChar(500)
+  tags        Json?
+  isPublic    Boolean    @default(true) @map("is_public")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  submissions  Submission[]
+  contestProblems ContestProblem[]
+
+  @@map("problems")
+}
+
+model Submission {
+  id         Int              @id @default(autoincrement())
+  problemId  Int              @map("problem_id")
+  userId     Int              @map("user_id")
+  code       String           @db.Text
+  language   String           @db.VarChar(20)
+  status     SubmissionStatus @default(PENDING)
+  timeUsed   Int?             @map("time_used")
+  memoryUsed Int?             @map("memory_used")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  problem Problem @relation(fields: [problemId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([problemId])
+  @@index([userId])
+  @@index([status])
+  @@map("submissions")
+}
+
+model Contest {
+  id          Int        @id @default(autoincrement())
+  title       String     @db.VarChar(200)
+  description String?    @db.Text
+  mode        ContestMode @default(ACM)
+  startTime   DateTime   @map("start_time")
+  endTime     DateTime   @map("end_time")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  problems ContestProblem[]
+  ranks    ContestRank[]
+
+  @@map("contests")
+}
+
+model ContestProblem {
+  id        Int @id @default(autoincrement())
+  contestId Int @map("contest_id")
+  problemId Int @map("problem_id")
+  order     Int @default(0)
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id])
+
+  @@unique([contestId, problemId])
+  @@map("contest_problems")
+}
+
+model ContestRank {
+  id        Int @id @default(autoincrement())
+  contestId Int @map("contest_id")
+  userId    Int @map("user_id")
+  score     Int @default(0)
+  penalty   Int @default(0)
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([contestId, userId])
+  @@map("contest_ranks")
+}

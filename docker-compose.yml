@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: etloj-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: etloj123
+      MYSQL_DATABASE: etloj
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:7-alpine
+    container_name: etloj-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  go-judge:
+    image: criyle/go-judge:latest
+    container_name: etloj-go-judge
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    volumes:
+      - judge_run:/run
+    privileged: true
+
+volumes:
+  mysql_data:
+  redis_data:
+  judge_run:
