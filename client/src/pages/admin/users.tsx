@@ -213,7 +213,15 @@ function ManageUsersTab() {
         <Button type="primary" icon={<IconSearch />} onClick={handleSearch}>搜索</Button>
         <Button
           icon={<IconRefresh />}
-          onClick={() => { setKeyword(""); setFilterRole(undefined); setFilterActive(undefined); setPage(1); fetchData(1, pageSize); }}
+          onClick={async () => {
+            setKeyword(""); setFilterRole(undefined); setFilterActive(undefined); setPage(1);
+            setLoading(true);
+            try {
+              const res: any = await userApi.list({ page: 1, pageSize });
+              setData(res.items); setTotal(res.total);
+            } catch { Message.error("加载用户列表失败"); }
+            finally { setLoading(false); }
+          }}
         >
           重置
         </Button>

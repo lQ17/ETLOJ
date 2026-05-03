@@ -112,7 +112,7 @@ export default function ProblemDetailPage() {
     if (!id) return;
     (async () => {
       try {
-        const p: any = await problemApi.getOne(+id);
+        const p: any = await problemApi.getOne(id);
         setProblem(p);
         setMarkdown(p.markdown || "");
       } catch {
@@ -135,7 +135,7 @@ export default function ProblemDetailPage() {
     setResult(null);
     try {
       const res: any = await submissionApi.create({
-        problemId: +id!,
+        problemId: problem.id,
         code,
         language,
       });
@@ -322,6 +322,11 @@ export default function ProblemDetailPage() {
               <Tag color={statusColor[result.status]} style={{ fontSize: 14 }}>
                 {statusLabel[result.status] || result.status}
               </Tag>
+              {result.score != null && (
+                <span style={{ fontWeight: 600, fontSize: 14 }}>
+                  {result.score}分
+                </span>
+              )}
               {result.timeUsed != null && (
                 <span style={{ color: "var(--color-text-3)", fontSize: 13 }}>
                   {result.timeUsed}ms / {result.memoryUsed}KB

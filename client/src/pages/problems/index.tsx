@@ -61,7 +61,7 @@ export default function ProblemListPage() {
       render: (title: string, record: any) => (
         <Typography.Text
           style={{ cursor: "pointer", color: "rgb(var(--primary-6))" }}
-          onClick={() => navigate(`/problems/${record.id}`)}
+          onClick={() => navigate(`/problems/${record.slug}`)}
         >
           {title}
         </Typography.Text>

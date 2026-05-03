@@ -8,7 +8,7 @@ export const problemApi = {
     keyword?: string;
   }) => client.get("/problems", { params }),
 
-  getOne: (id: number) => client.get(`/problems/${id}`),
+  getOne: (idOrSlug: number | string) => client.get(`/problems/${idOrSlug}`),
 
   getMarkdown: (id: number) =>
     client.get(`/problems/${id}/markdown`, { transformResponse: [(data: string) => data] }),

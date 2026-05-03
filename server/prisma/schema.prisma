@@ -81,6 +81,7 @@ model Submission {
   status     SubmissionStatus @default(PENDING)
   timeUsed   Int?             @map("time_used")
   memoryUsed Int?             @map("memory_used")
+  score      Int?             @map("score")
   createdAt  DateTime         @default(now()) @map("created_at")
 
   problem Problem @relation(fields: [problemId], references: [id])
@@ -89,6 +90,7 @@ model Submission {
   @@index([problemId])
   @@index([userId])
   @@index([status])
+  @@index([createdAt])
   @@map("submissions")
 }
 

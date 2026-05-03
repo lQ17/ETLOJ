@@ -26,6 +26,7 @@ type JudgeResult = {
   status: string;
   timeUsed: number;
   memoryUsed: number;
+  score: number;
 };
 
 // ============================================================
@@ -290,80 +291,103 @@ async function judgeGoJudge(task: JudgeTask): Promise<JudgeResult> {
 
   const compiled = await goJudgeCompile(code, language);
   if (!compiled.ok) {
-    return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0 };
+    return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0, score: 0 };
   }
 
+  let passedCount = 0;
+  let firstFailStatus = "";
   let maxTime = 0;
   let maxMemory = 0;
+  const totalCount = testcases.length;
 
   for (const tc of testcases) {
     const r = await goJudgeRunOneTest(language, compiled.binary, code, tc.input, timeLimit, memoryLimit);
 
-    if (r.status === "TimeLimitExceeded") {
-      return { submissionId, status: "TLE", timeUsed: Math.round(r.time / 1e6), memoryUsed: Math.round(r.memory / 1024) };
-    }
-    if (r.status === "MemoryLimitExceeded") {
-      return { submissionId, status: "MLE", timeUsed: Math.round(r.time / 1e6), memoryUsed: Math.round(r.memory / 1024) };
-    }
-    if (r.exitCode !== 0) {
-      return { submissionId, status: "RE", timeUsed: Math.round(r.time / 1e6), memoryUsed: Math.round(r.memory / 1024) };
+    let caseStatus: string | null = null;
+
+    if (r.status === "TimeLimitExceeded") caseStatus = "TLE";
+    else if (r.status === "MemoryLimitExceeded") caseStatus = "MLE";
+    else if (r.exitCode !== 0) caseStatus = "RE";
+    else {
+      const stdout = r.stdout.trim();
+      const expected = tc.expectedOutput.trim();
+      if (stdout !== expected) caseStatus = "WA";
     }
 
-    const stdout = r.stdout.trim();
-    const expected = tc.expectedOutput.trim();
-    if (stdout !== expected) {
-      return { submissionId, status: "WA", timeUsed: Math.round(r.time / 1e6), memoryUsed: Math.round(r.memory / 1024) };
+    if (caseStatus === null) {
+      passedCount++;
+      maxTime = Math.max(maxTime, r.time);
+      maxMemory = Math.max(maxMemory, r.memory);
+    } else if (!firstFailStatus) {
+      firstFailStatus = caseStatus;
+      maxTime = Math.max(maxTime, r.time);
+      maxMemory = Math.max(maxMemory, r.memory);
     }
+  }
 
-    maxTime = Math.max(maxTime, r.time);
-    maxMemory = Math.max(maxMemory, r.memory);
+  if (passedCount === totalCount) {
+    return { submissionId, status: "AC", timeUsed: Math.round(maxTime / 1e6), memoryUsed: Math.round(maxMemory / 1024), score: 100 };
   }
 
   return {
     submissionId,
-    status: "AC",
+    status: firstFailStatus,
     timeUsed: Math.round(maxTime / 1e6),
     memoryUsed: Math.round(maxMemory / 1024),
+    score: Math.round((passedCount / totalCount) * 100),
   };
 }
 
 async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
   const { submissionId, code, language, testcases, timeLimit } = task;
 
-  // Create temp workspace
   const workDir = mkdtempSync(join(tmpdir(), "etloj-judge-"));
 
   try {
-    // Compile
     const compiled = localCompile(code, language, workDir);
     if (!compiled.ok) {
-      return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0 };
+      return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0, score: 0 };
     }
 
+    let passedCount = 0;
+    let firstFailStatus = "";
     let maxTime = 0;
+    const totalCount = testcases.length;
 
     for (const tc of testcases) {
       const r = await localRunOneTest(language, compiled.exePath!, tc.input, timeLimit);
 
-      if (r.status === "TLE") {
-        return { submissionId, status: "TLE", timeUsed: Math.round(r.time / 1e6), memoryUsed: 0 };
-      }
-      if (r.exitCode !== 0) {
-        return { submissionId, status: "RE", timeUsed: Math.round(r.time / 1e6), memoryUsed: 0 };
+      let caseStatus: string | null = null;
+
+      if (r.status === "TLE") caseStatus = "TLE";
+      else if (r.exitCode !== 0) caseStatus = "RE";
+      else {
+        const stdout = r.stdout.trim();
+        const expected = tc.expectedOutput.trim();
+        if (stdout !== expected) caseStatus = "WA";
       }
 
-      const stdout = r.stdout.trim();
-      const expected = tc.expectedOutput.trim();
-      if (stdout !== expected) {
-        return { submissionId, status: "WA", timeUsed: Math.round(r.time / 1e6), memoryUsed: 0 };
+      if (caseStatus === null) {
+        passedCount++;
+        maxTime = Math.max(maxTime, r.time);
+      } else if (!firstFailStatus) {
+        firstFailStatus = caseStatus;
+        maxTime = Math.max(maxTime, r.time);
       }
-
-      maxTime = Math.max(maxTime, r.time);
     }
 
-    return { submissionId, status: "AC", timeUsed: Math.round(maxTime / 1e6), memoryUsed: 0 };
+    if (passedCount === totalCount) {
+      return { submissionId, status: "AC", timeUsed: Math.round(maxTime / 1e6), memoryUsed: 0, score: 100 };
+    }
+
+    return {
+      submissionId,
+      status: firstFailStatus,
+      timeUsed: Math.round(maxTime / 1e6),
+      memoryUsed: 0,
+      score: Math.round((passedCount / totalCount) * 100),
+    };
   } finally {
-    // Cleanup temp files
     try { rmSync(workDir, { recursive: true, force: true }); } catch {}
   }
 }

@@ -14,6 +14,7 @@ export default function AppHeader() {
   const menuItems = [
     { key: "/", label: "首页" },
     { key: "/problems", label: "题库" },
+    { key: "/records", label: "评测记录" },
     { key: "/ranking", label: "排名" },
   ];
 

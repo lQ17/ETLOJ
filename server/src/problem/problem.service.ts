@@ -108,10 +108,8 @@ export class ProblemService {
     return { items: enriched, total, page, pageSize };
   }
 
-  async findOne(id: number) {
-    const problem = await this.prisma.problem.findUnique({ where: { id } });
-    if (!problem) throw new NotFoundException("题目不存在");
-
+  async findOne(idOrSlug: number | string) {
+    const problem = await this.resolveProblem(idOrSlug);
     let markdown = "";
     try {
       markdown = fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");
@@ -122,9 +120,17 @@ export class ProblemService {
     return { ...problem, markdown };
   }
 
-  async getMarkdown(id: number) {
-    const problem = await this.prisma.problem.findUnique({ where: { id } });
+  private async resolveProblem(idOrSlug: number | string) {
+    const where = typeof idOrSlug === "number"
+      ? { id: idOrSlug }
+      : { slug: idOrSlug };
+    const problem = await this.prisma.problem.findUnique({ where });
     if (!problem) throw new NotFoundException("题目不存在");
+    return problem;
+  }
+
+  async getMarkdown(idOrSlug: number | string) {
+    const problem = await this.resolveProblem(idOrSlug);
 
     try {
       return fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");
@@ -133,9 +139,8 @@ export class ProblemService {
     }
   }
 
-  async update(id: number, dto: UpdateProblemDto) {
-    const problem = await this.prisma.problem.findUnique({ where: { id } });
-    if (!problem) throw new NotFoundException("题目不存在");
+  async update(idOrSlug: number | string, dto: UpdateProblemDto) {
+    const problem = await this.resolveProblem(idOrSlug);
 
     if (dto.markdown) {
       fs.mkdirSync(this.getProblemDir(problem.slug), { recursive: true });
@@ -144,7 +149,7 @@ export class ProblemService {
 
     const { markdown, ...data } = dto;
     return this.prisma.problem.update({
-      where: { id },
+      where: { id: problem.id },
       data: {
         ...(data.title && { title: data.title }),
         ...(data.difficulty && { difficulty: data.difficulty as any }),
@@ -156,23 +161,20 @@ export class ProblemService {
     });
   }
 
-  async delete(id: number) {
-    const problem = await this.prisma.problem.findUnique({ where: { id } });
-    if (!problem) throw new NotFoundException("题目不存在");
+  async delete(idOrSlug: number | string) {
+    const problem = await this.resolveProblem(idOrSlug);
 
-    // 删除文件目录
     const dir = this.getProblemDir(problem.slug);
     try {
       fs.rmSync(dir, { recursive: true, force: true });
     } catch {}
 
-    await this.prisma.submission.deleteMany({ where: { problemId: id } });
-    return this.prisma.problem.delete({ where: { id } });
+    await this.prisma.submission.deleteMany({ where: { problemId: problem.id } });
+    return this.prisma.problem.delete({ where: { id: problem.id } });
   }
 
-  async saveTestcases(id: number, testcases: { input: string; output: string }[]) {
-    const problem = await this.prisma.problem.findUnique({ where: { id } });
-    if (!problem) throw new NotFoundException("题目不存在");
+  async saveTestcases(idOrSlug: number | string, testcases: { input: string; output: string }[]) {
+    const problem = await this.resolveProblem(idOrSlug);
 
     const tcDir = this.getTestcasesDir(problem.slug);
     fs.mkdirSync(tcDir, { recursive: true });

@@ -5,6 +5,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { SubmissionService } from "./submission.service";
 import { CreateSubmissionDto } from "./dto/create-submission.dto";
+import { QuerySubmissionDto } from "./dto/query-submission.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 
@@ -30,45 +31,33 @@ export class SubmissionController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(
-    @Query("page") page?: string,
-    @Query("pageSize") pageSize?: string,
-    @Query("userId") userId?: string,
-    @Query("problemId") problemId?: string,
-  ) {
-    return this.submissionService.findAll(
-      userId ? +userId : undefined,
-      problemId ? +problemId : undefined,
-      page ? +page : 1,
-      pageSize ? +pageSize : 20,
-    );
+  findAll(@Query() query: QuerySubmissionDto) {
+    return this.submissionService.findAll(query);
   }
 
   @Get("my")
   @UseGuards(JwtAuthGuard)
   findMy(
     @CurrentUser("id") userId: number,
-    @Query("page") page?: string,
-    @Query("problemId") problemId?: string,
+    @Query() query: QuerySubmissionDto,
   ) {
-    return this.submissionService.findAll(
-      userId,
-      problemId ? +problemId : undefined,
-      page ? +page : 1,
-    );
+    query.userId = userId;
+    return this.submissionService.findAll(query);
   }
 
   @Get(":id")
   @UseGuards(JwtAuthGuard)
-  findOne(@Param("id", ParseIntPipe) id: number) {
-    return this.submissionService.findOne(id);
+  findOne(
+    @Param("id", ParseIntPipe) id: number,
+    @CurrentUser() user: { id: number; role: string },
+  ) {
+    return this.submissionService.findOne(id, user.id, user.role);
   }
 
-  // Judge 服务回调，更新判题结果
   @Post("callback")
   async callback(
     @Headers("x-judge-secret") secret: string,
-    @Body() body: { submissionId: number; status: string; timeUsed: number; memoryUsed: number },
+    @Body() body: { submissionId: number; status: string; timeUsed: number; memoryUsed: number; score?: number },
   ) {
     if (secret !== this.judgeSecret) {
       return { error: "unauthorized" };

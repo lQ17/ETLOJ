@@ -9,6 +9,7 @@ import RankingPage from "./pages/ranking";
 import LoginPage from "./pages/login";
 import AdminUsersPage from "./pages/admin/users";
 import AdminProblemsPage from "./pages/admin/problems";
+import RecordsPage from "./pages/records";
 import { useAuthStore } from "./stores/auth";
 
 const { Content } = Layout;
@@ -17,7 +18,7 @@ function App() {
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
   const loading = useAuthStore((s) => s.loading);
   const location = useLocation();
-  const isDetailPage = /^\/problems\/\d+/.test(location.pathname);
+  const isDetailPage = /^\/problems\/[^/]+/.test(location.pathname);
 
   useEffect(() => {
     initFromStorage();
@@ -47,6 +48,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/problems" element={<ProblemListPage />} />
           <Route path="/problems/:id" element={<ProblemDetailPage />} />
+          <Route path="/records" element={<RecordsPage />} />
           <Route path="/ranking" element={<RankingPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/problems" element={<AdminProblemsPage />} />

@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { createClient } from "redis";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import { ProblemService } from "../problem/problem.service";
 import { CreateSubmissionDto } from "./dto/create-submission.dto";
+import { QuerySubmissionDto } from "./dto/query-submission.dto";
 
 @Injectable()
 export class SubmissionService {
@@ -36,7 +37,6 @@ export class SubmissionService {
       },
     });
 
-    // 获取测试数据并推入 Redis 队列
     const testcases = await this.problemService.getTestcases(problem.slug);
     const task = {
       submissionId: submission.id,
@@ -53,7 +53,7 @@ export class SubmissionService {
     return submission;
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, requestingUserId: number, requestingUserRole: string) {
     const sub = await this.prisma.submission.findUnique({
       where: { id },
       include: {
@@ -62,13 +62,36 @@ export class SubmissionService {
       },
     });
     if (!sub) throw new NotFoundException("提交不存在");
+
+    const canViewCode = sub.userId === requestingUserId
+      || requestingUserRole === "TEACHER"
+      || requestingUserRole === "ADMIN";
+    if (!canViewCode) {
+      delete (sub as any).code;
+    }
+
     return sub;
   }
 
-  async findAll(userId?: number, problemId?: number, page = 1, pageSize = 20) {
+  async findAll(query: QuerySubmissionDto) {
+    const { page = 1, pageSize = 20, username, problemId, keyword, status, userId } = query;
     const where: any = {};
-    if (userId) where.userId = userId;
-    if (problemId) where.problemId = problemId;
+
+    if (username) {
+      where.user = { username: { contains: username } };
+    }
+    if (keyword) {
+      where.problem = { title: { contains: keyword } };
+    }
+    if (problemId) {
+      where.problemId = problemId;
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (userId) {
+      where.userId = userId;
+    }
 
     const [items, total] = await Promise.all([
       this.prisma.submission.findMany({
@@ -76,7 +99,17 @@ export class SubmissionService {
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
-        include: {
+        select: {
+          id: true,
+          problemId: true,
+          userId: true,
+          language: true,
+          status: true,
+          score: true,
+          timeUsed: true,
+          memoryUsed: true,
+          code: true,
+          createdAt: true,
           problem: { select: { id: true, slug: true, title: true } },
           user: { select: { id: true, username: true } },
         },
@@ -84,16 +117,22 @@ export class SubmissionService {
       this.prisma.submission.count({ where }),
     ]);
 
-    return { items, total, page, pageSize };
+    const itemsWithSize = items.map(({ code, ...rest }) => ({
+      ...rest,
+      codeSize: Buffer.byteLength(code, "utf8"),
+    }));
+
+    return { items: itemsWithSize, total, page, pageSize };
   }
 
-  async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number }) {
+  async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number }) {
     return this.prisma.submission.update({
       where: { id: submissionId },
       data: {
         status: result.status as any,
         timeUsed: result.timeUsed,
         memoryUsed: result.memoryUsed,
+        score: result.score ?? null,
       },
     });
   }
@@ -106,6 +145,7 @@ export class SubmissionService {
       select: {
         id: true,
         status: true,
+        score: true,
         language: true,
         timeUsed: true,
         memoryUsed: true,
