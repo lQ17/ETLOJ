@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { createClient } from "redis";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
@@ -51,6 +52,38 @@ export class SubmissionService {
     await this.redis.lPush("judge:queue", JSON.stringify(task));
 
     return submission;
+  }
+
+  async run(userId: number, dto: { code: string; language: string; input: string; problemId: number }) {
+    const problem = await this.prisma.problem.findUnique({ where: { id: dto.problemId } });
+    if (!problem) throw new NotFoundException("题目不存在");
+
+    const runId = randomUUID();
+    const task = {
+      runId,
+      code: dto.code,
+      language: dto.language,
+      input: dto.input,
+      timeLimit: problem.timeLimit,
+      memoryLimit: problem.memoryLimit,
+    };
+
+    await this.redis.lPush("judge:run", JSON.stringify(task));
+
+    // 轮询等待结果（最多 15 秒）
+    const maxWait = 15000;
+    const interval = 300;
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+      const result = await this.redis.get(`judge:run:result:${runId}`);
+      if (result) {
+        await this.redis.del(`judge:run:result:${runId}`);
+        return JSON.parse(result);
+      }
+      await new Promise((r) => setTimeout(r, interval));
+    }
+
+    return { status: "SE", stdout: "", stderr: "运行超时，请稍后重试", timeUsed: 0 };
   }
 
   async findOne(id: number, requestingUserId: number, requestingUserRole: string) {

@@ -44,6 +44,13 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 5. Server updates Submission with status/timeUsed/memoryUsed/score
 6. Client polls `GET /api/submissions/:id` for result display
 
+### Test-Run Flow (Self-test)
+
+1. Client posts code and custom input to `POST /api/submissions/run`
+2. Server generates `runId`, pushes JSON task to Redis list `judge:run`, and synchronously polls Redis key `judge:run:result:{runId}`
+3. Judge service `brPop`s from `judge:run` (alongside `judge:queue`), compiles & runs once, then sets the result directly to the Redis key
+4. Server returns the result directly to the client (no database record created)
+
 ### Backend Patterns (NestJS)
 
 - **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule — each with controller, service, dto/

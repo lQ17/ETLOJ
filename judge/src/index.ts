@@ -10,6 +10,7 @@ const SERVER_URL = process.env.SERVER_URL ?? "http://127.0.0.1:3000";
 const JUDGE_SECRET = process.env.JUDGE_SECRET ?? "judge-callback-secret";
 const JUDGE_MODE = process.env.JUDGE_MODE ?? "local"; // "local" | "go-judge"
 const QUEUE_KEY = "judge:queue";
+const RUN_QUEUE_KEY = "judge:run";
 
 type JudgeTask = {
   submissionId: number;
@@ -19,6 +20,22 @@ type JudgeTask = {
   timeLimit: number;
   memoryLimit: number;
   testcases: { input: string; expectedOutput: string }[];
+};
+
+type RunTask = {
+  runId: string;
+  code: string;
+  language: string;
+  input: string;
+  timeLimit: number;
+  memoryLimit: number;
+};
+
+type RunResult = {
+  status: string;
+  stdout: string;
+  stderr: string;
+  timeUsed: number;
 };
 
 type JudgeResult = {
@@ -402,6 +419,54 @@ async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
 }
 
 // ============================================================
+//  自测运行（仅编译+运行，不记录提交）
+// ============================================================
+
+async function runSingle(task: RunTask): Promise<RunResult> {
+  const { code, language, input, timeLimit } = task;
+
+  if (JUDGE_MODE === "local") {
+    const workDir = mkdtempSync(join(tmpdir(), "etloj-run-"));
+    try {
+      const compiled = localCompile(code, language, workDir);
+      if (!compiled.ok) {
+        return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
+      }
+      const r = localRunOneTest(language, compiled.exePath!, input, timeLimit);
+      return {
+        status: r.status === "OK" ? "OK" : r.status,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        timeUsed: Math.round(r.time / 1e6),
+      };
+    } finally {
+      try { rmSync(workDir, { recursive: true, force: true }); } catch {}
+    }
+  }
+
+  // go-judge mode
+  const compiled = await goJudgeCompile(code, language);
+  if (!compiled.ok) {
+    return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
+  }
+  const runResult = await goJudgeRun({
+    cmd: language === "python" ? ["python3", "main.py"] : ["main"],
+    ...(compiled.binary ? { copyIn: { main: { fileId: compiled.binary } } } : {}),
+    stdin: input,
+    cpuLimit: timeLimit * 1_000_000,
+    memoryLimit: task.memoryLimit * 1024 * 1024,
+    copyOut: ["stdout", "stderr"],
+  });
+  const r0 = runResult[0];
+  return {
+    status: r0.status === 0 ? "OK" : (r0.status === 3 ? "TLE" : (r0.status === 4 ? "MLE" : "RE")),
+    stdout: r0.files?.stdout || "",
+    stderr: r0.files?.stderr || "",
+    timeUsed: Math.round((r0.time || 0) / 1e6),
+  };
+}
+
+// ============================================================
 //  回调 & 主循环
 // ============================================================
 
@@ -434,34 +499,63 @@ async function main() {
   console.log(`Callback: ${SERVER_URL}/api/submissions/callback`);
   console.log("Waiting for tasks...\n");
 
+  // 同时监听 judge 和 run 两个队列
   while (true) {
     try {
-      const result = await client.brPop(QUEUE_KEY, 0);
+      const result = await client.brPop([QUEUE_KEY, RUN_QUEUE_KEY], 0);
       if (!result) continue;
 
-      let task: JudgeTask | null = null;
-      try {
-        task = JSON.parse(result.element);
-      } catch (e) {
-        console.error("Parse error:", e);
-        continue;
-      }
+      // 判断来自哪个队列
+      if (result.key === RUN_QUEUE_KEY) {
+        // 自测运行任务
+        let runTask: RunTask | null = null;
+        try {
+          runTask = JSON.parse(result.element);
+        } catch (e) {
+          console.error("Run task parse error:", e);
+          continue;
+        }
+        console.log(`[RUN:${runTask.runId}] ${runTask.language}`);
+        try {
+          const runResult = await runSingle(runTask);
+          console.log(`  → ${runResult.status} (${runResult.timeUsed}ms)`);
+          // 写入 Redis 供后端轮询
+          await client.set(`judge:run:result:${runTask.runId}`, JSON.stringify(runResult), { EX: 60 });
+        } catch (err: any) {
+          console.error("Run execution error:", err);
+          await client.set(`judge:run:result:${runTask.runId}`, JSON.stringify({
+            status: "SE",
+            stdout: "",
+            stderr: err.message || "System error",
+            timeUsed: 0,
+          }), { EX: 60 });
+        }
+      } else {
+        // 正常判题任务
+        let task: JudgeTask | null = null;
+        try {
+          task = JSON.parse(result.element);
+        } catch (e) {
+          console.error("Parse error:", e);
+          continue;
+        }
 
-      console.log(`[#${task.submissionId}] ${task.language} | ${task.testcases.length} cases`);
+        console.log(`[#${task.submissionId}] ${task.language} | ${task.testcases.length} cases`);
 
-      try {
-        const judgeResult = await judge(task);
-        console.log(`  → ${judgeResult.status} (${judgeResult.timeUsed}ms, ${judgeResult.memoryUsed}KB)`);
-        await reportResult(judgeResult);
-      } catch (err: any) {
-        console.error("Judge execution error:", err);
-        await reportResult({
-          submissionId: task.submissionId,
-          status: "SE",
-          timeUsed: 0,
-          memoryUsed: 0,
-          score: 0,
-        });
+        try {
+          const judgeResult = await judge(task);
+          console.log(`  → ${judgeResult.status} (${judgeResult.timeUsed}ms, ${judgeResult.memoryUsed}KB)`);
+          await reportResult(judgeResult);
+        } catch (err: any) {
+          console.error("Judge execution error:", err);
+          await reportResult({
+            submissionId: task.submissionId,
+            status: "SE",
+            timeUsed: 0,
+            memoryUsed: 0,
+            score: 0,
+          });
+        }
       }
     } catch (err) {
       console.error("Redis pull error:", err);

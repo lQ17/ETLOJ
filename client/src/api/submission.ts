@@ -4,6 +4,9 @@ export const submissionApi = {
   create: (data: { problemId: number; code: string; language: string }) =>
     client.post("/submissions", data),
 
+  run: (data: { problemId: number; code: string; language: string; input: string }) =>
+    client.post("/submissions/run", data),
+
   list: (params?: {
     page?: number;
     pageSize?: number;

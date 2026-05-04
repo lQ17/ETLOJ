@@ -29,6 +29,15 @@ export class SubmissionController {
     return this.submissionService.create(userId, dto);
   }
 
+  @Post("run")
+  @UseGuards(JwtAuthGuard)
+  run(
+    @CurrentUser("id") userId: number,
+    @Body() body: { code: string; language: string; input: string; problemId: number },
+  ) {
+    return this.submissionService.run(userId, body);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   findAll(@Query() query: QuerySubmissionDto) {
