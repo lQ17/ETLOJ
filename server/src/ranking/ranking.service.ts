@@ -54,7 +54,13 @@ export class RankingService {
       ? await this.countAcRanking(timeStart, timeEnd)
       : await this.countScoreRanking(timeStart, timeEnd);
 
-    return { items, total, page: pageNum, pageSize: sizeNum };
+    // BigInt -> Number（MySQL COUNT/SUM 返回 BigInt，JSON.stringify 无法序列化）
+    const safeItems = (items as any[]).map((r) => ({
+      ...r,
+      value: Number(r.value),
+    }));
+
+    return { items: safeItems, total, page: pageNum, pageSize: sizeNum };
   }
 
   private timeWhere(alias: string, timeStart: Date | null, timeEnd: Date | null): string {
