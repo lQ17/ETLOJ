@@ -54,20 +54,24 @@ export default function ProblemListDetailPage() {
   }, [id]);
 
   const handleAddProblems = async () => {
-    const slugs = problemSlugs.split(",").map((s) => s.trim()).filter(Boolean);
+    const slugs = problemSlugs.split(/[,，\s\n]+/).map((s) => s.trim()).filter(Boolean);
     if (slugs.length === 0) {
       Message.warning("请输入题号");
       return;
     }
     setAdding(true);
     try {
-      await problemListApi.addItems(+id!, slugs.map((s) => Number(s)).filter((n) => !isNaN(n)));
-      Message.success("添加成功");
+      const res: any = await problemListApi.addItems(+id!, slugs);
       setAddModalVisible(false);
       setProblemSlugs("");
       fetchDetail();
+      if (res.errors?.length > 0) {
+        Message.warning(`以下题号不存在：${res.errors.join("、")}`);
+      } else {
+        Message.success(`成功添加 ${res.added?.length ?? slugs.length} 道题`);
+      }
     } catch {
-      Message.error("添加失败，请检查题号是否正确");
+      Message.error("添加失败");
     } finally {
       setAdding(false);
     }
@@ -192,10 +196,10 @@ export default function ProblemListDetailPage() {
         unmountOnExit
       >
         <div style={{ marginBottom: 8 }}>
-          <Text type="secondary">请输入题号（数字ID），多个用逗号分隔</Text>
+          <Text type="secondary">请输入题号（如 P1012），多个用逗号或空格分隔</Text>
         </div>
         <Input.TextArea
-          placeholder="例如: 1, 2, 3"
+          placeholder="例如: P1001, P1002, P1012"
           value={problemSlugs}
           onChange={setProblemSlugs}
           autoSize={{ minRows: 2 }}

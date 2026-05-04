@@ -19,8 +19,8 @@ export const problemListApi = {
   delete: (id: number) =>
     client.delete(`/problem-lists/${id}`),
 
-  addItems: (id: number, problemIds: number[]) =>
-    client.post(`/problem-lists/${id}/items`, { problemIds }),
+  addItems: (id: number, slugs: string[]) =>
+    client.post(`/problem-lists/${id}/items`, { slugs }),
 
   removeItem: (id: number, problemId: number) =>
     client.delete(`/problem-lists/${id}/items/${problemId}`),

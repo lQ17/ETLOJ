@@ -82,9 +82,9 @@ export class ProblemListController {
   @UseGuards(JwtAuthGuard)
   addItems(
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { problemIds: number[] },
+    @Body() body: { slugs: string[] },
   ) {
-    return this.problemListService.addItems(id, body.problemIds);
+    return this.problemListService.addItems(id, body.slugs);
   }
 
   @Delete(":id/items/:problemId")

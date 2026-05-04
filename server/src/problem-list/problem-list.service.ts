@@ -112,7 +112,7 @@ export class ProblemListService {
     return this.prisma.problemList.delete({ where: { id } });
   }
 
-  async addItems(listId: number, problemIds: number[]) {
+  async addItems(listId: number, slugs: string[]) {
     const list = await this.prisma.problemList.findUnique({ where: { id: listId } });
     if (!list) throw new NotFoundException("题单不存在");
     const maxSort = await this.prisma.problemListItem.aggregate({
@@ -121,17 +121,20 @@ export class ProblemListService {
     });
     let nextSort = (maxSort._max.sortOrder ?? -1) + 1;
     const results: any[] = [];
-    for (const problemId of problemIds) {
+    const errors: string[] = [];
+    for (const slug of slugs) {
+      const problem = await this.prisma.problem.findUnique({ where: { slug } });
+      if (!problem) { errors.push(slug); continue; }
       const existing = await this.prisma.problemListItem.findUnique({
-        where: { listId_problemId: { listId, problemId } },
+        where: { listId_problemId: { listId, problemId: problem.id } },
       });
       if (existing) continue;
       const item = await this.prisma.problemListItem.create({
-        data: { listId, problemId, sortOrder: nextSort++ },
+        data: { listId, problemId: problem.id, sortOrder: nextSort++ },
       });
       results.push(item);
     }
-    return results;
+    return { added: results, errors };
   }
 
   async removeItem(listId: number, problemId: number) {

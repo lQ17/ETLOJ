@@ -220,21 +220,25 @@ function ManageItems({ listId }: { listId: number }) {
   useEffect(() => { fetchDetail(); }, [listId]);
 
   const handleAdd = async () => {
-    const ids = problemIdsInput
-      .split(/[,，\s]+/)
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !isNaN(n));
-    if (ids.length === 0) {
-      Message.warning("请输入有效的题目 ID");
+    const slugs = problemIdsInput
+      .split(/[,，\s\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (slugs.length === 0) {
+      Message.warning("请输入题号");
       return;
     }
     setAdding(true);
     try {
-      await problemListApi.addItems(listId, ids);
-      Message.success(`成功添加 ${ids.length} 道题目`);
+      const res: any = await problemListApi.addItems(listId, slugs);
       setAddModalVisible(false);
       setProblemIdsInput("");
       fetchDetail();
+      if (res.errors?.length > 0) {
+        Message.warning(`以下题号不存在：${res.errors.join("、")}`);
+      } else {
+        Message.success(`成功添加 ${res.added?.length ?? slugs.length} 道题目`);
+      }
     } catch {
       Message.error("添加题目失败");
     } finally {
@@ -254,8 +258,7 @@ function ManageItems({ listId }: { listId: number }) {
 
   const columns = [
     { title: "排序", dataIndex: "sortOrder", width: 70 },
-    { title: "题号", dataIndex: ["problem", "id"], width: 80 },
-    { title: "题号Slug", dataIndex: ["problem", "slug"], width: 120 },
+    { title: "题号", dataIndex: ["problem", "slug"], width: 120 },
     { title: "标题", dataIndex: ["problem", "title"] },
     {
       title: "难度",
@@ -303,10 +306,10 @@ function ManageItems({ listId }: { listId: number }) {
         okText="添加"
       >
         <div style={{ marginBottom: 8 }}>
-          <Text type="secondary">输入题目 ID，多个用逗号或空格分隔</Text>
+          <Text type="secondary">输入题号（如 P1012），多个用逗号或空格分隔</Text>
         </div>
         <Input.TextArea
-          placeholder="例如：1, 2, 3 或 1 2 3"
+          placeholder="例如：P1001, P1002, P1012"
           value={problemIdsInput}
           onChange={setProblemIdsInput}
           rows={3}
