@@ -53,7 +53,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 ### Backend Patterns (NestJS)
 
-- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule — each with controller, service, dto/
+- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule — each with controller, service, dto/
 - **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only
 - **PrismaModule** is `@Global()` — inject `PrismaService` anywhere without importing
 - **Auth**: JWT + Passport (`jwt.strategy.ts`), `JwtAuthGuard`, `RolesGuard` + `@Roles()` decorator, `@CurrentUser()` param decorator
@@ -62,6 +62,8 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Problem routing**: All `:id` params accept both numeric ID and slug string — `parseIdOrSlug()` helper in controllers, `resolveProblem()` in service
 - **Route priority**: In controllers with both `me/*` and `:id` routes, `me/*` MUST be defined before `:id` — NestJS matches top-to-bottom and `:id` captures "me" as a param
 - **Profile module**: `ProfileController` (public, no auth guards) serves `GET /api/profile/:username` and `/api/profile/:username/stats`
+- **Ranking module**: `GET /api/ranking` with params `mode`(ac/score), `range`(all/6m/1m/1w/yesterday/today/custom), `startDate`, `endDate`, `page`, `pageSize` — uses `$queryRawUnsafe` for complex aggregation
+- **Raw SQL pitfalls**: MySQL `COUNT(*)`/`SUM()` via `$queryRawUnsafe` returns BigInt (must `Number()`); LongText fields return Buffer (must `.toString()`). Avatar in DB already contains `data:image/...;base64,` prefix — frontend should use `src={avatar}` directly, not re-prepend
 
 ### Frontend Patterns
 
