@@ -52,6 +52,7 @@ model User {
   submissions Submission[]
   contestRanks ContestRank[]
   tagRecords UserTagRecord[]
+  problemLists ProblemList[]
 
   @@map("users")
 }
@@ -72,6 +73,7 @@ model Problem {
 
   submissions  Submission[]
   contestProblems ContestProblem[]
+  problemLists ProblemListItem[]
 
   @@map("problems")
 }
@@ -154,5 +156,35 @@ model UserTagRecord {
 
   @@unique([userId, tag])
   @@map("user_tag_records")
+}
+
+model ProblemList {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(200)
+  description String?  @db.Text
+  isPublic    Boolean  @default(false) @map("is_public")
+  creatorId   Int      @map("creator_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  creator User             @relation(fields: [creatorId], references: [id])
+  items   ProblemListItem[]
+
+  @@index([creatorId])
+  @@index([isPublic])
+  @@map("problem_lists")
+}
+
+model ProblemListItem {
+  id        Int @id @default(autoincrement())
+  listId    Int @map("list_id")
+  problemId Int @map("problem_id")
+  sortOrder Int @default(0) @map("sort_order")
+
+  list    ProblemList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  problem Problem     @relation(fields: [problemId], references: [id])
+
+  @@unique([listId, problemId])
+  @@map("problem_list_items")
 }
 

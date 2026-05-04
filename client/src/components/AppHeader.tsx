@@ -14,6 +14,7 @@ export default function AppHeader() {
   const menuItems = [
     { key: "/", label: "首页" },
     { key: "/problems", label: "题库" },
+    { key: "/lists", label: "题单" },
     { key: "/records", label: "评测记录" },
     { key: "/ranking", label: "排名" },
   ];
@@ -67,6 +68,11 @@ export default function AppHeader() {
                 {(user.role === "ADMIN" || user.role === "TEACHER") && (
                   <Menu.Item key="admin-problems" onClick={() => navigate("/admin/problems")}>
                     题目管理
+                  </Menu.Item>
+                )}
+                {(user.role === "ADMIN" || user.role === "TEACHER") && (
+                  <Menu.Item key="admin-lists" onClick={() => navigate("/admin/lists")}>
+                    题单管理
                   </Menu.Item>
                 )}
                 {user.role === "ADMIN" && (

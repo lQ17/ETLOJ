@@ -5,10 +5,13 @@ import AppHeader from "./components/AppHeader";
 import HomePage from "./pages/home";
 import ProblemListPage from "./pages/problems";
 import ProblemDetailPage from "./pages/problems/detail";
+import ProblemListsPage from "./pages/lists";
+import ProblemListDetailPage from "./pages/lists/detail";
 import RankingPage from "./pages/ranking";
 import LoginPage from "./pages/login";
 import AdminUsersPage from "./pages/admin/users";
 import AdminProblemsPage from "./pages/admin/problems";
+import AdminListsPage from "./pages/admin/lists";
 import RecordsPage from "./pages/records";
 import ProfilePage from "./pages/profile";
 import SettingsPage from "./pages/settings";
@@ -50,10 +53,13 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/problems" element={<ProblemListPage />} />
           <Route path="/problems/:id" element={<ProblemDetailPage />} />
+          <Route path="/lists" element={<ProblemListsPage />} />
+          <Route path="/lists/:id" element={<ProblemListDetailPage />} />
           <Route path="/records" element={<RecordsPage />} />
           <Route path="/ranking" element={<RankingPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/problems" element={<AdminProblemsPage />} />
+          <Route path="/admin/lists" element={<AdminListsPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/settings/*" element={<SettingsPage />} />
         </Routes>
