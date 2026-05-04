@@ -7,6 +7,7 @@ import { CreateProblemListDto } from "./dto/create-problem-list.dto";
 import { UpdateProblemListDto } from "./dto/update-problem-list.dto";
 import { UpdateItemsDto } from "./dto/update-items.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { OptionalJwtGuard } from "../auth/optional-jwt.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 
 @Controller("problem-lists")
@@ -41,6 +42,7 @@ export class ProblemListController {
   }
 
   @Get(":id")
+  @UseGuards(OptionalJwtGuard)
   findOne(
     @Param("id", ParseIntPipe) id: number,
     @CurrentUser() user?: { id: number; role: string },
