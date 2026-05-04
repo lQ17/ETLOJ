@@ -59,7 +59,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 - **State**: Zustand (`stores/auth.ts`) — user/token/login/logout; login fetches full profile (including avatar) immediately after token set
 - **UI**: Arco Design (`@arco-design/web-react`) — never use other component libraries
-- **Charts**: ECharts via `echarts-for-react` — used in profile page for heatmap, pie, radar
+- **Charts**: ECharts via `echarts-for-react` — used in profile page for heatmap, pie, wordCloud (requires `echarts-wordcloud` plugin)
 - **API layer**: `client/src/api/*.ts` — plain objects with async methods using shared Axios instance (auto-attaches JWT, unwraps response, 30s timeout)
 - **Pages**: default-exported function components, each in own directory under `pages/`
 - **Table pages**: server-side pagination, local filter state, explicit API calls on search (not useEffect-watching filters) — see `pages/admin/users.tsx` or `pages/records/index.tsx` as reference
@@ -83,7 +83,9 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 - **No public registration** — users created by admins only
 - **Code visibility**: Regular users see only their own submission code; teachers and admins see all
-- **Judge local mode** (Windows dev): No memory tracking, no sandbox — uses `spawnSync` with timeout
+- **Judge local mode** (Windows dev): No memory tracking, no sandbox — uses `spawnSync` with timeout. Uses `127.0.0.1` by default to avoid DNS issues.
+- **Heatmap logic**: Only counts the **first time** a user ACs a problem (unique per user/problem). Backend uses a composite index for speed.
+- **Tag statistics**: Incremented on first AC. Sync historical data using `server/scripts/backfill-tags.ts`.
 - **Supported languages**: C, C++, Java, Python (hardcoded in judge and `CreateSubmissionDto`)
 - **JWT expiry**: 7 days
 - **No WebSocket yet** — judge results are polled; WebSocket is planned but not implemented

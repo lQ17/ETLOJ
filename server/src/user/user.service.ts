@@ -99,28 +99,30 @@ export class UserService {
     });
     const statusDistribution = statusCounts.map((s) => ({ name: s.status, value: s._count }));
 
-    // 2. Heatmap data: daily submission count for the past year
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    // 2. Heatmap data: daily newly solved problems for the past 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const dailySubs = await this.prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
-      SELECT DATE(created_at) as date, COUNT(*) as count
-      FROM submissions
-      WHERE user_id = ${user.id} AND created_at >= ${oneYearAgo}
-      GROUP BY DATE(created_at)
+      SELECT DATE_FORMAT(first_ac_time, '%Y-%m-%d') as date, COUNT(*) as count
+      FROM (
+        SELECT problem_id, MIN(created_at) as first_ac_time
+        FROM submissions
+        WHERE user_id = ${user.id} AND status = 'AC'
+        GROUP BY problem_id
+      ) as first_acs
+      WHERE first_ac_time >= ${sixMonthsAgo}
+      GROUP BY DATE_FORMAT(first_ac_time, '%Y-%m-%d')
       ORDER BY date
     `;
     const heatmapData = dailySubs.map((d) => [d.date, Number(d.count)]);
 
-    // 3. Radar: AC count per difficulty
-    const difficultyStats = await this.prisma.$queryRaw<Array<{ difficulty: string; count: bigint }>>`
-      SELECT p.difficulty, COUNT(DISTINCT s.problem_id) as count
-      FROM submissions s
-      JOIN problems p ON s.problem_id = p.id
-      WHERE s.user_id = ${user.id} AND s.status = 'AC'
-      GROUP BY p.difficulty
+    // 3. Word Cloud: Tag records
+    const tagRecords = await this.prisma.$queryRaw<Array<{ tag: string; count: number }>>`
+      SELECT tag, count
+      FROM user_tag_records
+      WHERE user_id = ${user.id}
     `;
-    const radarData: Record<string, number> = { EASY: 0, MEDIUM: 0, HARD: 0 };
-    difficultyStats.forEach((d) => { radarData[d.difficulty] = Number(d.count); });
+    const wordCloudData = tagRecords.map((t) => ({ name: t.tag, value: Number(t.count) }));
 
     // 4. AC problem list
     const acProblems = await this.prisma.$queryRaw<Array<{ problem_id: number; slug: string; title: string; difficulty: string }>>`
@@ -146,7 +148,7 @@ export class UserService {
     return {
       statusDistribution,
       heatmapData,
-      radarData,
+      wordCloudData,
       acProblems,
       attemptedProblems,
     };

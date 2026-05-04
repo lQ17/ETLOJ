@@ -2,8 +2,10 @@ import { useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Grid, Card, Typography, Space, Divider, Tabs, Tag, Spin, Empty, Avatar } from "@arco-design/web-react";
 import { IconUser, IconCalendar, IconStar, IconThunderbolt } from "@arco-design/web-react/icon";
+import * as echarts from "echarts";
 import ReactECharts from "echarts-for-react";
 import { profileApi } from "../../api/profile";
+import "echarts-wordcloud";
 import "./profile.css";
 
 const { Row, Col } = Grid;
@@ -15,8 +17,8 @@ const COLORS = {
   wa: "#f53f3f",
   tle: "#ff7d00",
   mle: "#7816ff",
-  re: "#0fc6c2",
-  ce: "#86909c",
+  re: "#b37feb", // 淡紫色
+  ce: "#ffb470", // 淡橙色
   se: "#c9cdd4",
 };
 
@@ -40,7 +42,7 @@ interface ProfileInfo {
 interface ProfileStats {
   statusDistribution: { name: string; value: number }[];
   heatmapData: [string, number][];
-  radarData: Record<string, number>;
+  wordCloudData: { name: string; value: number }[];
   acProblems: { problem_id: number; slug: string; title: string; difficulty: string }[];
   attemptedProblems: { problem_id: number; slug: string; title: string; difficulty: string }[];
 }
@@ -128,17 +130,21 @@ export default function ProfilePage() {
             </Card>
 
             {/* ---- 饼图 + 雷达图 ---- */}
-            <Row gutter={20}>
-              <Col xs={24} lg={12}>
-                <Card bordered={false} className="profile-card">
+            <Row gutter={16} style={{ display: 'flex', alignItems: 'stretch' }}>
+              <Col xs={24} lg={12} style={{ display: 'flex', marginBottom: 16 }}>
+                <Card bordered={false} className="profile-card" style={{ width: '100%', height: '100%' }}>
                   <Title heading={6} className="card-title">提交统计</Title>
-                  <PieChart data={stats?.statusDistribution || []} />
+                  <div style={{ width: '100%' }}>
+                    <PieChart data={stats?.statusDistribution || []} />
+                  </div>
                 </Card>
               </Col>
-              <Col xs={24} lg={12}>
-                <Card bordered={false} className="profile-card">
-                  <Title heading={6} className="card-title">能力雷达</Title>
-                  <RadarChart data={stats?.radarData || { EASY: 0, MEDIUM: 0, HARD: 0 }} />
+              <Col xs={24} lg={12} style={{ display: 'flex', marginBottom: 16 }}>
+                <Card bordered={false} className="profile-card" style={{ width: '100%', height: '100%' }}>
+                  <Title heading={6} className="card-title">能力词云</Title>
+                  <div style={{ width: '100%' }}>
+                    <WordCloudChart data={stats?.wordCloudData || []} />
+                  </div>
                 </Card>
               </Col>
             </Row>
@@ -163,51 +169,158 @@ export default function ProfilePage() {
 
 // ===================== Sub-components =====================
 
-/** 热力图 */
+import { GitHubCalendar } from "react-github-calendar";
+
+import { Tooltip } from "@arco-design/web-react";
+
+/** 热力图 (使用 react-github-calendar 库) */
 function HeatmapChart({ data }: { data: [string, number][] }) {
   const now = new Date();
-  const yearAgo = new Date();
-  yearAgo.setFullYear(yearAgo.getFullYear() - 1);
-  const rangeStart = yearAgo.toISOString().slice(0, 10);
-  const rangeEnd = now.toISOString().slice(0, 10);
+  
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setMonth(now.getMonth() - 6);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  // Format heatmap date strings
-  const formatted = data.map(([d, v]) => {
-    const ds = typeof d === "string" ? d : new Date(d).toISOString().slice(0, 10);
-    return [ds, v];
+  const oneMonthAgo = new Date(now);
+  oneMonthAgo.setMonth(now.getMonth() - 1);
+  oneMonthAgo.setHours(0, 0, 0, 0);
+
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(now.getDate() - 7);
+  oneWeekAgo.setHours(0, 0, 0, 0);
+
+  // 统计不同时间段的提交总数
+  let sum6Months = 0;
+  let sum1Month = 0;
+  let sum1Week = 0;
+
+  // 将传入的数据转为 Map 方便查询
+  const dateMap = new Map();
+  data.forEach(([d, v]) => {
+    const ds = typeof d === "string" ? d : (new Date(new Date(d).getTime() - new Date(d).getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+    dateMap.set(ds, v);
+    
+    // 累加统计
+    // d 是字符串 YYYY-MM-DD，这里在构造 Date 时如果用 YYYY-MM-DD 会被当成 UTC 零点，导致判断时区偏移。
+    // 改为手动解析年、月、日构造本地时间的 Date，或者简单字符串比较。为了简单，我们将它转为本地的开始时间
+    const [year, month, day] = ds.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    if (dateObj >= sixMonthsAgo && dateObj <= now) sum6Months += v;
+    if (dateObj >= oneMonthAgo && dateObj <= now) sum1Month += v;
+    if (dateObj >= oneWeekAgo && dateObj <= now) sum1Week += v;
   });
 
-  const option = {
-    tooltip: { formatter: (p: any) => `${p.value[0]}<br/>提交: <b>${p.value[1]}</b>` },
-    visualMap: {
-      min: 0, max: Math.max(10, ...formatted.map((d: any) => d[1])),
-      show: false,
-      inRange: { color: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"] },
-    },
-    calendar: {
-      range: [rangeStart, rangeEnd],
-      cellSize: [14, 14],
-      splitLine: { show: false },
-      itemStyle: { borderWidth: 3, borderColor: "transparent", borderRadius: 2 },
-      dayLabel: { nameMap: "ZH", color: "#86909c", fontSize: 10 },
-      monthLabel: { nameMap: "ZH", color: "#86909c", fontSize: 10 },
-      yearLabel: { show: false },
-      left: 40, right: 10, top: 20, bottom: 10,
-    },
-    series: [{
-      type: "heatmap",
-      coordinateSystem: "calendar",
-      data: formatted,
-    }],
-  };
+  // 必须生成指定时间段的全量数据，否则库无法正确推断出日历的起始时间
+  const calendarData: Array<{ date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }> = [];
+  const tempDate = new Date(sixMonthsAgo);
+  tempDate.setHours(0, 0, 0, 0);
+  
+  while (tempDate <= now) {
+    const y = tempDate.getFullYear();
+    const m = String(tempDate.getMonth() + 1).padStart(2, '0');
+    const d = String(tempDate.getDate()).padStart(2, '0');
+    const ds = `${y}-${m}-${d}`;
+    const v = dateMap.get(ds) || 0;
+    
+    // 计算 level (0-4)
+    let level = 0;
+    if (v > 0 && v <= 2) level = 1;
+    else if (v > 2 && v <= 5) level = 2;
+    else if (v > 5 && v <= 9) level = 3;
+    else if (v > 9) level = 4;
 
-  return <ReactECharts option={option} style={{ height: 160 }} />;
+    calendarData.push({
+      date: ds,
+      count: v,
+      level: level as 0 | 1 | 2 | 3 | 4,
+    });
+    
+    tempDate.setDate(tempDate.getDate() + 1);
+  }
+
+  return (
+    <div className="gh-calendar-container" style={{ display: 'flex', alignItems: 'center', paddingTop: '10px' }}>
+      {/* 左侧热力图主体 */}
+      <div style={{ flex: 1, overflowX: 'auto' }}>
+        <GitHubCalendar
+          data={calendarData}
+          showWeekdayLabels
+          blockSize={15}
+          blockMargin={5}
+          blockRadius={3}
+          labels={{
+            months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+            weekdays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+            totalCount: "此处仅统计初次通过的题目记录",
+            legend: {
+              less: "少",
+              more: "多",
+            },
+          }}
+          theme={{
+            light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+            dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
+          }}
+          renderBlock={(block, activity) => {
+            const [y, m, d] = activity.date.split("-");
+            const dateStr = `${y}年${parseInt(m)}月${parseInt(d)}日`;
+            const tooltipContent = (
+              <div style={{ textAlign: "center", padding: "4px 2px" }}>
+                <div style={{ fontWeight: 600, marginBottom: "4px" }}>{dateStr}</div>
+                <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
+                  {activity.count > 0 ? `通过了 ${activity.count} 道题` : "无通过记录"}
+                </div>
+              </div>
+            );
+
+            return (
+              <Tooltip key={activity.date} content={tooltipContent} position="top" trigger="hover" style={{ backgroundColor: '#24292e' }}>
+                {block}
+              </Tooltip>
+            );
+          }}
+        />
+      </div>
+
+      {/* 右侧统计信息 */}
+      <div style={{ width: '180px', marginLeft: '32px', borderLeft: '1px solid var(--color-border-2)', paddingLeft: '24px' }}>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <div>
+            <Text type="secondary" style={{ fontSize: 13 }}>最近半年通过了</Text>
+            <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-1)', marginTop: 4 }}>
+              {sum6Months} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
+            </div>
+          </div>
+          <div>
+            <Text type="secondary" style={{ fontSize: 13 }}>最近一个月通过了</Text>
+            <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-1)', marginTop: 4 }}>
+              {sum1Month} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
+            </div>
+          </div>
+          <div>
+            <Text type="secondary" style={{ fontSize: 13 }}>最近一周通过了</Text>
+            <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-1)', marginTop: 4 }}>
+              {sum1Week} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
+            </div>
+          </div>
+        </Space>
+      </div>
+    </div>
+  );
 }
 
 /** 提交状态饼图 */
 function PieChart({ data }: { data: { name: string; value: number }[] }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const option = {
+    title: {
+      text: `总提交数\n${total}`,
+      left: 'center',
+      top: '42%',
+      textBaseline: 'middle',
+      textAlign: 'center',
+      textStyle: { fontSize: 14, color: 'var(--color-text-2)', lineHeight: 22, fontWeight: 500 },
+    },
     tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
     legend: { bottom: 0, textStyle: { color: "#86909c" }, itemWidth: 12, itemHeight: 12 },
     series: [{
@@ -215,13 +328,9 @@ function PieChart({ data }: { data: { name: string; value: number }[] }) {
       radius: ["45%", "70%"],
       center: ["50%", "42%"],
       avoidLabelOverlap: false,
-      label: {
-        show: true, position: "center", fontSize: 22, fontWeight: 700,
-        formatter: () => `${total}`,
-        color: "var(--color-text-1)",
-      },
-      emphasis: { label: { show: true, fontSize: 14, formatter: "{b}\n{c}" } },
-      itemStyle: { borderRadius: 6, borderColor: "var(--color-bg-2)", borderWidth: 2 },
+      label: { show: false },
+      emphasis: { scale: true, label: { show: false } },
+      itemStyle: { borderRadius: 6 },
       data: data.map((d) => ({
         ...d,
         itemStyle: { color: STATUS_COLOR_MAP[d.name] || "#86909c" },
@@ -230,37 +339,42 @@ function PieChart({ data }: { data: { name: string; value: number }[] }) {
   };
 
   if (!data.length) return <Empty description="暂无提交记录" style={{ padding: 40 }} />;
-  return <ReactECharts option={option} style={{ height: 280 }} />;
+  return <ReactECharts option={option} style={{ height: 280, width: '100%' }} />;
 }
 
-/** 能力雷达图 */
-function RadarChart({ data }: { data: Record<string, number> }) {
-  const maxVal = Math.max(1, data.EASY, data.MEDIUM, data.HARD);
+/** 词云图 */
+function WordCloudChart({ data }: { data: { name: string; value: number }[] }) {
+  if (!data || data.length === 0) return <Empty description="暂无标签数据" style={{ padding: 40 }} />;
+
   const option = {
-    radar: {
-      indicator: [
-        { name: `简单 (${data.EASY})`, max: maxVal },
-        { name: `中等 (${data.MEDIUM})`, max: maxVal },
-        { name: `困难 (${data.HARD})`, max: maxVal },
-      ],
-      shape: "circle",
-      splitNumber: 4,
-      axisName: { color: "#86909c", fontSize: 12 },
-      splitLine: { lineStyle: { color: "rgba(134,144,156,0.15)" } },
-      splitArea: { areaStyle: { color: ["rgba(134,144,156,0.03)", "rgba(134,144,156,0.06)"] } },
-      axisLine: { lineStyle: { color: "rgba(134,144,156,0.15)" } },
-    },
+    tooltip: { show: true },
     series: [{
-      type: "radar",
-      data: [{ value: [data.EASY, data.MEDIUM, data.HARD] }],
-      areaStyle: { color: "rgba(22,93,255,0.15)" },
-      lineStyle: { color: "#165dff", width: 2 },
-      itemStyle: { color: "#165dff" },
-      symbol: "circle", symbolSize: 6,
-    }],
+      type: 'wordCloud',
+      shape: 'circle',
+      keepAspect: false,
+      left: 'center',
+      top: 'center',
+      width: '90%',
+      height: '90%',
+      sizeRange: [12, 40],
+      rotationRange: [-90, 90],
+      rotationStep: 45,
+      gridSize: 8,
+      drawOutOfBound: false,
+      textStyle: {
+        fontFamily: 'sans-serif',
+        fontWeight: 'bold',
+        color: function () {
+          const palette = ['#165dff', '#0fc6c2', '#00b42a', '#ff7d00', '#f53f3f', '#7816ff', '#b37feb', '#ffb470'];
+          return palette[Math.floor(Math.random() * palette.length)];
+        }
+      },
+      emphasis: { focus: 'self', textStyle: { shadowBlur: 10, shadowColor: '#333' } },
+      data: data
+    }]
   };
 
-  return <ReactECharts option={option} style={{ height: 280 }} />;
+  return <ReactECharts option={option} style={{ height: 280, width: '100%' }} />;
 }
 
 /** 题目墙 */

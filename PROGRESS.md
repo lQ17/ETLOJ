@@ -6,6 +6,9 @@
 - [x] 项目架构搭建（前后端分离 Monorepo）
 - [x] Docker Compose 配置（MySQL 8 + Redis 7 + go-judge）
 - [x] Prisma Schema 设计（User/Problem/Submission/Contest 四表）
+- [x] UI: Arco Design (`@arco-design/web-react`)
+- [x] Charts: ECharts via `echarts-for-react` (含 WordCloud 插件)
+- [x] API Layer: Axios 封装（自动 JWT、统一响应处理、30s 超时）
 
 ### 用户系统
 - [x] JWT 登录认证
@@ -64,11 +67,14 @@
 ### 个人中心 — 个人主页数据大屏（阶段 B ✅）
 - [x] 公开 Profile API（`GET /api/profile/:username` + `/stats`，无需登录）
 - [x] 用户信息卡片（头像、用户名、签名、注册时间、已解题数、总提交数）
-- [x] 提交统计饼图（ECharts 环形图，展示 AC/WA/TLE/MLE/RE/CE 占比）
-- [x] GitHub 风格活跃度热力图（ECharts Calendar Heatmap，过去一年每日提交）
-- [x] 能力雷达图（按 EASY/MEDIUM/HARD 三维度展示 AC 题数）
-- [x] 题目墙（已通过 + 尝试过两个 Tab，带难度标签，可跳转题目详情）
-- [x] 响应式布局 + 高级 CSS（渐变数字、sticky 侧边栏）
+- [x] 提交统计饼图优化（Arco 配色、无描边、稳定中心总数显示、修复悬浮 Bug）
+- [x] GitHub 风格活跃度热力图重构（仅统计每日**初次通过**、增加最近半年/一月/一周统计面板）
+- [x] 热力图性能优化（后端增加 `(userId, status, problemId, createdAt)` 复合索引，查询耗时降至毫秒级）
+- [x] 能力词云（替代雷达图，展示通过题目的算法标签分布）
+- [x] 标签统计系统（新增 `UserTagRecord` 表，判题回调时自动增量更新标签统计）
+- [x] 标签数据回刷脚本（`scripts/backfill-tags.ts`，用于同步历史 AC 记录的标签）
+- [x] 响应式布局优化（卡片等高对齐、ECharts 零维度渲染修复、SaaS 风格配色词云）
+- [x] 修复时区偏移导致的日期统计偏差（Date 构造逻辑重构）
 
 ## 待开发
 

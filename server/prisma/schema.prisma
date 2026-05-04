@@ -51,6 +51,7 @@ model User {
 
   submissions Submission[]
   contestRanks ContestRank[]
+  tagRecords UserTagRecord[]
 
   @@map("users")
 }
@@ -93,6 +94,7 @@ model Submission {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, status, problemId, createdAt]) // 复合索引：大幅优化个人主页 AC 统计查询 (涵盖过滤和分组)
   @@map("submissions")
 }
 
@@ -138,3 +140,18 @@ model ContestRank {
   @@unique([contestId, userId])
   @@map("contest_ranks")
 }
+
+model UserTagRecord {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  tag       String   @db.VarChar(100)
+  count     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, tag])
+  @@map("user_tag_records")
+}
+

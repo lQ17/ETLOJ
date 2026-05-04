@@ -126,7 +126,7 @@ export class SubmissionService {
   }
 
   async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number }) {
-    return this.prisma.submission.update({
+    const updated = await this.prisma.submission.update({
       where: { id: submissionId },
       data: {
         status: result.status as any,
@@ -134,7 +134,31 @@ export class SubmissionService {
         memoryUsed: result.memoryUsed,
         score: result.score ?? null,
       },
+      include: { problem: true },
     });
+
+    // 如果是通过状态，且是首次通过，则增加标签统计
+    if (result.status === 'AC') {
+      const acCount = await this.prisma.submission.count({
+        where: { userId: updated.userId, problemId: updated.problemId, status: 'AC' },
+      });
+
+      if (acCount === 1) {
+        // 这是首次 AC，更新用户标签记录
+        const tags = updated.problem.tags as string[] | null;
+        if (tags && Array.isArray(tags)) {
+          for (const tag of tags) {
+            await this.prisma.$executeRaw`
+              INSERT INTO user_tag_records (user_id, tag, count, created_at, updated_at)
+              VALUES (${updated.userId}, ${tag}, 1, NOW(), NOW())
+              ON DUPLICATE KEY UPDATE count = count + 1, updated_at = NOW()
+            `;
+          }
+        }
+      }
+    }
+
+    return updated;
   }
 
   async getByUserAndProblem(userId: number, problemId: number) {

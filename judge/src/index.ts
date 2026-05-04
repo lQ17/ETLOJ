@@ -4,11 +4,11 @@ import { mkdtempSync, writeFileSync, rmSync, existsSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
-const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
-const GO_JUDGE_URL = process.env.GO_JUDGE_URL ?? "http://localhost:5050";
-const SERVER_URL = process.env.SERVER_URL ?? "http://localhost:3000";
+const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
+const GO_JUDGE_URL = process.env.GO_JUDGE_URL ?? "http://127.0.0.1:5050";
+const SERVER_URL = process.env.SERVER_URL ?? "http://127.0.0.1:3000";
 const JUDGE_SECRET = process.env.JUDGE_SECRET ?? "judge-callback-secret";
-const JUDGE_MODE = process.env.JUDGE_MODE ?? "go-judge"; // "local" | "go-judge"
+const JUDGE_MODE = process.env.JUDGE_MODE ?? "local"; // "local" | "go-judge"
 const QUEUE_KEY = "judge:queue";
 
 type JudgeTask = {
