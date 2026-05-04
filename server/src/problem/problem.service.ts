@@ -50,6 +50,10 @@ export class ProblemService {
         filePath: this.getMarkdownPath(dto.slug),
         tags: dto.tags || [],
         isPublic: dto.isPublic ?? true,
+        score: dto.score ?? (() => {
+          const d = (dto.difficulty as any) || "EASY";
+          return d === "HARD" ? 7 : d === "MEDIUM" ? 3 : 1;
+        })(),
       },
     });
   }
@@ -91,6 +95,7 @@ export class ProblemService {
           memoryLimit: true,
           tags: true,
           isPublic: true,
+          score: true,
           _count: { select: { submissions: true } },
         },
       }),
@@ -168,6 +173,7 @@ export class ProblemService {
         ...(data.memoryLimit && { memoryLimit: data.memoryLimit }),
         ...(data.tags && { tags: data.tags }),
         ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+        ...(data.score !== undefined && { score: data.score }),
       },
     });
   }
@@ -219,5 +225,137 @@ export class ProblemService {
     }
 
     return testcases;
+  }
+
+  async exportProblems(slugs: string[]): Promise<Buffer> {
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip();
+
+    for (const slug of slugs) {
+      const problem = await this.prisma.problem.findUnique({ where: { slug } });
+      if (!problem) continue;
+
+      const prefix = slug;
+
+      // problem.json
+      const meta = {
+        slug: problem.slug,
+        title: problem.title,
+        difficulty: problem.difficulty,
+        score: problem.score,
+        timeLimit: problem.timeLimit,
+        memoryLimit: problem.memoryLimit,
+        tags: problem.tags,
+        isPublic: problem.isPublic,
+      };
+      zip.addFile(`${prefix}/problem.json`, Buffer.from(JSON.stringify(meta, null, 2), 'utf-8'));
+
+      // problem.md
+      let markdown = '';
+      try { markdown = fs.readFileSync(this.getMarkdownPath(slug), 'utf-8'); } catch {}
+      zip.addFile(`${prefix}/problem.md`, Buffer.from(markdown, 'utf-8'));
+
+      // testcases
+      const tcDir = this.getTestcasesDir(slug);
+      if (fs.existsSync(tcDir)) {
+        const files = fs.readdirSync(tcDir);
+        for (const file of files) {
+          const content = fs.readFileSync(path.join(tcDir, file), 'utf-8');
+          zip.addFile(`${prefix}/testcases/${file}`, Buffer.from(content, 'utf-8'));
+        }
+      }
+    }
+
+    return zip.toBuffer();
+  }
+
+  async exportAllProblems(): Promise<Buffer> {
+    const problems = await this.prisma.problem.findMany({ select: { slug: true } });
+    return this.exportProblems(problems.map(p => p.slug));
+  }
+
+  async importProblems(zipBuffer: Buffer): Promise<{ imported: number; skipped: string[]; errors: string[] }> {
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipBuffer);
+    const entries = zip.getEntries();
+
+    // Group entries by top-level directory
+    const dirMap = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      const parts = entry.entryName.split('/');
+      if (parts.length < 2) continue; // skip root-level files
+      const dir = parts[0];
+      if (!dirMap.has(dir)) dirMap.set(dir, []);
+      dirMap.get(dir)!.push(entry);
+    }
+
+    let imported = 0;
+    const skipped: string[] = [];
+    const errors: string[] = [];
+
+    for (const [dir, dirEntries] of dirMap) {
+      try {
+        // Read problem.json
+        const jsonEntry = dirEntries.find(e => e.entryName.endsWith('problem.json'));
+        if (!jsonEntry) { errors.push(`${dir}: 缺少 problem.json`); continue; }
+
+        const meta = JSON.parse(jsonEntry.getData().toString('utf-8'));
+        if (!meta.slug) { errors.push(`${dir}: problem.json 缺少 slug`); continue; }
+
+        // Check conflict
+        const existing = await this.prisma.problem.findUnique({ where: { slug: meta.slug } });
+        if (existing) { skipped.push(meta.slug); continue; }
+
+        // Validate difficulty
+        if (meta.difficulty && !['EASY', 'MEDIUM', 'HARD'].includes(meta.difficulty)) {
+          errors.push(`${meta.slug}: difficulty 无效`); continue;
+        }
+
+        // Write files
+        const tcDir = this.getTestcasesDir(meta.slug);
+        fs.mkdirSync(tcDir, { recursive: true });
+
+        // Write problem.md
+        const mdEntry = dirEntries.find(e => e.entryName.endsWith('problem.md'));
+        if (mdEntry) {
+          fs.writeFileSync(this.getMarkdownPath(meta.slug), mdEntry.getData().toString('utf-8'), 'utf-8');
+        }
+
+        // Write testcases
+        for (const entry of dirEntries) {
+          if (entry.entryName.includes('/testcases/') && !entry.isDirectory) {
+            const filename = entry.entryName.split('/testcases/')[1];
+            if (filename) {
+              fs.writeFileSync(path.join(tcDir, filename), entry.getData(), 'utf-8');
+            }
+          }
+        }
+
+        // Create DB record
+        await this.prisma.problem.create({
+          data: {
+            slug: meta.slug,
+            title: meta.title || meta.slug,
+            difficulty: meta.difficulty || 'EASY',
+            score: meta.score ?? (() => {
+              const d = meta.difficulty || 'EASY';
+              return d === 'HARD' ? 7 : d === 'MEDIUM' ? 3 : 1;
+            })(),
+            timeLimit: meta.timeLimit || 1000,
+            memoryLimit: meta.memoryLimit || 256,
+            filePath: this.getMarkdownPath(meta.slug),
+            tags: meta.tags || [],
+            isPublic: meta.isPublic ?? true,
+          },
+        });
+
+        imported++;
+      } catch (e: any) {
+        errors.push(`${dir}: ${e.message}`);
+      }
+    }
+
+    return { imported, skipped, errors };
   }
 }

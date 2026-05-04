@@ -31,6 +31,10 @@
 - [x] 管理员题目管理页（Markdown 编辑器创建题目）
 - [x] 测试数据管理（.in / .out 文件存储）
 - [x] 题目详情页 Markdown 渲染深度优化（兼容 Windows CRLF，完美剥离原生样例区）
+- [x] 题目分数系统（`Problem.score` 字段，按难度默认 1/3/7 分，管理员可自定义）
+- [x] 用户总分统计（仅统计每道题的第一次 AC 对应的题目分数，个人主页左侧显示）
+- [x] 题目批量导入导出（zip 格式：`{slug}/problem.json + problem.md + testcases/`，支持全部导出、选中导出、zip 导入，冲突跳过并列出已存在题号）
+- [x] 修复非公开题目编辑报错（`getTestcases` 端点未传 `isAdmin` 导致 404）
 
 ### 提交判题
 - [x] 代码提交 API + Redis 队列分发

@@ -37,7 +37,7 @@ const DIFF_LABEL: Record<string, string> = {
 // ---------- Types ----------
 interface ProfileInfo {
   id: number; username: string; avatar?: string; signature?: string;
-  role: string; createdAt: string; solvedCount: number; totalSubmissions: number;
+  role: string; createdAt: string; solvedCount: number; totalSubmissions: number; totalScore: number;
 }
 interface ProfileStats {
   statusDistribution: { name: string; value: number }[];
@@ -104,13 +104,17 @@ export default function ProfilePage() {
               <Divider className="user-divider" />
 
               <Row className="stat-row">
-                <Col span={12} className="stat-cell">
+                <Col span={8} className="stat-cell">
                   <div className="stat-value">{profile.solvedCount}</div>
                   <div className="stat-label">已解题数</div>
                 </Col>
-                <Col span={12} className="stat-cell">
+                <Col span={8} className="stat-cell">
                   <div className="stat-value">{profile.totalSubmissions}</div>
                   <div className="stat-label">总提交数</div>
+                </Col>
+                <Col span={8} className="stat-cell">
+                  <div className="stat-value">{profile.totalScore ?? 0}</div>
+                  <div className="stat-label">总分数</div>
                 </Col>
               </Row>
             </div>

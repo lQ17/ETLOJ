@@ -66,6 +66,7 @@ model Problem {
   filePath    String     @map("file_path") @db.VarChar(500)
   tags        Json?
   isPublic    Boolean    @default(true) @map("is_public")
+  score       Int        @default(0) @map("score")
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 

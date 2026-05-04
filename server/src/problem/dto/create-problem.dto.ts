@@ -32,6 +32,12 @@ export class CreateProblemDto {
   @IsOptional()
   isPublic?: boolean;
 
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  score?: number;
+
   @IsString()
   @IsNotEmpty()
   markdown: string;

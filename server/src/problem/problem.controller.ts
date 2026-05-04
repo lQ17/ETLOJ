@@ -1,7 +1,9 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards, Req
+  Body, Param, Query, UseGuards, Req, Res,
+  ConflictException, UseInterceptors, UploadedFile,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ProblemService } from "./problem.service";
 import { CreateProblemDto } from "./dto/create-problem.dto";
 import { UpdateProblemDto } from "./dto/update-problem.dto";
@@ -33,6 +35,44 @@ export class ProblemController {
     return this.problemService.findAll(query, isAdmin);
   }
 
+  @Post("export")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  async exportProblems(@Body() body: { slugs: string[] }, @Res() res: any) {
+    if (!body.slugs || body.slugs.length === 0) {
+      throw new ConflictException("请选择要导出的题目");
+    }
+    const buffer = await this.problemService.exportProblems(body.slugs);
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="problems-export.zip"',
+      'Content-Length': buffer.length,
+    });
+    res.send(buffer);
+  }
+
+  @Post("export-all")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  async exportAllProblems(@Res() res: any) {
+    const buffer = await this.problemService.exportAllProblems();
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': 'attachment; filename="problems-export.zip"',
+      'Content-Length': buffer.length,
+    });
+    res.send(buffer);
+  }
+
+  @Post("import")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
+  async importProblems(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new ConflictException("请上传 zip 文件");
+    return this.problemService.importProblems(file.buffer);
+  }
+
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   findOne(@Param("id") id: string, @Req() req: any) {
@@ -58,7 +98,7 @@ export class ProblemController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("ADMIN", "TEACHER")
   getTestcases(@Param("id") id: string) {
-    return this.problemService.findOne(parseIdOrSlug(id)).then((p) =>
+    return this.problemService.findOne(parseIdOrSlug(id), true).then((p) =>
       this.problemService.getTestcases(p.slug)
     );
   }

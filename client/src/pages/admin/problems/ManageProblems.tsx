@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Switch } from "@arco-design/web-react";
+import { Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Switch, Upload, Modal, Typography } from "@arco-design/web-react";
 import { problemApi } from "../../../api/problem";
 
 export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => void }) {
@@ -7,6 +7,10 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
+  const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importResultVisible, setImportResultVisible] = useState(false);
 
   const fetchData = async (current = pagination.current, pageSize = pagination.pageSize) => {
     setLoading(true);
@@ -47,18 +51,69 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
     }
   };
 
+  const handleExport = async (slugs: string[]) => {
+    try {
+      const res: any = slugs.length > 0
+        ? await problemApi.exportProblems(slugs)
+        : await problemApi.exportAllProblems();
+      const blob = new Blob([res], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "problems-export.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+      Message.success("导出成功");
+    } catch {
+      Message.error("导出失败");
+    }
+  };
+
+  const handleExportSelected = () => {
+    const selectedSlugs = data
+      .filter((item) => selectedKeys.includes(item.id))
+      .map((item) => item.slug);
+    handleExport(selectedSlugs);
+  };
+
+  const handleExportAll = () => {
+    handleExport([]);
+  };
+
+  const handleImport = async (file: File) => {
+    if (file.size > 100 * 1024 * 1024) {
+      Message.error("文件大小不能超过 100MB");
+      return;
+    }
+    setImporting(true);
+    try {
+      const res: any = await problemApi.importProblems(file);
+      setImportResult(res);
+      setImportResultVisible(true);
+      if (res.imported > 0) fetchData();
+    } catch (err: any) {
+      Message.error(err?.message || "导入失败");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const columns = [
     { title: "ID", dataIndex: "id", width: 80 },
     { title: "题号", dataIndex: "slug", width: 120 },
     { title: "标题", dataIndex: "title" },
-    { 
-      title: "难度", 
+    {
+      title: "难度",
       dataIndex: "difficulty",
       render: (val: string) => {
         const color = val === "EASY" ? "green" : val === "MEDIUM" ? "orange" : "red";
         const text = val === "EASY" ? "简单" : val === "MEDIUM" ? "中等" : "困难";
         return <Tag color={color}>{text}</Tag>;
       }
+    },
+    {
+      title: "分数", dataIndex: "score", width: 70,
+      render: (v: number) => v ?? 0,
     },
     {
       title: "公开状态",
@@ -84,8 +139,8 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
     <Card>
       <div style={{ marginBottom: 16 }}>
         <Space>
-          <Input.Search 
-            placeholder="搜索题号或标题..." 
+          <Input.Search
+            placeholder="搜索题号或标题..."
             value={keyword}
             onChange={setKeyword}
             onSearch={handleSearch}
@@ -93,13 +148,36 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
             style={{ width: 300 }}
             allowClear
           />
+          <Button
+            type="primary"
+            disabled={selectedKeys.length === 0}
+            onClick={handleExportSelected}
+          >
+            批量导出{selectedKeys.length > 0 ? `（${selectedKeys.length}题）` : ""}
+          </Button>
+          <Button onClick={handleExportAll}>导出全部</Button>
+          <Upload
+            autoUpload={false}
+            showUploadList={false}
+            accept=".zip"
+            onChange={(fileList) => {
+              const file = fileList[0]?.originFile;
+              if (file) handleImport(file);
+            }}
+          >
+            <Button type="primary" status="success" loading={importing}>导入题目</Button>
+          </Upload>
         </Space>
       </div>
-      <Table 
+      <Table
         loading={loading}
         columns={columns}
         data={data}
         rowKey="id"
+        rowSelection={{
+          selectedRowKeys: selectedKeys,
+          onChange: (keys: any[]) => setSelectedKeys(keys),
+        }}
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,
@@ -107,6 +185,34 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
           onChange: (page, pageSize) => fetchData(page, pageSize)
         }}
       />
+      <Modal
+        title="导入结果"
+        visible={importResultVisible}
+        onCancel={() => setImportResultVisible(false)}
+        footer={<Button onClick={() => setImportResultVisible(false)}>关闭</Button>}
+      >
+        {importResult && (
+          <div>
+            <p>成功导入：<Tag color="green">{importResult.imported}</Tag> 题</p>
+            <p>跳过（已存在）：<Tag color="orange">{importResult.skipped?.length ?? 0}</Tag> 题</p>
+            {importResult.skipped?.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  已存在的题号：{importResult.skipped.join("、")}
+                </Typography.Text>
+              </div>
+            )}
+            {importResult.errors?.length > 0 && (
+              <div>
+                <p style={{ color: "var(--color-danger-6)" }}>错误：</p>
+                {importResult.errors.map((err: string, i: number) => (
+                  <p key={i} style={{ fontSize: 12, color: "var(--color-text-3)" }}>{err}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 }

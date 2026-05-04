@@ -241,6 +241,9 @@ export default function ProblemDetailPage() {
                       <Tag color={difficultyColor[problem.difficulty]}>
                         {difficultyLabel[problem.difficulty]}
                       </Tag>
+                      {problem.score != null && problem.score > 0 && (
+                        <Tag color="purple" size="small">{problem.score}分</Tag>
+                      )}
                       <span style={{ color: "var(--color-text-3)", fontSize: 14 }}>
                         时间限制: {problem.timeLimit}ms | 内存限制: {problem.memoryLimit}MB
                       </span>

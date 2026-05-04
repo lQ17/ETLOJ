@@ -52,6 +52,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
             timeLimit: data.timeLimit,
             memoryLimit: data.memoryLimit,
             tags: Array.isArray(data.tags) ? data.tags.join(",") : data.tags,
+            score: data.score,
           });
           setMarkdown(data.markdown || "");
 
@@ -195,7 +196,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
   const handleSubmit = async (values: any) => {
     setLoading(true);
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         title: values.title,
         difficulty: values.difficulty,
         timeLimit: values.timeLimit,
@@ -203,6 +204,9 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
         tags: values.tags ? values.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
         markdown,
       };
+      if (values.score != null && values.score !== "") {
+        payload.score = values.score;
+      }
 
       if (problemId) {
         await problemApi.update(problemId, payload);
@@ -340,17 +344,22 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
           </Col>
         </Row>
         <Row gutter={16}>
-          <Col span={8}>
+          <Col span={6}>
+            <Form.Item field="score" label="分数" extra="留空则按难度自动计算">
+              <InputNumber placeholder="自动" min={0} max={100} style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
+          <Col span={6}>
             <Form.Item field="timeLimit" label="时间限制 (ms)" initialValue={1000}>
               <InputNumber min={100} max={10000} />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col span={6}>
             <Form.Item field="memoryLimit" label="内存限制 (MB)" initialValue={256}>
               <InputNumber min={16} max={1024} />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col span={6}>
             <Form.Item field="tags" label="标签（逗号分隔）">
               <Input placeholder="如: 排序, 贪心" />
             </Form.Item>

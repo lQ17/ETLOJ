@@ -80,10 +80,23 @@ export class UserService {
     });
     const totalSubmissions = await this.prisma.submission.count({ where: { userId: user.id } });
 
+    // 计算总分：只计算每道题的第一次AC
+    const firstAcSubmissions = await this.prisma.$queryRaw<{score: number}[]>`
+      SELECT p.score FROM submissions s
+      INNER JOIN problems p ON p.id = s.problem_id
+      WHERE s.user_id = ${user.id} AND s.status = 'AC'
+      AND s.id = (
+        SELECT MIN(s2.id) FROM submissions s2
+        WHERE s2.user_id = s.user_id AND s2.problem_id = s.problem_id AND s2.status = 'AC'
+      )
+    `;
+    const totalScore = firstAcSubmissions.reduce((sum, r) => sum + (r.score || 0), 0);
+
     return {
       ...user,
       solvedCount: acCount.length,
       totalSubmissions,
+      totalScore,
     };
   }
 

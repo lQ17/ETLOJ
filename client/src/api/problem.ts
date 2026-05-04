@@ -21,6 +21,7 @@ export const problemApi = {
     memoryLimit?: number;
     tags?: string[];
     markdown: string;
+    score?: number;
   }) => client.post("/problems", data),
 
   update: (id: number, data: Record<string, any>) =>
@@ -34,4 +35,18 @@ export const problemApi = {
   ) => client.post(`/problems/${id}/testcases`, { testcases }),
 
   getTestcases: (id: number) => client.get(`/problems/${id}/testcases`),
+
+  exportProblems: (slugs: string[]) =>
+    client.post("/problems/export", { slugs }, { responseType: "blob" }),
+
+  exportAllProblems: () =>
+    client.post("/problems/export-all", {}, { responseType: "blob" }),
+
+  importProblems: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return client.post("/problems/import", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
 };

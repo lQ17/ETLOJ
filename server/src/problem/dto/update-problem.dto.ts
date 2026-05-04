@@ -30,6 +30,12 @@ export class UpdateProblemDto {
   isPublic?: boolean;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  score?: number;
+
+  @IsOptional()
   @IsString()
   markdown?: string;
 }

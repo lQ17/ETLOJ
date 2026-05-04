@@ -74,6 +74,10 @@ export default function ProblemListPage() {
       render: (d: string) => <Tag color={difficultyColor[d]}>{difficultyLabel[d]}</Tag>,
     },
     {
+      title: "分数", dataIndex: "score", width: 70,
+      render: (v: number) => <span style={{ fontWeight: 600 }}>{v ?? 0}</span>,
+    },
+    {
       title: "通过率",
       width: 100,
       render: (_: any, record: any) => {

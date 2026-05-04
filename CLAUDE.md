@@ -54,6 +54,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 ### Backend Patterns (NestJS)
 
 - **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule — each with controller, service, dto/
+- **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only
 - **PrismaModule** is `@Global()` — inject `PrismaService` anywhere without importing
 - **Auth**: JWT + Passport (`jwt.strategy.ts`), `JwtAuthGuard`, `RolesGuard` + `@Roles()` decorator, `@CurrentUser()` param decorator
 - **Global validation**: `ValidationPipe` with `whitelist: true, transform: true`
@@ -77,6 +78,9 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Avatar storage**: Base64 in `User.avatar` field (`@db.LongText`) — no file upload, stored inline
 - **Problem content**: Markdown files on filesystem at `problems/{slug}/problem.md`
 - **Testcases**: Filesystem at `problems/{slug}/testcases/{n}.in` and `{n}.out`
+- **Problem score**: `Problem.score` field (Int, default 0), admin can customize; default by difficulty: EASY=1, MEDIUM=3, HARD=7
+- **Total score**: User's total score = sum of `problem.score` for each problem's first AC only (`UserService.getPublicProfile`)
+- **Problem import/export**: zip format — `{slug}/problem.json` + `{slug}/problem.md` + `{slug}/testcases/`, uses `adm-zip` library
 - **Prisma version**: Pinned to v5 (v7 has breaking changes) — do NOT upgrade
 
 ### Key Enums
