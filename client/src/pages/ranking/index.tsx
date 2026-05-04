@@ -114,6 +114,7 @@ export default function RankingPage() {
     },
     yAxis: {
       type: "value",
+      minInterval: 1,
       splitLine: { lineStyle: { color: "#f2f3f5" } },
       axisLabel: { color: "#86909c" },
     },
@@ -166,7 +167,7 @@ export default function RankingPage() {
         <Space size={8}>
           <Avatar size={28} shape="circle" style={{ backgroundColor: "#165dff", flexShrink: 0 }}>
             {record.avatar
-              ? <img src={`data:image/png;base64,${record.avatar}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ? <img src={record.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : (username?.[0]?.toUpperCase() || <IconUser />)
             }
           </Avatar>
@@ -235,13 +236,13 @@ export default function RankingPage() {
             display: "flex",
             justifyContent: "space-around",
             marginBottom: 4,
-            padding: "0 60px",
+            padding: "0 30px 0 60px",
           }}>
             {top10.map((user) => (
               <div key={user.id} style={{ textAlign: "center", width: 60 }}>
                 <Avatar size={36} shape="circle" style={{ backgroundColor: "#165dff" }}>
                   {user.avatar
-                    ? <img src={`data:image/png;base64,${user.avatar}`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : (user.username?.[0]?.toUpperCase() || <IconUser />)
                   }
                 </Avatar>
