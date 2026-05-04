@@ -102,7 +102,7 @@ export default function ProblemListsPage() {
         await problemListApi.update(editingId, values);
         Message.success("修改成功");
       } else {
-        await problemListApi.create({ ...values, isPublic: true });
+        await problemListApi.create({ ...values, isPublic: false });
         Message.success("创建成功");
       }
       setModalVisible(false);
