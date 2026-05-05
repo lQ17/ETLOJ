@@ -71,11 +71,35 @@ model Problem {
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
-  submissions  Submission[]
+  submissions    Submission[]
   contestProblems ContestProblem[]
-  problemLists ProblemListItem[]
+  problemLists   ProblemListItem[]
+  problemTags    ProblemTag[]
 
   @@map("problems")
+}
+
+model Tag {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  problems ProblemTag[]
+
+  @@map("tags")
+}
+
+model ProblemTag {
+  problemId Int @map("problem_id")
+  tagId     Int @map("tag_id")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, tagId])
+  @@map("problem_tags")
 }
 
 model Submission {

@@ -30,6 +30,11 @@ export class CreateProblemDto {
   tags?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  tagIds?: number[];
+
+  @IsOptional()
   isPublic?: boolean;
 
   @IsOptional()

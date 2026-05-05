@@ -30,6 +30,13 @@ export class ProblemService {
     return path.join(this.getProblemDir(slug), "testcases");
   }
 
+  /** 确保 markdown 第一行为 `# {slug} {title}` */
+  private ensureHeading(markdown: string, slug: string, title: string): string {
+    const heading = `# ${slug} ${title}`;
+    const stripped = markdown.replace(/^#[^\n]*\n?/, "");
+    return `${heading}\n${stripped}`;
+  }
+
   async create(dto: CreateProblemDto) {
     const existing = await this.prisma.problem.findUnique({ where: { slug: dto.slug } });
     if (existing) throw new ConflictException("题目编号已存在");
@@ -38,9 +45,20 @@ export class ProblemService {
     const tcDir = this.getTestcasesDir(dto.slug);
 
     fs.mkdirSync(tcDir, { recursive: true });
-    fs.writeFileSync(this.getMarkdownPath(dto.slug), dto.markdown, "utf-8");
+    const mdContent = this.ensureHeading(dto.markdown || "", dto.slug, dto.title);
+    fs.writeFileSync(this.getMarkdownPath(dto.slug), mdContent, "utf-8");
 
-    return this.prisma.problem.create({
+    // 如果有 tagIds，获取标签名称用于 JSON 字段
+    let tagNames: string[] = dto.tags || [];
+    if (dto.tagIds && dto.tagIds.length > 0) {
+      const tags = await this.prisma.tag.findMany({
+        where: { id: { in: dto.tagIds } },
+        select: { name: true },
+      });
+      tagNames = tags.map(t => t.name);
+    }
+
+    const problem = await this.prisma.problem.create({
       data: {
         slug: dto.slug,
         title: dto.title,
@@ -48,7 +66,7 @@ export class ProblemService {
         timeLimit: dto.timeLimit || 1000,
         memoryLimit: dto.memoryLimit || 256,
         filePath: this.getMarkdownPath(dto.slug),
-        tags: dto.tags || [],
+        tags: tagNames,
         isPublic: dto.isPublic ?? true,
         score: dto.score ?? (() => {
           const d = (dto.difficulty as any) || "EASY";
@@ -56,10 +74,19 @@ export class ProblemService {
         })(),
       },
     });
+
+    // 创建 ProblemTag 关联
+    if (dto.tagIds && dto.tagIds.length > 0) {
+      await this.prisma.problemTag.createMany({
+        data: dto.tagIds.map(tagId => ({ problemId: problem.id, tagId })),
+      });
+    }
+
+    return problem;
   }
 
   async findAll(query: QueryProblemDto, isAdmin = false) {
-    const { page = 1, pageSize = 20, difficulty, keyword, tag } = query;
+    const { page = 1, pageSize = 20, difficulty, keyword, tag, tags, tagMode = "OR" } = query;
     const where: any = {};
 
     if (!isAdmin) {
@@ -73,8 +100,23 @@ export class ProblemService {
         { slug: { contains: keyword } },
       ];
     }
+
+    // 兼容旧的单标签筛选
     if (tag) {
       where.tags = { contains: `"${tag}"` };
+    }
+
+    // 多标签筛选
+    if (tags && tags.length > 0) {
+      if (tagMode === "AND") {
+        // AND 模式：题目必须包含所有选中标签
+        where.AND = tags.map(t => ({
+          problemTags: { some: { tag: { name: t } } },
+        }));
+      } else {
+        // OR 模式：题目包含任一选中标签
+        where.problemTags = { some: { tag: { name: { in: tags } } } };
+      }
     }
 
     const pageNum = Number(page) || 1;
@@ -96,6 +138,9 @@ export class ProblemService {
           tags: true,
           isPublic: true,
           score: true,
+          problemTags: {
+            select: { tag: { select: { id: true, name: true } } },
+          },
           _count: { select: { submissions: true } },
         },
       }),
@@ -115,6 +160,8 @@ export class ProblemService {
 
     const enriched = items.map((p) => ({
       ...p,
+      tags: p.problemTags.map(pt => pt.tag.name),
+      problemTags: undefined,
       totalSubmissions: p._count.submissions,
       acceptedCount: acMap.get(p.id) || 0,
       _count: undefined,
@@ -132,7 +179,18 @@ export class ProblemService {
       markdown = "题面文件未找到";
     }
 
-    return { ...problem, markdown };
+    // 获取关联的标签
+    const problemTags = await this.prisma.problemTag.findMany({
+      where: { problemId: problem.id },
+      select: { tag: { select: { id: true, name: true } } },
+    });
+
+    return {
+      ...problem,
+      markdown,
+      tagIds: problemTags.map(pt => pt.tag.id),
+      tags: problemTags.map(pt => pt.tag.name),
+    };
   }
 
   private async resolveProblem(idOrSlug: number | string, isAdmin = false) {
@@ -158,12 +216,44 @@ export class ProblemService {
   async update(idOrSlug: number | string, dto: UpdateProblemDto) {
     const problem = await this.resolveProblem(idOrSlug, true);
 
-    if (dto.markdown) {
+    if (dto.markdown !== undefined) {
       fs.mkdirSync(this.getProblemDir(problem.slug), { recursive: true });
-      fs.writeFileSync(this.getMarkdownPath(problem.slug), dto.markdown, "utf-8");
+      const mdContent = this.ensureHeading(dto.markdown || "", problem.slug, dto.title || problem.title);
+      fs.writeFileSync(this.getMarkdownPath(problem.slug), mdContent, "utf-8");
+    } else if (dto.title && dto.title !== problem.title) {
+      // 仅改标题时也要更新 md 文件的 heading
+      let md = "";
+      try { md = fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8"); } catch {}
+      if (md) {
+        const mdContent = this.ensureHeading(md, problem.slug, dto.title);
+        fs.writeFileSync(this.getMarkdownPath(problem.slug), mdContent, "utf-8");
+      }
     }
 
-    const { markdown, ...data } = dto;
+    const { markdown, tagIds, ...data } = dto;
+
+    // 更新标签关联
+    if (tagIds !== undefined) {
+      // 删除旧关联
+      await this.prisma.problemTag.deleteMany({ where: { problemId: problem.id } });
+      // 创建新关联
+      if (tagIds.length > 0) {
+        await this.prisma.problemTag.createMany({
+          data: tagIds.map(tid => ({ problemId: problem.id, tagId: tid })),
+        });
+      }
+      // 同步更新 JSON tags 字段
+      if (tagIds.length > 0) {
+        const tags = await this.prisma.tag.findMany({
+          where: { id: { in: tagIds } },
+          select: { name: true },
+        });
+        data.tags = tags.map(t => t.name);
+      } else {
+        data.tags = [];
+      }
+    }
+
     return this.prisma.problem.update({
       where: { id: problem.id },
       data: {
@@ -171,7 +261,7 @@ export class ProblemService {
         ...(data.difficulty && { difficulty: data.difficulty as any }),
         ...(data.timeLimit && { timeLimit: data.timeLimit }),
         ...(data.memoryLimit && { memoryLimit: data.memoryLimit }),
-        ...(data.tags && { tags: data.tags }),
+        ...(data.tags !== undefined && { tags: data.tags }),
         ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
         ...(data.score !== undefined && { score: data.score }),
       },

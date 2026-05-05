@@ -3,6 +3,7 @@ import { Tabs } from "@arco-design/web-react";
 import ManageProblems from "./ManageProblems";
 import CreateProblem from "./CreateProblem";
 import ExportProblems from "./ExportProblems";
+import ManageTags from "../tags/ManageTags";
 
 const TabPane = Tabs.TabPane;
 
@@ -30,6 +31,9 @@ export default function AdminProblemsPage() {
         </TabPane>
         <TabPane key="create" title={editingProblemId ? "编辑题目" : "创建题目"}>
           <CreateProblem problemId={editingProblemId} onFinish={() => handleTabChange("manage")} />
+        </TabPane>
+        <TabPane key="tags" title="标签管理">
+          <ManageTags />
         </TabPane>
         <TabPane key="export" title="导出题目">
           <ExportProblems />

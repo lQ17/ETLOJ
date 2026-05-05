@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import {
-  Form, Input, Select, Button, Card, Message, Space, InputNumber, Switch, Grid, Table, Modal, Upload, Typography
+  Form, Input, Select, Button, Card, Message, Space, InputNumber, Grid, Table, Modal, Upload, Typography, Checkbox, Tag
 } from "@arco-design/web-react";
-import Editor from "@monaco-editor/react";
 import MDEditor from "@uiw/react-md-editor";
-import { problemApi } from "../../../api/problem";
-import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { problemApi } from "../../../api/problem";
+import { tagApi } from "../../../api/tag";
 
 const Row = Grid.Row;
 const Col = Grid.Col;
@@ -28,15 +27,25 @@ interface CreateProblemProps {
 export default function CreateProblem({ problemId, onFinish }: CreateProblemProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [editorMode, setEditorMode] = useState<"uiw" | "monaco">("uiw");
-  const [markdown, setMarkdown] = useState(`# P1001 A + B Problem\n\n## 题目描述\n\n输入两个整数 $a$ 和 $b$，输出它们的和。\n\n## 输入格式\n\n一行两个整数 $a, b$。\n\n## 输出格式\n\n一行一个整数。\n\n## 输入输出样例 #1\n\n### 输入 #1\n\n\`\`\`\n1 2\n\`\`\`\n\n### 输出 #1\n\n\`\`\`\n3\n\`\`\`\n\n## 说明/提示\n\n$-10^9 \\leq a, b \\leq 10^9$\n`);
-  
+  const [markdown, setMarkdown] = useState(`## 题目描述\n\n输入两个整数 $a$ 和 $b$，输出它们的和。\n\n## 输入格式\n\n一行两个整数 $a, b$。\n\n## 输出格式\n\n一行一个整数。\n\n## 输入输出样例 #1\n\n### 输入 #1\n\n\`\`\`\n1 2\n\`\`\`\n\n### 输出 #1\n\n\`\`\`\n3\n\`\`\`\n\n## 说明/提示\n\n$-10^9 \\leq a, b \\leq 10^9$\n`);
+
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   const [batchUploadVisible, setBatchUploadVisible] = useState(false);
   const [batchFiles, setBatchFiles] = useState<any[]>([]);
   const [processingBatch, setProcessingBatch] = useState(false);
+
+  // 标签相关状态
+  const [allTags, setAllTags] = useState<any[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [tagModalVisible, setTagModalVisible] = useState(false);
+  const [tagSearchKeyword, setTagSearchKeyword] = useState("");
+
+  // 加载标签列表
+  useEffect(() => {
+    tagApi.list().then((res: any) => setAllTags(res || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (problemId) {
@@ -51,10 +60,12 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
             difficulty: data.difficulty,
             timeLimit: data.timeLimit,
             memoryLimit: data.memoryLimit,
-            tags: Array.isArray(data.tags) ? data.tags.join(",") : data.tags,
             score: data.score,
           });
-          setMarkdown(data.markdown || "");
+          setSelectedTagIds(data.tagIds || []);
+          // 去掉第一行 # 标题（由 slug + title 自动生成）
+          const md = (data.markdown || "").replace(/^#[^\n]*\n?/, "");
+          setMarkdown(md);
 
           const tcRes: any = await problemApi.getTestcases(problemId);
           if (tcRes && tcRes.length > 0) {
@@ -76,7 +87,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
       load();
     } else {
       form.resetFields();
-      setMarkdown(`# P1001 A + B Problem\n\n## 题目描述\n\n输入两个整数 $a$ 和 $b$，输出它们的和。\n\n## 输入格式\n\n一行两个整数 $a, b$。\n\n## 输出格式\n\n一行一个整数。\n\n## 输入输出样例 #1\n\n### 输入 #1\n\n\`\`\`\n1 2\n\`\`\`\n\n### 输出 #1\n\n\`\`\`\n3\n\`\`\`\n\n## 说明/提示\n\n$-10^9 \\leq a, b \\leq 10^9$\n`);
+      setMarkdown(`## 题目描述\n\n输入两个整数 $a$ 和 $b$，输出它们的和。\n\n## 输入格式\n\n一行两个整数 $a, b$。\n\n## 输出格式\n\n一行一个整数。\n\n## 输入输出样例 #1\n\n### 输入 #1\n\n\`\`\`\n1 2\n\`\`\`\n\n### 输出 #1\n\n\`\`\`\n3\n\`\`\`\n\n## 说明/提示\n\n$-10^9 \\leq a, b \\leq 10^9$\n`);
       setTestCases([]);
     }
   }, [problemId, form]);
@@ -201,7 +212,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
         difficulty: values.difficulty,
         timeLimit: values.timeLimit,
         memoryLimit: values.memoryLimit,
-        tags: values.tags ? values.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
+        tagIds: selectedTagIds,
         markdown,
       };
       if (values.score != null && values.score !== "") {
@@ -230,6 +241,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
         form.resetFields();
         setMarkdown("");
         setTestCases([]);
+        setSelectedTagIds([]);
       }
     } catch (err: any) {
       Message.error(err?.message || "操作失败");
@@ -360,55 +372,39 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
             </Form.Item>
           </Col>
           <Col span={6}>
-            <Form.Item field="tags" label="标签（逗号分隔）">
-              <Input placeholder="如: 排序, 贪心" />
+            <Form.Item label="标签">
+              <div>
+                <Button type="outline" onClick={() => setTagModalVisible(true)}>
+                  选择标签 {selectedTagIds.length > 0 ? `（已选 ${selectedTagIds.length} 个）` : ""}
+                </Button>
+                {selectedTagIds.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {allTags
+                      .filter(t => selectedTagIds.includes(t.id))
+                      .map(t => (
+                        <Tag key={t.id} style={{ marginRight: 4, marginBottom: 4 }}>{t.name}</Tag>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
             </Form.Item>
           </Col>
         </Row>
 
-        <div style={{ marginBottom: 16 }}>
-          <Space>
-            <Typography.Text bold>题面内容编辑模式：</Typography.Text>
-            <Switch
-              checkedText="富文本"
-              uncheckedText="纯代码"
-              checked={editorMode === "uiw"}
-              onChange={(val) => setEditorMode(val ? "uiw" : "monaco")}
-            />
-          </Space>
+        <div data-color-mode="light" style={{ marginBottom: 24 }}>
+          <Typography.Text bold style={{ display: "block", marginBottom: 8 }}>题面内容</Typography.Text>
+          <MDEditor
+            value={markdown}
+            onChange={(val) => setMarkdown(val || "")}
+            preview="live"
+            height={500}
+            previewOptions={{
+              remarkPlugins: [remarkMath],
+              rehypePlugins: [rehypeKatex],
+            }}
+          />
         </div>
-
-        <Row gutter={16} style={{ marginBottom: 24, alignItems: "stretch" }}>
-          <Col span={12}>
-            {editorMode === "uiw" ? (
-              <div data-color-mode="light" style={{ height: "100%" }}>
-                <MDEditor
-                  value={markdown}
-                  onChange={(val) => setMarkdown(val || "")}
-                  preview="edit"
-                  height={500}
-                />
-              </div>
-            ) : (
-              <div style={{ border: "1px solid var(--color-border)", borderRadius: 4, height: 500 }}>
-                <Editor
-                  height="100%"
-                  language="markdown"
-                  value={markdown}
-                  onChange={(v) => setMarkdown(v || "")}
-                  options={{ minimap: { enabled: false }, fontSize: 14, wordWrap: "on" }}
-                />
-              </div>
-            )}
-          </Col>
-          <Col span={12}>
-            <div className="markdown-preview" style={{ border: "1px solid var(--color-border)", borderRadius: 4, height: 500, overflow: "auto", padding: "16px 24px", background: "var(--color-bg-2)" }}>
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                {markdown}
-              </ReactMarkdown>
-            </div>
-          </Col>
-        </Row>
 
         <Typography.Title heading={6}>测试节点</Typography.Title>
         <div style={{ marginBottom: 24 }}>
@@ -525,6 +521,58 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
             ))}
           </div>
         )}
+      </Modal>
+
+      {/* 标签选择弹窗 */}
+      <Modal
+        title="选择标签"
+        visible={tagModalVisible}
+        onCancel={() => setTagModalVisible(false)}
+        footer={
+          <Space>
+            <Button onClick={() => setSelectedTagIds([])}>清空</Button>
+            <Button type="primary" onClick={() => setTagModalVisible(false)}>确定</Button>
+          </Space>
+        }
+        style={{ width: 500 }}
+      >
+        <Input.Search
+          placeholder="搜索标签..."
+          value={tagSearchKeyword}
+          onChange={setTagSearchKeyword}
+          style={{ marginBottom: 16 }}
+          allowClear
+        />
+        <div style={{ maxHeight: 400, overflow: "auto" }}>
+          {(() => {
+            const filtered = allTags
+              .filter(t => !tagSearchKeyword || t.name.includes(tagSearchKeyword))
+              .sort((a, b) => a.name.localeCompare(b.name, "zh"));
+            if (filtered.length === 0) {
+              return <Typography.Text type="secondary">暂无标签，请先在标签管理中创建</Typography.Text>;
+            }
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px 16px" }}>
+                {filtered.map(tag => (
+                  <div key={tag.id}>
+                    <Checkbox
+                      checked={selectedTagIds.includes(tag.id)}
+                      onChange={(checked) => {
+                        if (checked) {
+                          setSelectedTagIds([...selectedTagIds, tag.id]);
+                        } else {
+                          setSelectedTagIds(selectedTagIds.filter(id => id !== tag.id));
+                        }
+                      }}
+                    >
+                      <Tag style={{ marginRight: 4 }}>{tag.name}</Tag>
+                    </Checkbox>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
       </Modal>
     </Card>
   );

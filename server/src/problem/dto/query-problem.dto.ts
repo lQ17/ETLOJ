@@ -1,5 +1,5 @@
-import { IsOptional, IsIn, IsString, IsInt, Min } from "class-validator";
-import { Type } from "class-transformer";
+import { IsOptional, IsIn, IsString, IsInt, IsArray, Min } from "class-validator";
+import { Type, Transform } from "class-transformer";
 
 export class QueryProblemDto {
   @IsOptional()
@@ -25,4 +25,14 @@ export class QueryProblemDto {
   @IsOptional()
   @IsString()
   tag?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === "string" ? [value] : value))
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsIn(["AND", "OR"])
+  tagMode?: "AND" | "OR";
 }

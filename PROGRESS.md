@@ -24,6 +24,9 @@
 - [x] 测试数据管理（.in / .out 文件存储）
 - [x] 题目分数系统（按难度默认 1/3/7 分，管理员可自定义，仅首次 AC 计分）
 - [x] 题目批量导入导出（zip 格式：`{slug}/problem.json + problem.md + testcases/`）
+- [x] 标签管理系统（独立 Tag 表 + ProblemTag 多对多关联，后台 CRUD，创建题目弹窗选择标签）
+- [x] 题库标签筛选（弹窗多选 + AND/OR 切换，默认 AND，带问号提示说明）
+- [x] 题目 Markdown 标题强制关联（服务器自动将 `problem.md` 第一行设为 `# {slug} {title}`）
 - [x] 题库列表显示用户做题状态（✓/✗/— 列）
 - [x] 导入格式说明 tooltip（"如何导入"提示）
 - [x] 题目路由支持 slug（如 /problems/P1012，同时兼容数字 ID）

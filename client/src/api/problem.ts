@@ -6,6 +6,8 @@ export const problemApi = {
     pageSize?: number;
     difficulty?: string;
     keyword?: string;
+    tags?: string[];
+    tagMode?: "AND" | "OR";
   }) => client.get("/problems", { params }),
 
   getOne: (idOrSlug: number | string) => client.get(`/problems/${idOrSlug}`),

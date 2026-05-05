@@ -177,16 +177,17 @@ export class SubmissionService {
       });
 
       if (acCount === 1) {
-        // 这是首次 AC，更新用户标签记录
-        const tags = updated.problem.tags as string[] | null;
-        if (tags && Array.isArray(tags)) {
-          for (const tag of tags) {
-            await this.prisma.$executeRaw`
-              INSERT INTO user_tag_records (user_id, tag, count, created_at, updated_at)
-              VALUES (${updated.userId}, ${tag}, 1, NOW(), NOW())
-              ON DUPLICATE KEY UPDATE count = count + 1, updated_at = NOW()
-            `;
-          }
+        // 这是首次 AC，更新用户标签记录（从 ProblemTag 关联表获取标签名称）
+        const problemTags = await this.prisma.problemTag.findMany({
+          where: { problemId: updated.problemId },
+          select: { tag: { select: { name: true } } },
+        });
+        for (const pt of problemTags) {
+          await this.prisma.$executeRaw`
+            INSERT INTO user_tag_records (user_id, tag, count, created_at, updated_at)
+            VALUES (${updated.userId}, ${pt.tag.name}, 1, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE count = count + 1, updated_at = NOW()
+          `;
         }
       }
     }

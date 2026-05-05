@@ -26,6 +26,11 @@ export class UpdateProblemDto {
   tags?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  tagIds?: number[];
+
+  @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
 
