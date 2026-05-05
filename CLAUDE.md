@@ -64,14 +64,18 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Profile module**: `ProfileController` (public, no auth guards) serves `GET /api/profile/:username` and `/api/profile/:username/stats`
 - **Ranking module**: `GET /api/ranking` with params `mode`(ac/score), `range`(all/6m/1m/1w/yesterday/today/custom), `startDate`, `endDate`, `page`, `pageSize` — uses `$queryRawUnsafe` for complex aggregation
 - **ProblemList module**: `GET/POST/PATCH/DELETE /api/problem-lists` — 题单系统，公共题单（ADMIN/TEACHER 管理）和个人题单（用户自管）；`/mine` 路由必须在 `/:id` 之前；题目增删使用 slug（题号）而非数字 ID
-- **Optional JWT**: 需要同时支持已登录和未登录访问的端点（如题单详情），使用 `OptionalJwtGuard`（`auth/optional-jwt.guard.ts`），有 token 解析用户，无 token 放行
+- **Submission status batch query**: `GET /submissions/status?problemIds=1,2,3` — JWT required, returns `Record<number, 'AC' | 'ATTEMPTED'>` for the current user; used by problem list and problem-list detail pages to show per-problem status icons
+- **Submission rate limiting**: Frontend sliding window — max 3 submissions per 60s per user (client-side `useRef<number[]>` timestamp array)
+- **Optional JWT**: 需要同时支持已登录和未登录访问的端点（如题单详情、题库列表），使用 `OptionalJwtGuard`（`auth/optional-jwt.guard.ts`），有 token 解析用户，无 token 放行
+- **Admin page**: Unified `/admin` route with Tabs (problems / lists / users); users tab visible to ADMIN only; teachers see problems + lists
 - **Raw SQL pitfalls**: MySQL `COUNT(*)`/`SUM()` via `$queryRawUnsafe` returns BigInt (must `Number()`); LongText fields return Buffer (must `.toString()`). Avatar in DB already contains `data:image/...;base64,` prefix — frontend should use `src={avatar}` directly, not re-prepend
 
 ### Frontend Patterns
 
 - **State**: Zustand (`stores/auth.ts`) — user/token/login/logout; login fetches full profile (including avatar) immediately after token set
 - **UI**: Arco Design (`@arco-design/web-react`) — never use other component libraries
-- **Charts**: ECharts via `echarts-for-react` — used in profile page for heatmap, pie, wordCloud (requires `echarts-wordcloud` plugin)
+- **Charts**: ECharts via `echarts-for-react` — used in profile page for pie, wordCloud (requires `echarts-wordcloud` plugin); heatmap uses `react-github-calendar`
+- **Problem detail submit**: Submit button is async — disabled during polling, result (status tag + score + time/memory) displayed inline next to button; rate-limited to 3 submissions per 60s (sliding window)
 - **API layer**: `client/src/api/*.ts` — plain objects with async methods using shared Axios instance (auto-attaches JWT, unwraps response, 30s timeout)
 - **Pages**: default-exported function components, each in own directory under `pages/`
 - **Table pages**: server-side pagination, local filter state, explicit API calls on search (not useEffect-watching filters) — see `pages/admin/users.tsx` or `pages/records/index.tsx` as reference
