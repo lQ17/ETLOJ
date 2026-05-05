@@ -53,6 +53,7 @@ model User {
   contestRanks ContestRank[]
   tagRecords UserTagRecord[]
   problemLists ProblemList[]
+  solutions  Solution[]
 
   @@map("users")
 }
@@ -75,6 +76,7 @@ model Problem {
   contestProblems ContestProblem[]
   problemLists   ProblemListItem[]
   problemTags    ProblemTag[]
+  solutions      Solution[]
 
   @@map("problems")
 }
@@ -210,5 +212,21 @@ model ProblemListItem {
 
   @@unique([listId, problemId])
   @@map("problem_list_items")
+}
+
+model Solution {
+  id        Int      @id @default(autoincrement())
+  problemId Int      @map("problem_id")
+  authorId  Int      @map("author_id")
+  content   String   @db.LongText
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  problem Problem @relation(fields: [problemId], references: [id])
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@index([problemId])
+  @@index([authorId])
+  @@map("solutions")
 }
 
