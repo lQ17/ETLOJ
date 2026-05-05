@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Typography, Select, Button, Space, Tag, Spin, Message, Card, Input, Divider, Modal,
+  Typography, Select, Button, Space, Tag, Spin, Message, Card, Input, Divider, Modal, Popover, Radio,
 } from "@arco-design/web-react";
-import { IconCopy, IconCheck, IconPlayArrow, IconExpand, IconShrink } from "@arco-design/web-react/icon";
+import { IconCopy, IconCheck, IconPlayArrow, IconExpand, IconShrink, IconSettings } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -44,10 +44,10 @@ const statusColor: Record<string, string> = {
 };
 
 const defaultCode: Record<string, string> = {
-  c: `#include <stdio.h>\n\nint main() {\n    // your code here\n    return 0;\n}\n`,
-  cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // your code here\n    return 0;\n}\n`,
-  java: `public class Main {\n    public static void main(String[] args) {\n        // your code here\n    }\n}\n`,
-  python: `# your code here\n`,
+  c: "",
+  cpp: "",
+  java: "",
+  python: "",
 };
 
 function CopyButton({ text }: { text: string }) {
@@ -119,6 +119,18 @@ export default function ProblemDetailPage() {
   const pollRef = useRef<ReturnType<typeof setInterval>>();
   const submitTimesRef = useRef<number[]>([]);
 
+  const [editorFontSize, setEditorFontSize] = useState(() => {
+    const saved = localStorage.getItem("oj_editor_fontSize");
+    return saved ? Number(saved) : 16;
+  });
+  const [editorTabSize, setEditorTabSize] = useState(() => {
+    const saved = localStorage.getItem("oj_editor_tabSize");
+    return saved ? Number(saved) : 4;
+  });
+  const [editorTheme, setEditorTheme] = useState(() => {
+    return localStorage.getItem("oj_editor_theme") || "vs";
+  });
+
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -134,7 +146,6 @@ export default function ProblemDetailPage() {
 
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
-    setCode(defaultCode[lang] || "");
   };
 
   const handleSubmit = async () => {
@@ -365,6 +376,56 @@ export default function ProblemDetailPage() {
                 )}
               </Space>
             )}
+            <div style={{ marginLeft: "auto" }}>
+              <Popover
+                trigger="click"
+                position="br"
+                content={
+                  <div style={{ width: 200 }}>
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>字体大小</div>
+                      <Select
+                        value={editorFontSize}
+                        onChange={(v) => { setEditorFontSize(v); localStorage.setItem("oj_editor_fontSize", String(v)); }}
+                        style={{ width: "100%" }}
+                        size="small"
+                      >
+                        {[12, 13, 14, 15, 16, 17, 18, 20, 22, 24].map((s) => (
+                          <Select.Option key={s} value={s}>{s}px</Select.Option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>Tab 大小</div>
+                      <Select
+                        value={editorTabSize}
+                        onChange={(v) => { setEditorTabSize(v); localStorage.setItem("oj_editor_tabSize", String(v)); }}
+                        style={{ width: "100%" }}
+                        size="small"
+                      >
+                        {[2, 4, 8].map((s) => (
+                          <Select.Option key={s} value={s}>{s} 个空格</Select.Option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>编辑器主题</div>
+                      <Radio.Group
+                        value={editorTheme}
+                        onChange={(v) => { setEditorTheme(v); localStorage.setItem("oj_editor_theme", v); }}
+                        size="small"
+                      >
+                        <Radio value="vs">亮色</Radio>
+                        <Radio value="vs-dark">暗色</Radio>
+                        <Radio value="hc-black">跟随网站</Radio>
+                      </Radio.Group>
+                    </div>
+                  </div>
+                }
+              >
+                <Button type="text" size="mini" icon={<IconSettings />} style={{ color: "var(--color-text-3)" }} />
+              </Popover>
+            </div>
           </div>
         </Card>
 
@@ -375,13 +436,16 @@ export default function ProblemDetailPage() {
             language={langMap[language]}
             value={code}
             onChange={(v) => setCode(v || "")}
-            theme="vs"
+            theme={editorTheme}
             options={{
-              fontSize: 16,
+              fontSize: editorFontSize,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               automaticLayout: true,
-              tabSize: 4,
+              tabSize: editorTabSize,
+              quickSuggestions: false,
+              suggestOnTriggerCharacters: false,
+              wordBasedSuggestions: false,
             }}
           />
         </div>
