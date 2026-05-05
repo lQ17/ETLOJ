@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tabs, Typography } from "@arco-design/web-react";
+import { Tabs } from "@arco-design/web-react";
 import ManageProblems from "./ManageProblems";
 import CreateProblem from "./CreateProblem";
 import ExportProblems from "./ExportProblems";
@@ -24,7 +24,6 @@ export default function AdminProblemsPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <Typography.Title heading={4}>题库管理</Typography.Title>
       <Tabs activeTab={activeTab} onChange={handleTabChange}>
         <TabPane key="manage" title="管理题目">
           <ManageProblems onEdit={handleEdit} />

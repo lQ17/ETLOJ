@@ -1,12 +1,14 @@
 import {
-  Controller, Get, Post,
-  Body, Param, Query, UseGuards, ParseIntPipe, Headers,
+  Controller, Get, Post, Delete,
+  Body, Param, Query, UseGuards, ParseIntPipe, Headers, UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { SubmissionService } from "./submission.service";
 import { CreateSubmissionDto } from "./dto/create-submission.dto";
 import { QuerySubmissionDto } from "./dto/query-submission.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
 
 @Controller("submissions")
@@ -38,6 +40,17 @@ export class SubmissionController {
     return this.submissionService.run(userId, body);
   }
 
+  @Post("callback")
+  async callback(
+    @Headers("x-judge-secret") secret: string,
+    @Body() body: { submissionId: number; status: string; timeUsed: number; memoryUsed: number; score?: number },
+  ) {
+    if (secret !== this.judgeSecret) {
+      throw new UnauthorizedException("无效的评测机密钥");
+    }
+    return this.submissionService.updateResult(body.submissionId, body);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   findAll(@Query() query: QuerySubmissionDto) {
@@ -54,6 +67,13 @@ export class SubmissionController {
     return this.submissionService.findAll(query);
   }
 
+  @Delete("dirty")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN")
+  cleanDirty() {
+    return this.submissionService.cleanDirty();
+  }
+
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   findOne(
@@ -61,16 +81,5 @@ export class SubmissionController {
     @CurrentUser() user: { id: number; role: string },
   ) {
     return this.submissionService.findOne(id, user.id, user.role);
-  }
-
-  @Post("callback")
-  async callback(
-    @Headers("x-judge-secret") secret: string,
-    @Body() body: { submissionId: number; status: string; timeUsed: number; memoryUsed: number; score?: number },
-  ) {
-    if (secret !== this.judgeSecret) {
-      return { error: "unauthorized" };
-    }
-    return this.submissionService.updateResult(body.submissionId, body);
   }
 }

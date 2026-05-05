@@ -63,7 +63,8 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Route priority**: In controllers with both `me/*` and `:id` routes, `me/*` MUST be defined before `:id` — NestJS matches top-to-bottom and `:id` captures "me" as a param
 - **Profile module**: `ProfileController` (public, no auth guards) serves `GET /api/profile/:username` and `/api/profile/:username/stats`
 - **Ranking module**: `GET /api/ranking` with params `mode`(ac/score), `range`(all/6m/1m/1w/yesterday/today/custom), `startDate`, `endDate`, `page`, `pageSize` — uses `$queryRawUnsafe` for complex aggregation
-- **ProblemList module**: `GET/POST/PATCH/DELETE /api/problem-lists` — 题单系统，公共题单（ADMIN/TEACHER 管理）和个人题单（用户自管）；`/mine` 路由必须在 `/:id` 之前
+- **ProblemList module**: `GET/POST/PATCH/DELETE /api/problem-lists` — 题单系统，公共题单（ADMIN/TEACHER 管理）和个人题单（用户自管）；`/mine` 路由必须在 `/:id` 之前；题目增删使用 slug（题号）而非数字 ID
+- **Optional JWT**: 需要同时支持已登录和未登录访问的端点（如题单详情），使用 `OptionalJwtGuard`（`auth/optional-jwt.guard.ts`），有 token 解析用户，无 token 放行
 - **Raw SQL pitfalls**: MySQL `COUNT(*)`/`SUM()` via `$queryRawUnsafe` returns BigInt (must `Number()`); LongText fields return Buffer (must `.toString()`). Avatar in DB already contains `data:image/...;base64,` prefix — frontend should use `src={avatar}` directly, not re-prepend
 
 ### Frontend Patterns

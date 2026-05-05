@@ -94,6 +94,12 @@ export class ProblemController {
     return this.problemService.delete(parseIdOrSlug(id));
   }
 
+  @Get(":id/markdown")
+  @UseGuards(JwtAuthGuard)
+  getMarkdown(@Param("id") id: string) {
+    return this.problemService.getMarkdown(parseIdOrSlug(id));
+  }
+
   @Get(":id/testcases")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("ADMIN", "TEACHER")

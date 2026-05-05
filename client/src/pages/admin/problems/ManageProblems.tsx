@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Switch, Upload, Modal, Typography } from "@arco-design/web-react";
+import { Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Switch, Upload, Modal, Typography, Tooltip } from "@arco-design/web-react";
 import { problemApi } from "../../../api/problem";
 
 export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => void }) {
@@ -167,6 +167,43 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
           >
             <Button type="primary" status="success" loading={importing}>导入题目</Button>
           </Upload>
+          <Tooltip
+            content={
+              <div style={{ maxWidth: 360, lineHeight: 1.8 }}>
+                <div>此入口仅支持本 OJ 格式的导入，如需导入第三方数据，请前往第三方导入页面。</div>
+                <div style={{ marginTop: 8, fontWeight: 600 }}>导入格式要求：</div>
+                <div>上传一个 <Typography.Text code>.zip</Typography.Text> 压缩包，结构如下：</div>
+                <pre style={{ margin: "6px 0", fontSize: 12, lineHeight: 1.6 }}>
+{`problems.zip
+├── P1001/
+│   ├── problem.json   // 题目元信息
+│   ├── problem.md     // 题目描述（Markdown）
+│   └── testcases/
+│       ├── 1.in       // 第1组输入
+│       ├── 1.out      // 第1组期望输出
+│       ├── 2.in
+│       └── 2.out
+├── P1002/
+│   └── ...`}
+                </pre>
+                <div style={{ fontWeight: 600 }}>problem.json 格式：</div>
+                <pre style={{ margin: "6px 0", fontSize: 12, lineHeight: 1.6 }}>
+{`{
+  "slug": "P1001",
+  "title": "题目标题",
+  "difficulty": "EASY",   // EASY | MEDIUM | HARD
+  "score": 1,             // 可选，默认按难度
+  "timeLimit": 1000,      // 毫秒，默认 1000
+  "memoryLimit": 256      // MB，默认 256
+}`}
+                </pre>
+                <div>• 题号（slug）即文件夹名，重复的将被跳过</div>
+                <div>• 测试用例编号须从 1 连续递增</div>
+              </div>
+            }
+          >
+            <Typography.Text type="secondary" style={{ fontSize: 12, cursor: "help" }}>如何导入</Typography.Text>
+          </Tooltip>
         </Space>
       </div>
       <Table

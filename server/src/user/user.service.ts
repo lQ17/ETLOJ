@@ -90,7 +90,7 @@ export class UserService {
         WHERE s2.user_id = s.user_id AND s2.problem_id = s.problem_id AND s2.status = 'AC'
       )
     `;
-    const totalScore = firstAcSubmissions.reduce((sum, r) => sum + (r.score || 0), 0);
+    const totalScore = firstAcSubmissions.reduce((sum, r) => sum + Number(r.score || 0), 0);
 
     return {
       ...user,

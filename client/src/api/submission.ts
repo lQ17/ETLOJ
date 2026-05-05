@@ -20,4 +20,6 @@ export const submissionApi = {
     client.get("/submissions/my", { params }),
 
   getOne: (id: number) => client.get(`/submissions/${id}`),
+
+  cleanDirty: () => client.delete("/submissions/dirty"),
 };

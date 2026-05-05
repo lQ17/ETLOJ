@@ -1,12 +1,142 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Form, Input, Button, Select, Card, Message, Typography,
-  Tabs, Table, Tag, Space, Modal, Popconfirm,
+  Form, Input, Button, Select, Card, Message,
+  Tabs, Table, Tag, Space, Modal, Popconfirm, Typography,
 } from "@arco-design/web-react";
 import { IconSearch, IconRefresh } from "@arco-design/web-react/icon";
 import { userApi } from "../../api/user";
 
 const roleColors: Record<string, string> = { ADMIN: "red", TEACHER: "blue", USER: "green" };
+
+const roleMap: Record<string, string> = { "1": "USER", "2": "TEACHER", "3": "ADMIN" };
+
+// ========== 批量创建 Tab ==========
+function BatchCreateTab() {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [created, setCreated] = useState<any[]>([]);
+  const [failed, setFailed] = useState<string[]>([]);
+
+  const handleBatchCreate = async () => {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      Message.warning("请输入至少一行用户信息");
+      return;
+    }
+
+    setLoading(true);
+    setCreated([]);
+    setFailed([]);
+    const newCreated: any[] = [];
+    const newFailed: string[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(",").map((s) => s.trim());
+      const [username, email, phone, password, roleCode] = parts;
+
+      if (!username) {
+        newFailed.push(`[空行] 用户名不能为空`);
+        continue;
+      }
+
+      const role = roleMap[roleCode] || "USER";
+      const payload: any = { username, role };
+      if (email) payload.email = email;
+      if (phone) payload.phone = phone;
+      if (password) payload.password = password;
+
+      try {
+        const res: any = await userApi.create(payload);
+        newCreated.push({ ...res, _password: password || "123456" });
+      } catch (err: any) {
+        newFailed.push(`${username}: ${err?.message || "创建失败"}`);
+      }
+    }
+
+    setCreated(newCreated);
+    setFailed(newFailed);
+    setLoading(false);
+    if (newFailed.length === 0) {
+      Message.success(`全部 ${newCreated.length} 个用户创建成功`);
+    }
+  };
+
+  const roleLabel: Record<string, string> = { USER: "普通用户", TEACHER: "教师", ADMIN: "管理员" };
+
+  const resultColumns = [
+    { title: "ID", dataIndex: "id", width: 60 },
+    { title: "用户名", dataIndex: "username", width: 120 },
+    { title: "邮箱", dataIndex: "email", width: 180, render: (v: string) => v || "" },
+    { title: "手机号", dataIndex: "phone", width: 140, render: (v: string) => v || "" },
+    {
+      title: "角色", dataIndex: "role", width: 90,
+      render: (v: string) => <Tag color={roleColors[v]} size="small">{roleLabel[v] || v}</Tag>,
+    },
+    { title: "密码", dataIndex: "_password", width: 120 },
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: 16, paddingTop: 16 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Card>
+          <Typography.Text style={{ display: "block", marginBottom: 8 }}>
+            每行一个用户，格式：<Typography.Text code>用户名,邮箱,手机号,密码,角色</Typography.Text>
+          </Typography.Text>
+          <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+            角色：1=普通用户 2=教师 3=管理员；邮箱、手机号、密码均可留空（默认密码 123456）
+          </Typography.Text>
+          <Input.TextArea
+            placeholder={"zhangsan,zs@example.com,,123456,1\nlisi,,,,2\nwangwu,,13800000000,,3"}
+            value={text}
+            onChange={setText}
+            autoSize={{ minRows: 10, maxRows: 24 }}
+            style={{ fontFamily: "monospace" }}
+          />
+          <Button
+            type="primary"
+            onClick={handleBatchCreate}
+            loading={loading}
+            style={{ marginTop: 12 }}
+            long
+          >
+            批量创建
+          </Button>
+        </Card>
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Card style={{ height: "100%" }}>
+          <Typography.Text bold style={{ display: "block", marginBottom: 8 }}>
+            创建结果
+          </Typography.Text>
+          {created.length === 0 && failed.length === 0 && (
+            <Typography.Text type="secondary">创建后将在此显示结果</Typography.Text>
+          )}
+          {created.length > 0 && (
+            <Table
+              columns={resultColumns}
+              data={created}
+              rowKey="id"
+              pagination={false}
+              size="small"
+              border={false}
+            />
+          )}
+          {failed.length > 0 && (
+            <div style={{ marginTop: created.length > 0 ? 12 : 0 }}>
+              <Typography.Text style={{ color: "rgb(var(--danger-6))", display: "block", marginBottom: 4 }}>
+                失败：{failed.length} 个
+              </Typography.Text>
+              {failed.map((msg, i) => (
+                <div key={i} style={{ color: "rgb(var(--danger-6))", fontSize: 13, padding: "2px 0" }}>{msg}</div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 // ========== 创建用户 Tab ==========
 function CreateUserTab() {
@@ -132,6 +262,8 @@ function ManageUsersTab() {
       const values = await editForm.validate();
       const payload: any = { ...values };
       if (!payload.password) delete payload.password;
+      if (!payload.email) delete payload.email;
+      if (!payload.phone) delete payload.phone;
       await userApi.update(editUser.id, payload);
       Message.success("修改成功");
       setEditVisible(false);
@@ -282,10 +414,12 @@ function ManageUsersTab() {
 export default function AdminUsersPage() {
   return (
     <div>
-      <Typography.Title heading={4} style={{ marginBottom: 0 }}>用户管理</Typography.Title>
       <Tabs defaultActiveTab="create" style={{ marginTop: 16 }}>
         <Tabs.TabPane key="create" title="创建用户">
           <CreateUserTab />
+        </Tabs.TabPane>
+        <Tabs.TabPane key="batch" title="批量创建">
+          <BatchCreateTab />
         </Tabs.TabPane>
         <Tabs.TabPane key="manage" title="管理用户">
           <ManageUsersTab />

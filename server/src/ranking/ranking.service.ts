@@ -55,11 +55,13 @@ export class RankingService {
       : await this.countScoreRanking(timeStart, timeEnd);
 
     // BigInt -> Number（MySQL COUNT/SUM 返回 BigInt，JSON.stringify 无法序列化）
-    // LongText（avatar）通过 $queryRawUnsafe 返回 Buffer，需转为 string
+    // LongText（avatar）通过 $queryRawUnsafe 可能返回 Buffer 或 String
     const safeItems = (items as any[]).map((r) => ({
       ...r,
       value: Number(r.value),
-      avatar: r.avatar ? Buffer.from(r.avatar).toString() : null,
+      avatar: r.avatar
+        ? (Buffer.isBuffer(r.avatar) ? r.avatar.toString("utf8") : String(r.avatar))
+        : null,
     }));
 
     return { items: safeItems, total, page: pageNum, pageSize: sizeNum };

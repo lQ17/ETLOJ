@@ -6,7 +6,7 @@ import {
 import { IconPlus } from "@arco-design/web-react/icon";
 import { problemListApi } from "../../../api/problem-list";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const FormItem = Form.Item;
 
 export default function AdminListsPage() {
@@ -31,7 +31,6 @@ export default function AdminListsPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <Title heading={4}>题单管理</Title>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <Button type={activeTab === "manage" ? "primary" : "default"} onClick={() => handleTabChange("manage")}>管理题单</Button>
         <Button type={activeTab === "create" ? "primary" : "default"} onClick={() => handleTabChange("create")}>{editingId ? "编辑题单" : "创建题单"}</Button>

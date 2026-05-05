@@ -66,18 +66,8 @@ export default function AppHeader() {
                   个人设置
                 </Menu.Item>
                 {(user.role === "ADMIN" || user.role === "TEACHER") && (
-                  <Menu.Item key="admin-problems" onClick={() => navigate("/admin/problems")}>
-                    题目管理
-                  </Menu.Item>
-                )}
-                {(user.role === "ADMIN" || user.role === "TEACHER") && (
-                  <Menu.Item key="admin-lists" onClick={() => navigate("/admin/lists")}>
-                    题单管理
-                  </Menu.Item>
-                )}
-                {user.role === "ADMIN" && (
-                  <Menu.Item key="admin-users" onClick={() => navigate("/admin/users")}>
-                    用户管理
+                  <Menu.Item key="admin" onClick={() => navigate("/admin")}>
+                    后台管理
                   </Menu.Item>
                 )}
                 <Menu.Item key="logout" onClick={() => { logout(); navigate("/"); }}>

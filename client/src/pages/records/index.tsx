@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Table, Tag, Space, Button, Input, Select, Modal, Message, Typography,
+  Table, Tag, Space, Button, Input, Select, Modal, Message, Typography, Popconfirm,
 } from "@arco-design/web-react";
-import { IconSearch, IconRefresh } from "@arco-design/web-react/icon";
+import { IconSearch, IconRefresh, IconDelete } from "@arco-design/web-react/icon";
 import { useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { submissionApi } from "../../api/submission";
@@ -234,6 +234,22 @@ export default function RecordsPage() {
         </Select>
         <Button type="primary" icon={<IconSearch />} onClick={handleSearch}>搜索</Button>
         <Button icon={<IconRefresh />} onClick={handleReset}>重置</Button>
+        {user?.role === "ADMIN" && (
+          <Popconfirm
+            title="确定清理所有系统错误(SE)、等待中(PENDING)和判题中(JUDGING)的记录吗？此操作不可撤销。"
+            onOk={async () => {
+              try {
+                const res: any = await submissionApi.cleanDirty();
+                Message.success(`已清理 ${res.deletedCount} 条脏数据`);
+                fetchData(page, pageSize);
+              } catch {
+                Message.error("清理失败");
+              }
+            }}
+          >
+            <Button icon={<IconDelete />} status="danger">清理脏数据</Button>
+          </Popconfirm>
+        )}
       </Space>
 
       <Table

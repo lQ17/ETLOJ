@@ -194,6 +194,13 @@ export class SubmissionService {
     return updated;
   }
 
+  async cleanDirty() {
+    const result = await this.prisma.submission.deleteMany({
+      where: { status: { in: ["SE", "PENDING", "JUDGING"] } },
+    });
+    return { deletedCount: result.count };
+  }
+
   async getByUserAndProblem(userId: number, problemId: number) {
     return this.prisma.submission.findMany({
       where: { userId, problemId },

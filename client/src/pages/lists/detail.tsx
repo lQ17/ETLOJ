@@ -35,6 +35,8 @@ export default function ProblemListDetailPage() {
   const isOwner = user?.id === detail?.creator?.id;
   const isAdmin = user?.role === "ADMIN" || user?.role === "TEACHER";
   const canEdit = isOwner || isAdmin;
+  // 公共题单不在浏览页面提供添加入口，由管理员在后台管理
+  const canAddProblems = canEdit && !detail?.isPublic;
 
   const fetchDetail = async () => {
     if (!id) return;
@@ -171,7 +173,7 @@ export default function ProblemListDetailPage() {
               <Tag color="blue">{detail.items?.length ?? 0} 题</Tag>
             </Space>
           </div>
-          {canEdit && (
+          {canAddProblems && (
             <Button type="primary" icon={<IconPlus />} onClick={() => setAddModalVisible(true)}>
               添加题目
             </Button>
@@ -187,24 +189,26 @@ export default function ProblemListDetailPage() {
         border={false}
       />
 
-      <Modal
-        title="添加题目"
-        visible={addModalVisible}
-        onCancel={() => { setAddModalVisible(false); setProblemSlugs(""); }}
-        onOk={handleAddProblems}
-        confirmLoading={adding}
-        unmountOnExit
-      >
-        <div style={{ marginBottom: 8 }}>
-          <Text type="secondary">请输入题号（如 P1012），多个用逗号或空格分隔</Text>
-        </div>
-        <Input.TextArea
-          placeholder="例如: P1001, P1002, P1012"
-          value={problemSlugs}
-          onChange={setProblemSlugs}
-          autoSize={{ minRows: 2 }}
-        />
-      </Modal>
+      {canAddProblems && (
+        <Modal
+          title="添加题目"
+          visible={addModalVisible}
+          onCancel={() => { setAddModalVisible(false); setProblemSlugs(""); }}
+          onOk={handleAddProblems}
+          confirmLoading={adding}
+          unmountOnExit
+        >
+          <div style={{ marginBottom: 8 }}>
+            <Text type="secondary">请输入题号（如 P1012），多个用逗号或空格分隔</Text>
+          </div>
+          <Input.TextArea
+            placeholder="例如: P1001, P1002, P1012"
+            value={problemSlugs}
+            onChange={setProblemSlugs}
+            autoSize={{ minRows: 2 }}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
