@@ -201,6 +201,35 @@ export class SubmissionService {
     return { deletedCount: result.count };
   }
 
+  async getProblemsStatus(userId: number, problemIds: number[]) {
+    if (problemIds.length === 0) return {};
+
+    const acSubmissions = await this.prisma.submission.findMany({
+      where: { userId, problemId: { in: problemIds }, status: "AC" },
+      select: { problemId: true },
+      distinct: ["problemId"],
+    });
+    const acSet = new Set(acSubmissions.map((s) => s.problemId));
+
+    const remainingIds = problemIds.filter((id) => !acSet.has(id));
+    let attemptedSet = new Set<number>();
+    if (remainingIds.length > 0) {
+      const attempted = await this.prisma.submission.findMany({
+        where: { userId, problemId: { in: remainingIds } },
+        select: { problemId: true },
+        distinct: ["problemId"],
+      });
+      attemptedSet = new Set(attempted.map((s) => s.problemId));
+    }
+
+    const result: Record<number, string> = {};
+    for (const id of problemIds) {
+      if (acSet.has(id)) result[id] = "AC";
+      else if (attemptedSet.has(id)) result[id] = "ATTEMPTED";
+    }
+    return result;
+  }
+
   async getByUserAndProblem(userId: number, problemId: number) {
     return this.prisma.submission.findMany({
       where: { userId, problemId },

@@ -5,6 +5,7 @@ import {
 import { IconPlus, IconDelete } from "@arco-design/web-react/icon";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { problemListApi } from "../../api/problem-list";
+import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
 
 const { Title, Text, Paragraph } = Typography;
@@ -31,6 +32,7 @@ export default function ProblemListDetailPage() {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [problemSlugs, setProblemSlugs] = useState("");
   const [adding, setAdding] = useState(false);
+  const [statusMap, setStatusMap] = useState<Record<number, string>>({});
 
   const isOwner = user?.id === detail?.creator?.id;
   const isAdmin = user?.role === "ADMIN" || user?.role === "TEACHER";
@@ -44,6 +46,13 @@ export default function ProblemListDetailPage() {
     try {
       const res: any = await problemListApi.getDetail(+id);
       setDetail(res);
+      if (user && res.items?.length > 0) {
+        const ids = res.items.map((item: any) => item.problem?.id).filter(Boolean);
+        try {
+          const status: any = await submissionApi.getStatus(ids);
+          setStatusMap(status);
+        } catch { /* ignore */ }
+      }
     } catch {
       Message.error("加载题单详情失败");
     } finally {
@@ -89,7 +98,17 @@ export default function ProblemListDetailPage() {
     }
   };
 
+  const statusIcon = (problemId: number) => {
+    const s = statusMap[problemId];
+    if (s === "AC") return <span style={{ color: "rgb(var(--success-6))", fontWeight: 600 }}>✓</span>;
+    if (s === "ATTEMPTED") return <span style={{ color: "rgb(var(--danger-6))", fontWeight: 600 }}>✗</span>;
+    return <span style={{ color: "var(--color-text-4)" }}>—</span>;
+  };
+
   const columns = [
+    ...(user
+      ? [{ title: "状态", width: 60, render: (_: any, record: any) => statusIcon(record.problem?.id) }]
+      : []),
     {
       title: "序号",
       width: 70,

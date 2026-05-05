@@ -22,4 +22,7 @@ export const submissionApi = {
   getOne: (id: number) => client.get(`/submissions/${id}`),
 
   cleanDirty: () => client.delete("/submissions/dirty"),
+
+  getStatus: (problemIds: number[]) =>
+    client.get("/submissions/status", { params: { problemIds: problemIds.join(",") } }),
 };

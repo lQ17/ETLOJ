@@ -74,6 +74,16 @@ export class SubmissionController {
     return this.submissionService.cleanDirty();
   }
 
+  @Get("status")
+  @UseGuards(JwtAuthGuard)
+  getProblemsStatus(
+    @CurrentUser("id") userId: number,
+    @Query("problemIds") problemIds: string,
+  ) {
+    const ids = problemIds ? problemIds.split(",").map(Number).filter((n) => !isNaN(n)) : [];
+    return this.submissionService.getProblemsStatus(userId, ids);
+  }
+
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   findOne(

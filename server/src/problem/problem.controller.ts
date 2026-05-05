@@ -9,6 +9,7 @@ import { CreateProblemDto } from "./dto/create-problem.dto";
 import { UpdateProblemDto } from "./dto/update-problem.dto";
 import { QueryProblemDto } from "./dto/query-problem.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { OptionalJwtGuard } from "../auth/optional-jwt.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { Roles } from "../auth/roles.decorator";
 
@@ -29,9 +30,9 @@ export class ProblemController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtGuard)
   findAll(@Query() query: QueryProblemDto, @Req() req: any) {
-    const isAdmin = req.user.role === "ADMIN" || req.user.role === "TEACHER";
+    const isAdmin = req.user?.role === "ADMIN" || req.user?.role === "TEACHER";
     return this.problemService.findAll(query, isAdmin);
   }
 
@@ -74,9 +75,9 @@ export class ProblemController {
   }
 
   @Get(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtGuard)
   findOne(@Param("id") id: string, @Req() req: any) {
-    const isAdmin = req.user.role === "ADMIN" || req.user.role === "TEACHER";
+    const isAdmin = req.user?.role === "ADMIN" || req.user?.role === "TEACHER";
     return this.problemService.findOne(parseIdOrSlug(id), isAdmin);
   }
 
@@ -95,7 +96,7 @@ export class ProblemController {
   }
 
   @Get(":id/markdown")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtGuard)
   getMarkdown(@Param("id") id: string) {
     return this.problemService.getMarkdown(parseIdOrSlug(id));
   }

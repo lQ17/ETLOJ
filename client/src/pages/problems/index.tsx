@@ -4,6 +4,8 @@ import {
   Table, Tag, Input, Select, Space, Typography, Button,
 } from "@arco-design/web-react";
 import { problemApi } from "../../api/problem";
+import { submissionApi } from "../../api/submission";
+import { useAuthStore } from "../../stores/auth";
 
 const difficultyColor: Record<string, string> = {
   EASY: "green",
@@ -18,12 +20,14 @@ const difficultyLabel: Record<string, string> = {
 
 export default function ProblemListPage() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
   const [difficulty, setDifficulty] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
+  const [statusMap, setStatusMap] = useState<Record<number, string>>({});
 
   const fetchData = async (p = page) => {
     setLoading(true);
@@ -36,6 +40,13 @@ export default function ProblemListPage() {
       });
       setData(res.items);
       setTotal(res.total);
+      if (user && res.items?.length > 0) {
+        const ids = res.items.map((item: any) => item.id);
+        try {
+          const status: any = await submissionApi.getStatus(ids);
+          setStatusMap(status);
+        } catch { /* ignore */ }
+      }
     } catch {
       // ignore
     } finally {
@@ -48,7 +59,17 @@ export default function ProblemListPage() {
     setPage(1);
   }, [keyword, difficulty]);
 
+  const statusIcon = (id: number) => {
+    const s = statusMap[id];
+    if (s === "AC") return <span style={{ color: "rgb(var(--success-6))", fontWeight: 600 }}>✓</span>;
+    if (s === "ATTEMPTED") return <span style={{ color: "rgb(var(--danger-6))", fontWeight: 600 }}>✗</span>;
+    return <span style={{ color: "var(--color-text-4)" }}>—</span>;
+  };
+
   const columns = [
+    ...(user
+      ? [{ title: "状态", width: 60, render: (_: any, record: any) => statusIcon(record.id) }]
+      : []),
     {
       title: "题号",
       dataIndex: "slug",
