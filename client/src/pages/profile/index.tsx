@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { Grid, Card, Typography, Space, Divider, Tabs, Tag, Spin, Empty, Avatar } from "@arco-design/web-react";
 import { IconUser, IconCalendar, IconStar, IconThunderbolt } from "@arco-design/web-react/icon";
 import * as echarts from "echarts";
@@ -179,73 +179,82 @@ import { Tooltip } from "@arco-design/web-react";
 
 /** 热力图 (使用 react-github-calendar 库) */
 function HeatmapChart({ data }: { data: [string, number][] }) {
-  const now = new Date();
-  
-  const sixMonthsAgo = new Date(now);
-  sixMonthsAgo.setMonth(now.getMonth() - 6);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
+  const [calendarData, setCalendarData] = useState<Array<{ date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }> | null>(null);
+  const [sums, setSums] = useState({ sum6Months: 0, sum1Month: 0, sum1Week: 0 });
+  const calendarRef = useRef<HTMLDivElement>(null);
 
-  const oneMonthAgo = new Date(now);
-  oneMonthAgo.setMonth(now.getMonth() - 1);
-  oneMonthAgo.setHours(0, 0, 0, 0);
+  // 修复库渲染的 SVG viewBox 宽度不足导致最后一列被裁剪的问题
+  useLayoutEffect(() => {
+    if (!calendarData || !calendarRef.current) return;
+    const svg = calendarRef.current.querySelector('svg');
+    if (!svg) return;
+    const bbox = svg.getBBox();
+    const padding = 10;
+    const newWidth = Math.ceil(bbox.x + bbox.width + padding);
+    const newHeight = Math.ceil(bbox.y + bbox.height + padding);
+    svg.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
+    svg.setAttribute('width', String(newWidth));
+    svg.setAttribute('height', String(newHeight));
+  }, [calendarData]);
 
-  const oneWeekAgo = new Date(now);
-  oneWeekAgo.setDate(now.getDate() - 7);
-  oneWeekAgo.setHours(0, 0, 0, 0);
+  useEffect(() => {
+    if (!data.length) { setCalendarData(null); return; }
 
-  // 统计不同时间段的提交总数
-  let sum6Months = 0;
-  let sum1Month = 0;
-  let sum1Week = 0;
+    const now = new Date();
+    const sixMonthsAgo = new Date(now);
+    sixMonthsAgo.setMonth(now.getMonth() - 6);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  // 将传入的数据转为 Map 方便查询
-  const dateMap = new Map();
-  data.forEach(([d, v]) => {
-    const ds = typeof d === "string" ? d : (new Date(new Date(d).getTime() - new Date(d).getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
-    dateMap.set(ds, v);
-    
-    // 累加统计
-    // d 是字符串 YYYY-MM-DD，这里在构造 Date 时如果用 YYYY-MM-DD 会被当成 UTC 零点，导致判断时区偏移。
-    // 改为手动解析年、月、日构造本地时间的 Date，或者简单字符串比较。为了简单，我们将它转为本地的开始时间
-    const [year, month, day] = ds.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
-    if (dateObj >= sixMonthsAgo && dateObj <= now) sum6Months += v;
-    if (dateObj >= oneMonthAgo && dateObj <= now) sum1Month += v;
-    if (dateObj >= oneWeekAgo && dateObj <= now) sum1Week += v;
-  });
+    const oneMonthAgo = new Date(now);
+    oneMonthAgo.setMonth(now.getMonth() - 1);
+    oneMonthAgo.setHours(0, 0, 0, 0);
 
-  // 必须生成指定时间段的全量数据，否则库无法正确推断出日历的起始时间
-  const calendarData: Array<{ date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }> = [];
-  const tempDate = new Date(sixMonthsAgo);
-  tempDate.setHours(0, 0, 0, 0);
-  
-  while (tempDate <= now) {
-    const y = tempDate.getFullYear();
-    const m = String(tempDate.getMonth() + 1).padStart(2, '0');
-    const d = String(tempDate.getDate()).padStart(2, '0');
-    const ds = `${y}-${m}-${d}`;
-    const v = dateMap.get(ds) || 0;
-    
-    // 计算 level (0-4)
-    let level = 0;
-    if (v > 0 && v <= 2) level = 1;
-    else if (v > 2 && v <= 5) level = 2;
-    else if (v > 5 && v <= 9) level = 3;
-    else if (v > 9) level = 4;
+    const oneWeekAgo = new Date(now);
+    oneWeekAgo.setDate(now.getDate() - 7);
+    oneWeekAgo.setHours(0, 0, 0, 0);
 
-    calendarData.push({
-      date: ds,
-      count: v,
-      level: level as 0 | 1 | 2 | 3 | 4,
+    let sum6 = 0, sum1 = 0, sumW = 0;
+
+    const dateMap = new Map<string, number>();
+    data.forEach(([d, v]) => {
+      const ds = typeof d === "string" ? d : (new Date(new Date(d).getTime() - new Date(d).getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+      dateMap.set(ds, v);
+      const [year, month, day] = ds.split('-').map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      if (dateObj >= sixMonthsAgo && dateObj <= now) sum6 += v;
+      if (dateObj >= oneMonthAgo && dateObj <= now) sum1 += v;
+      if (dateObj >= oneWeekAgo && dateObj <= now) sumW += v;
     });
-    
-    tempDate.setDate(tempDate.getDate() + 1);
-  }
+
+    const cal: Array<{ date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }> = [];
+    const tempDate = new Date(sixMonthsAgo);
+    while (tempDate <= now) {
+      const y = tempDate.getFullYear();
+      const m = String(tempDate.getMonth() + 1).padStart(2, '0');
+      const d = String(tempDate.getDate()).padStart(2, '0');
+      const ds = `${y}-${m}-${d}`;
+      const v = dateMap.get(ds) || 0;
+      let level: 0 | 1 | 2 | 3 | 4 = 0;
+      if (v > 0 && v <= 2) level = 1;
+      else if (v > 2 && v <= 5) level = 2;
+      else if (v > 5 && v <= 9) level = 3;
+      else if (v > 9) level = 4;
+      cal.push({ date: ds, count: v, level });
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+
+    setSums({ sum6Months: sum6, sum1Month: sum1, sum1Week: sumW });
+    setCalendarData(cal);
+  }, [data]);
+
+  if (!calendarData) return <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-3)" }}>暂无数据</div>;
+
+  const { sum6Months, sum1Month, sum1Week } = sums;
 
   return (
     <div className="gh-calendar-container" style={{ display: 'flex', alignItems: 'center', paddingTop: '10px' }}>
       {/* 左侧热力图主体 */}
-      <div style={{ flex: 1, overflowX: 'auto' }}>
+      <div ref={calendarRef} style={{ flex: 1, overflowX: 'auto' }}>
         <GitHubCalendar
           data={calendarData}
           showWeekdayLabels

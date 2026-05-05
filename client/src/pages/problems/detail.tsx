@@ -117,6 +117,7 @@ export default function ProblemDetailPage() {
   const [actualOutput, setActualOutput] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const submitTimesRef = useRef<number[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -141,6 +142,16 @@ export default function ProblemDetailPage() {
       Message.warning("请先编写代码");
       return;
     }
+
+    // 滑动窗口限流：1分钟内最多3次
+    const now = Date.now();
+    submitTimesRef.current = submitTimesRef.current.filter((t) => now - t < 60000);
+    if (submitTimesRef.current.length >= 3) {
+      const waitSec = Math.ceil((60000 - (now - submitTimesRef.current[0])) / 1000);
+      Message.warning(`提交过于频繁，请 ${waitSec} 秒后再试`);
+      return;
+    }
+
     setSubmitting(true);
     setResult(null);
     try {
@@ -149,11 +160,10 @@ export default function ProblemDetailPage() {
         code,
         language,
       });
-      Message.success("提交成功，等待判题结果");
+      submitTimesRef.current.push(Date.now());
       pollResult(res.id);
     } catch (err: any) {
       Message.error(err?.message || "提交失败");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -198,6 +208,7 @@ export default function ProblemDetailPage() {
         setResult(sub);
         if (sub.status !== "PENDING" && sub.status !== "JUDGING") {
           if (pollRef.current) clearInterval(pollRef.current);
+          setSubmitting(false);
         }
       } catch {
         // ignore
@@ -329,17 +340,32 @@ export default function ProblemDetailPage() {
       {/* 右侧：代码编辑器 + 测试区 */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Card size="small" style={{ marginBottom: 12 }}>
-          <Space>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Select value={language} onChange={handleLanguageChange} style={{ width: 120 }}>
               <Select.Option value="c">C</Select.Option>
               <Select.Option value="cpp">C++</Select.Option>
               <Select.Option value="java">Java</Select.Option>
               <Select.Option value="python">Python</Select.Option>
             </Select>
-            <Button type="primary" onClick={handleSubmit} loading={submitting}>
+            <Button type="primary" onClick={handleSubmit} loading={submitting} disabled={submitting}>
               提交
             </Button>
-          </Space>
+            {result && (
+              <Space size="small">
+                <Tag color={statusColor[result.status]} style={{ fontSize: 13 }}>
+                  {statusLabel[result.status] || result.status}
+                </Tag>
+                {result.score != null && (
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{result.score}分</span>
+                )}
+                {result.timeUsed != null && (
+                  <span style={{ color: "var(--color-text-3)", fontSize: 12 }}>
+                    {result.timeUsed}ms / {result.memoryUsed}KB
+                  </span>
+                )}
+              </Space>
+            )}
+          </div>
         </Card>
 
         {/* 代码编辑器 */}
@@ -427,27 +453,6 @@ export default function ProblemDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* 判题结果 */}
-      {result && (
-        <Card size="small" style={{ marginTop: 12 }}>
-          <Space>
-            <Tag color={statusColor[result.status]} style={{ fontSize: 14 }}>
-              {statusLabel[result.status] || result.status}
-            </Tag>
-            {result.score != null && (
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                {result.score}分
-              </span>
-            )}
-            {result.timeUsed != null && (
-              <span style={{ color: "var(--color-text-3)", fontSize: 13 }}>
-                {result.timeUsed}ms / {result.memoryUsed}KB
-              </span>
-            )}
-          </Space>
-        </Card>
-      )}
 
       <Modal
         title="测试运行详情"

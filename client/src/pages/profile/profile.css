@@ -139,6 +139,16 @@
   white-space: nowrap;
 }
 
+/* ---- Heatmap ---- */
+.gh-calendar-container article.react-activity-calendar {
+  max-width: max-content !important;
+  overflow: visible !important;
+}
+
+.gh-calendar-container article.react-activity-calendar svg {
+  overflow: visible !important;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
   .profile-page {
