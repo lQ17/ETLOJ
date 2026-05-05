@@ -95,27 +95,38 @@ export default function ProblemListPage() {
 
   const statusIcon = (id: number) => {
     const s = statusMap[id];
-    if (s === "AC") return <span style={{ color: "rgb(var(--success-6))", fontWeight: 600 }}>✓</span>;
-    if (s === "ATTEMPTED") return <span style={{ color: "rgb(var(--danger-6))", fontWeight: 600 }}>✗</span>;
-    return <span style={{ color: "var(--color-text-4)" }}>—</span>;
+    if (s === "AC") return <span style={{ color: "var(--color-success)", fontWeight: 600 }}>✓</span>;
+    if (s === "ATTEMPTED") return <span style={{ color: "var(--color-error)", fontWeight: 600 }}>✗</span>;
+    return <span style={{ color: "var(--color-text-4)", fontSize: 18 }}>•</span>;
   };
 
   const columns = [
     ...(user
-      ? [{ title: "状态", width: 60, render: (_: any, record: any) => statusIcon(record.id) }]
+      ? [
+          {
+            title: "状态",
+            width: 60,
+            align: "center" as const,
+            render: (_: any, record: any) => (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                {statusIcon(record.id)}
+              </div>
+            ),
+          },
+        ]
       : []),
     {
       title: "题号",
       dataIndex: "slug",
       width: 120,
-      render: (slug: string) => <span style={{ fontFamily: "monospace" }}>{slug}</span>,
+      render: (slug: string) => <span style={{ fontFamily: "Consolas, monospace" }}>{slug}</span>,
     },
     {
       title: "标题",
       dataIndex: "title",
       render: (title: string, record: any) => (
         <Typography.Text
-          style={{ cursor: "pointer", color: "rgb(var(--primary-6))" }}
+          style={{ cursor: "pointer", color: "var(--color-primary)" }}
           onClick={() => navigate(`/problems/${record.slug}`)}
         >
           {title}

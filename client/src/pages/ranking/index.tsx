@@ -172,7 +172,7 @@ export default function RankingPage() {
             }
           </Avatar>
           <Typography.Text
-            style={{ cursor: "pointer", color: "rgb(var(--primary-6))" }}
+            style={{ cursor: "pointer", color: "var(--color-primary)" }}
             onClick={() => navigate(`/profile/${username}`)}
           >
             {username}

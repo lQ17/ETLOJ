@@ -619,7 +619,7 @@ export default function ProblemDetailPage() {
                       fontFamily: "Consolas, monospace",
                       fontSize: 14,
                       background: "var(--color-fill-2)",
-                      color: actualOutput.startsWith("[") ? "rgb(var(--danger-6))" : undefined,
+                      color: actualOutput.startsWith("[") ? "var(--color-error)" : undefined,
                     }}
                   />
                 </div>
@@ -683,7 +683,7 @@ export default function ProblemDetailPage() {
                       fontFamily: "Consolas, monospace",
                       fontSize: 14,
                       background: "var(--color-fill-2)",
-                      color: actualOutput.startsWith("[") ? "rgb(var(--danger-6))" : undefined,
+                      color: actualOutput.startsWith("[") ? "var(--color-error)" : undefined,
                     }}
                   />
                 </div>

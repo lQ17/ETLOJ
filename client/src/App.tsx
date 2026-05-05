@@ -42,23 +42,25 @@ function App() {
         style={{
           maxWidth: isDetailPage ? "100%" : 1200,
           margin: "0 auto",
-          padding: isDetailPage ? "16px 24px" : "24px 16px",
+          padding: isDetailPage ? "24px 32px" : "48px 32px",
           width: "100%",
         }}
       >
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/problems" element={<ProblemListPage />} />
-          <Route path="/problems/:id" element={<ProblemDetailPage />} />
-          <Route path="/lists" element={<ProblemListsPage />} />
-          <Route path="/lists/:id" element={<ProblemListDetailPage />} />
-          <Route path="/records" element={<RecordsPage />} />
-          <Route path="/ranking" element={<RankingPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/profile/:username" element={<ProfilePage />} />
-          <Route path="/settings/*" element={<SettingsPage />} />
-        </Routes>
+        <div key={location.pathname} className="page-transition-wrapper">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/problems" element={<ProblemListPage />} />
+            <Route path="/problems/:id" element={<ProblemDetailPage />} />
+            <Route path="/lists" element={<ProblemListsPage />} />
+            <Route path="/lists/:id" element={<ProblemListDetailPage />} />
+            <Route path="/records" element={<RecordsPage />} />
+            <Route path="/ranking" element={<RankingPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/profile/:username" element={<ProfilePage />} />
+            <Route path="/settings/*" element={<SettingsPage />} />
+          </Routes>
+        </div>
       </Content>
     </Layout>
   );

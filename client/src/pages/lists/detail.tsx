@@ -100,14 +100,25 @@ export default function ProblemListDetailPage() {
 
   const statusIcon = (problemId: number) => {
     const s = statusMap[problemId];
-    if (s === "AC") return <span style={{ color: "rgb(var(--success-6))", fontWeight: 600 }}>✓</span>;
-    if (s === "ATTEMPTED") return <span style={{ color: "rgb(var(--danger-6))", fontWeight: 600 }}>✗</span>;
-    return <span style={{ color: "var(--color-text-4)" }}>—</span>;
+    if (s === "AC") return <span style={{ color: "var(--color-success)", fontWeight: 600 }}>✓</span>;
+    if (s === "ATTEMPTED") return <span style={{ color: "var(--color-error)", fontWeight: 600 }}>✗</span>;
+    return <span style={{ color: "var(--color-text-4)", fontSize: 18 }}>•</span>;
   };
 
   const columns = [
     ...(user
-      ? [{ title: "状态", width: 60, render: (_: any, record: any) => statusIcon(record.problem?.id) }]
+      ? [
+          {
+            title: "状态",
+            width: 60,
+            align: "center" as const,
+            render: (_: any, record: any) => (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                {statusIcon(record.problem?.id)}
+              </div>
+            ),
+          },
+        ]
       : []),
     {
       title: "序号",
@@ -120,7 +131,7 @@ export default function ProblemListDetailPage() {
       width: 120,
       render: (slug: string) => (
         <Text
-          style={{ cursor: "pointer", color: "rgb(var(--primary-6))" }}
+          style={{ cursor: "pointer", color: "var(--color-primary)" }}
           onClick={() => navigate(`/problems/${slug}`)}
         >
           {slug}

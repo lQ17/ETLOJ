@@ -137,7 +137,7 @@ export default function RecordsPage() {
             {statusLabel[record.status] || record.status}
           </Tag>
           {record.score != null && (
-            <span style={{ fontSize: 12, color: record.score === 100 ? "rgb(var(--success-6))" : "var(--color-text-3)" }}>
+            <span style={{ fontSize: 12, color: record.score === 100 ? "var(--color-success)" : "var(--color-text-3)" }}>
               {record.score}分
             </span>
           )}
@@ -148,7 +148,7 @@ export default function RecordsPage() {
       title: "题号/题目", width: 220,
       render: (_: any, record: any) => (
         <Typography.Text
-          style={{ cursor: "pointer", color: "rgb(var(--primary-6))" }}
+          style={{ cursor: "pointer", color: "var(--color-primary)" }}
           onClick={() => navigate(`/problems/${record.problem?.slug}`)}
         >
           {record.problem?.slug} {record.problem?.title}

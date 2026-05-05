@@ -124,11 +124,11 @@ function BatchCreateTab() {
           )}
           {failed.length > 0 && (
             <div style={{ marginTop: created.length > 0 ? 12 : 0 }}>
-              <Typography.Text style={{ color: "rgb(var(--danger-6))", display: "block", marginBottom: 4 }}>
+              <Typography.Text style={{ color: "var(--color-error)", display: "block", marginBottom: 4 }}>
                 失败：{failed.length} 个
               </Typography.Text>
               {failed.map((msg, i) => (
-                <div key={i} style={{ color: "rgb(var(--danger-6))", fontSize: 13, padding: "2px 0" }}>{msg}</div>
+                <div key={i} style={{ color: "var(--color-error)", fontSize: 13, padding: "2px 0" }}>{msg}</div>
               ))}
             </div>
           )}

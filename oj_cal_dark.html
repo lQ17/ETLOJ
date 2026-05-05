@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETLOJ - 现代算法竞赛平台 (Dark Mode)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Colors from cal.com design - Dark Mode Adaptation */
+            --color-primary: #ffffff; /* Inverted for dark mode */
+            --color-primary-active: #e5e7eb;
+            --color-ink: #ffffff;
+            --color-body: #a1a1aa; /* on-dark-soft */
+            --color-muted: #71717a;
+            --color-muted-soft: #52525b;
+            --color-hairline: #27272a;
+            --color-hairline-soft: #1a1a1a;
+            --color-canvas: #101010; /* surface-dark */
+            --color-surface-soft: #1a1a1a; /* surface-dark-elevated */
+            --color-surface-card: #161616;
+            --color-surface-dark: #090909;
+            --color-on-primary: #101010;
+            --color-on-dark: #ffffff;
+            --color-on-dark-soft: #a1a1aa;
+            
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-error: #ef4444;
+            
+            --color-badge-emerald: rgba(16, 185, 129, 0.1);
+            --color-badge-emerald-text: #34d399;
+            --color-badge-orange: rgba(245, 158, 11, 0.1);
+            --color-badge-orange-text: #fbbf24;
+            --color-badge-pink: rgba(239, 68, 68, 0.1);
+            --color-badge-pink-text: #f87171;
+
+            /* Typography */
+            --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+            /* Spacing */
+            --spacing-xxs: 4px;
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-xxl: 48px;
+            --spacing-section: 96px;
+
+            /* Rounded */
+            --rounded-sm: 6px;
+            --rounded-md: 8px;
+            --rounded-lg: 12px;
+            --rounded-xl: 16px;
+            --rounded-pill: 9999px;
+            --rounded-full: 9999px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--color-canvas);
+            color: var(--color-body);
+            line-height: 1.6;
+        }
+
+        /* Typography Utilities */
+        h1, h2, h3, h4 {
+            color: var(--color-ink);
+            font-weight: 600;
+            letter-spacing: -0.04em;
+        }
+
+        h1 { font-size: 48px; line-height: 1.1; margin-bottom: var(--spacing-md); }
+        h2 { font-size: 32px; line-height: 1.2; margin-bottom: var(--spacing-sm); }
+        h3 { font-size: 20px; line-height: 1.4; }
+
+        p { margin-bottom: var(--spacing-md); }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-lg);
+        }
+
+        /* Navigation */
+        .top-nav {
+            height: 64px;
+            background: var(--color-canvas);
+            border-bottom: 1px solid var(--color-hairline);
+            display: flex;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .top-nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--color-ink);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--color-ink);
+            border-radius: 4px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-xl);
+            list-style: none;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--color-muted);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--color-ink);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border-radius: var(--rounded-md);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: var(--color-on-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primary-active);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--color-ink);
+            border-color: var(--color-hairline);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--color-surface-soft);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: var(--spacing-section) 0;
+            text-align: left;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: var(--spacing-xxl);
+            align-items: center;
+        }
+
+        .hero-content {
+            max-width: 640px;
+        }
+
+        .hero-title {
+            font-size: 56px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: var(--color-muted);
+            margin-bottom: var(--spacing-xl);
+            line-height: 1.5;
+        }
+
+        /* Mockup Card */
+        .mockup-card {
+            background: var(--color-surface-card);
+            border: 1px solid var(--color-hairline);
+            border-radius: var(--rounded-xl);
+            padding: var(--spacing-lg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .code-fragment {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            background: #000;
+            padding: var(--spacing-md);
+            border-radius: var(--rounded-md);
+            color: #d4d4d4;
+            overflow-x: auto;
+        }
+
+        /* Section Layout */
+        .section {
+            padding: var(--spacing-section) 0;
+        }
+
+        .section-header {
+            margin-bottom: var(--spacing-xxl);
+        }
+
+        .section-title {
+            font-size: 32px;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .section-desc {
+            color: var(--color-muted);
+            font-size: 16px;
+        }
+
+        /* Problem List Cards */
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .card {
+            background: var(--color-surface-card);
+            border: 1px solid var(--color-hairline);
+            border-radius: var(--rounded-lg);
+            padding: var(--spacing-xl);
+            transition: all 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .card:hover {
+            border-color: var(--color-muted);
+            background: #1c1c1c;
+        }
+
+        .card-tag {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: var(--rounded-pill);
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .tag-easy { background: var(--color-badge-emerald); color: var(--color-badge-emerald-text); }
+        .tag-medium { background: var(--color-badge-orange); color: var(--color-badge-orange-text); }
+        .tag-hard { background: var(--color-badge-pink); color: var(--color-badge-pink-text); }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--color-ink);
+        }
+
+        .card-stats {
+            display: flex;
+            gap: var(--spacing-md);
+            font-size: 14px;
+            color: var(--color-muted-soft);
+        }
+
+        /* Pills */
+        .nav-pill-group {
+            background: var(--color-surface-soft);
+            padding: 4px;
+            border-radius: var(--rounded-pill);
+            display: inline-flex;
+            gap: 4px;
+            border: 1px solid var(--color-hairline);
+        }
+
+        .nav-pill {
+            padding: 6px 16px;
+            border-radius: var(--rounded-pill);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            color: var(--color-muted);
+            transition: all 0.2s;
+        }
+
+        .nav-pill.active {
+            background: #27272a;
+            color: var(--color-ink);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--color-surface-dark);
+            color: var(--color-on-dark-soft);
+            padding: 80px 0 var(--spacing-xxl);
+            border-top: 1px solid var(--color-hairline);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-xxl);
+            margin-bottom: var(--spacing-xxl);
+        }
+
+        .footer-col h4 {
+            color: var(--color-on-dark);
+            font-size: 14px;
+            margin-bottom: var(--spacing-lg);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .footer-links a {
+            color: var(--color-on-dark-soft);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--color-on-dark);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #1a1a1a;
+            padding-top: var(--spacing-xl);
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero { grid-template-columns: 1fr; }
+            .hero-content { max-width: 100%; text-align: center; }
+            .hero-actions { justify-content: center; }
+            .footer-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero-title { font-size: 40px; }
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="container">
+            <a href="#" class="logo">
+                <div class="logo-icon"></div>
+                ETLOJ
+            </a>
+            <ul class="nav-links">
+                <li><a href="#" class="nav-link active">题库</a></li>
+                <li><a href="#" class="nav-link">记录</a></li>
+                <li><a href="#" class="nav-link">排名</a></li>
+                <li><a href="#" class="nav-link">竞赛</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="#" class="nav-link">登录</a>
+                <a href="#" class="btn btn-primary">立即开始</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="container">
+        <div class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">专注极致的<br>算法竞赛体验</h1>
+                <p class="hero-subtitle">
+                    ETLOJ 为开发者打造。拥有极简的界面、毫秒级的评测响应以及深度的代码分析工具。让每一次提交都成为进化的阶梯。
+                </p>
+                <div class="nav-actions hero-actions">
+                    <a href="#" class="btn btn-primary" style="padding: 12px 24px; font-size: 16px;">开始刷题</a>
+                    <a href="#" class="btn btn-secondary" style="padding: 12px 24px; font-size: 16px;">查看排名</a>
+                </div>
+            </div>
+            <div class="mockup-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+                    <span style="font-weight: 600; font-size: 14px; color: #fff;">提交详情 #82910</span>
+                    <span class="card-tag tag-easy">Accepted</span>
+                </div>
+                <div class="code-fragment">
+<span style="color: #6a9955;">// 快速幂算法实现</span>
+<span style="color: #569cd6;">long long</span> <span style="color: #dcdcaa;">qpow</span>(<span style="color: #569cd6;">long long</span> a, <span style="color: #569cd6;">long long</span> b) {
+    <span style="color: #569cd6;">long long</span> res = <span style="color: #b5cea8;">1</span>;
+    <span style="color: #c586c0;">while</span> (b > <span style="color: #b5cea8;">0</span>) {
+        <span style="color: #c586c0;">if</span> (b & <span style="color: #b5cea8;">1</span>) res = res * a % MOD;
+        a = a * a % MOD;
+        b >>= <span style="color: #b5cea8;">1</span>;
+    }
+    <span style="color: #c586c0;">return</span> res;
+}</div>
+                <div style="margin-top: var(--spacing-md); display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm);">
+                    <div style="font-size: 12px; color: var(--color-muted);">运行时间: 2ms</div>
+                    <div style="font-size: 12px; color: var(--color-muted);">内存占用: 1.2MB</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="section container">
+        <div class="section-header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h2 class="section-title">每日挑战</h2>
+                    <p class="section-desc">磨炼技巧，挑战巅峰</p>
+                </div>
+                <div class="nav-pill-group">
+                    <a href="#" class="nav-pill active">全部</a>
+                    <a href="#" class="nav-pill">入门</a>
+                    <a href="#" class="nav-pill">进阶</a>
+                    <a href="#" class="nav-pill">困难</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="problem-grid">
+            <a href="#" class="card">
+                <span class="card-tag tag-easy">简单</span>
+                <h3 class="card-title">1. 两数之和</h3>
+                <p style="font-size: 14px; color: var(--color-body); margin: 0;">给定一个整数数组 nums 和一个整数目标值 target，请你在该数组中找出和为目标值的那两个整数...</p>
+                <div class="card-stats">
+                    <span>通过率 48.2%</span>
+                    <span>提交 12.4k</span>
+                </div>
+            </a>
+
+            <a href="#" class="card">
+                <span class="card-tag tag-medium">中等</span>
+                <h3 class="card-title">146. LRU 缓存机制</h3>
+                <p style="font-size: 14px; color: var(--color-body); margin: 0;">设计和构建一个“最近最少使用”缓存，该缓存会参照最近首次访问的时间来删除元素...</p>
+                <div class="card-stats">
+                    <span>通过率 32.5%</span>
+                    <span>提交 8.1k</span>
+                </div>
+            </a>
+
+            <a href="#" class="card">
+                <span class="card-tag tag-hard">困难</span>
+                <h3 class="card-title">42. 接雨水</h3>
+                <p style="font-size: 14px; color: var(--color-body); margin: 0;">给定 n 个非负整数表示每个宽度为 1 的柱子的高度图，计算按此排列的柱子，下雨之后能接多少雨水...</p>
+                <div class="card-stats">
+                    <span>通过率 18.9%</span>
+                    <span>提交 4.2k</span>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <section class="section" style="background: var(--color-surface-soft); border-top: 1px solid var(--color-hairline); border-bottom: 1px solid var(--color-hairline);">
+        <div class="container" style="text-align: center;">
+            <h2 style="font-size: 36px; margin-bottom: var(--spacing-lg);">极速评测，分秒必争</h2>
+            <p style="max-width: 600px; margin: 0 auto var(--spacing-xl); color: var(--color-muted);">
+                我们深知时间对于竞技者的意义。ETLOJ 采用分布式分布式评测集群，确保每一份提交都能在 500ms 内得到反馈。
+            </p>
+            <div style="display: flex; justify-content: center; gap: var(--spacing-xxl); margin-top: var(--spacing-xxl);">
+                <div>
+                    <div style="font-size: 40px; font-weight: 600; color: var(--color-ink);">99.9%</div>
+                    <div style="font-size: 14px; color: var(--color-muted);">系统可用性</div>
+                </div>
+                <div>
+                    <div style="font-size: 40px; font-weight: 600; color: var(--color-ink);">&lt;200ms</div>
+                    <div style="font-size: 14px; color: var(--color-muted);">平均评测延迟</div>
+                </div>
+                <div>
+                    <div style="font-size: 40px; font-weight: 600; color: var(--color-ink);">1M+</div>
+                    <div style="font-size: 14px; color: var(--color-muted);">累计提交次数</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <a href="#" class="logo" style="color: var(--color-on-dark); margin-bottom: var(--spacing-lg);">
+                        <div class="logo-icon" style="background: var(--color-on-dark);"></div>
+                        ETLOJ
+                    </a>
+                    <p style="font-size: 14px; color: var(--color-on-dark-soft); max-width: 200px;">
+                        为下一代竞赛者打造的算法学习与竞技平台。
+                    </p>
+                </div>
+                <div class="footer-col">
+                    <h4>产品</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">题库中心</a></li>
+                        <li><a href="#">竞赛大厅</a></li>
+                        <li><a href="#">评测系统</a></li>
+                        <li><a href="#">企业服务</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>资源</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">算法文档</a></li>
+                        <li><a href="#">社区讨论</a></li>
+                        <li><a href="#">API 参考</a></li>
+                        <li><a href="#">开源贡献</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>关于</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">关于我们</a></li>
+                        <li><a href="#">联系支持</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                        <li><a href="#">服务条款</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div>© 2026 ETLOJ. All rights reserved.</div>
+                <div style="display: flex; gap: var(--spacing-lg);">
+                    <a href="#" style="color: inherit; text-decoration: none;">GitHub</a>
+                    <a href="#" style="color: inherit; text-decoration: none;">Twitter</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
