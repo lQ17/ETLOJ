@@ -75,9 +75,12 @@ h1, h2, h3, h4, h5, h6,
 .arco-card {
   border-radius: var(--rounded-lg) !important;
   border-color: var(--color-hairline) !important;
-  background-color: var(--color-surface-card) !important;
+  background-color: var(--color-canvas) !important;
   box-shadow: none !important;
   transition: transform 0.2s, box-shadow 0.2s !important;
+}
+.arco-input-inner-wrapper {
+  background-color: var(--color-surface-soft) !important;
 }
 .arco-card-hoverable:hover {
   transform: translateY(-2px);

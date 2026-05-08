@@ -43,6 +43,7 @@ function formatCodeSize(bytes: number | null | undefined): string {
 export default function RecordsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const authLoading = useAuthStore((s) => s.loading);
 
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -78,7 +79,7 @@ export default function RecordsPage() {
     }
   }, [filterUsername, filterProblemId, filterKeyword, filterStatus, page, pageSize]);
 
-  useEffect(() => { fetchData(1); }, []);
+  useEffect(() => { if (user) fetchData(1); }, [user]);
 
   const handleSearch = () => { setPage(1); fetchData(1); };
 
@@ -189,6 +190,22 @@ export default function RecordsPage() {
       ),
     },
   ];
+
+  if (!authLoading && !user) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <Typography.Title heading={4} style={{ marginBottom: 8 }}>评测记录</Typography.Title>
+          <Typography.Paragraph style={{ color: "var(--color-muted)", marginBottom: 24 }}>
+            登录后即可查看评测记录
+          </Typography.Paragraph>
+          <Button type="primary" size="large" onClick={() => navigate("/login")}>
+            去登录
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

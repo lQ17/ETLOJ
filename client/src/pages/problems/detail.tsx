@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Typography, Select, Button, Space, Tag, Spin, Message, Card, Input, Divider, Modal, Popover, Radio,
 } from "@arco-design/web-react";
@@ -110,7 +110,9 @@ function parseSamples(md: string): { input: string; output: string }[] {
 
 export default function ProblemDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
+  const authLoading = useAuthStore((s) => s.loading);
   const [problem, setProblem] = useState<any>(null);
   const [markdown, setMarkdown] = useState("");
   const [language, setLanguage] = useState("cpp");
@@ -218,6 +220,11 @@ export default function ProblemDetailPage() {
   };
 
   const handleSubmit = async () => {
+    if (!user) {
+      Message.warning("请先登录后再提交");
+      navigate("/login");
+      return;
+    }
     if (!code.trim()) {
       Message.warning("请先编写代码");
       return;
@@ -248,6 +255,11 @@ export default function ProblemDetailPage() {
   };
 
   const handleTest = async () => {
+    if (!user) {
+      Message.warning("请先登录后再测试");
+      navigate("/login");
+      return;
+    }
     if (!code.trim()) {
       Message.warning("请先编写代码");
       return;
@@ -694,7 +706,20 @@ export default function ProblemDetailPage() {
         )}
 
         {/* 查看题解 */}
-        {activeTab === "solutions" && (
+        {activeTab === "solutions" && !authLoading && !user && (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%" }}>
+            <div style={{ textAlign: "center" }}>
+              <Typography.Title heading={5} style={{ marginBottom: 8 }}>查看题解</Typography.Title>
+              <Typography.Paragraph style={{ color: "var(--color-muted)", marginBottom: 24 }}>
+                登录后即可查看和编写题解
+              </Typography.Paragraph>
+              <Button type="primary" size="large" onClick={() => navigate("/login")}>
+                去登录
+              </Button>
+            </div>
+          </div>
+        )}
+        {activeTab === "solutions" && (authLoading || user) && (
           <div style={{ display: "flex", gap: 24, width: "100%", overflow: "hidden" }}>
             {/* 左侧：题解列表 */}
             <div style={{ flex: "0 0 45%", overflow: "auto", paddingRight: 8 }}>
@@ -768,44 +793,36 @@ export default function ProblemDetailPage() {
 
             {/* 右侧：写/编辑题解 */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-              {user ? (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <Typography.Title heading={5} style={{ margin: 0 }}>
-                      {editingSolution ? "编辑题解" : "写题解"}
-                    </Typography.Title>
-                    {editingSolution && (
-                      <Button
-                        size="small"
-                        onClick={() => { setEditingSolution(null); setSolutionContent(""); }}
-                      >
-                        取消编辑
-                      </Button>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, overflow: "auto" }} data-color-mode="light">
-                    <MDEditor
-                      value={solutionContent}
-                      onChange={(val) => setSolutionContent(val || "")}
-                      preview="live"
-                      height="100%"
-                    />
-                  </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <Typography.Title heading={5} style={{ margin: 0 }}>
+                  {editingSolution ? "编辑题解" : "写题解"}
+                </Typography.Title>
+                {editingSolution && (
                   <Button
-                    type="primary"
-                    long
-                    style={{ marginTop: 12 }}
-                    loading={submittingSolution}
-                    onClick={handleSubmitSolution}
+                    size="small"
+                    onClick={() => { setEditingSolution(null); setSolutionContent(""); }}
                   >
-                    {editingSolution ? "更新题解" : "发布题解"}
+                    取消编辑
                   </Button>
-                </>
-              ) : (
-                <div style={{ textAlign: "center", color: "var(--color-text-3)", paddingTop: 80 }}>
-                  请先登录后查看和编写题解
-                </div>
-              )}
+                )}
+              </div>
+              <div style={{ flex: 1, overflow: "auto" }} data-color-mode="light">
+                <MDEditor
+                  value={solutionContent}
+                  onChange={(val) => setSolutionContent(val || "")}
+                  preview="live"
+                  height="100%"
+                />
+              </div>
+              <Button
+                type="primary"
+                long
+                style={{ marginTop: 12 }}
+                loading={submittingSolution}
+                onClick={handleSubmitSolution}
+              >
+                {editingSolution ? "更新题解" : "发布题解"}
+              </Button>
             </div>
           </div>
         )}

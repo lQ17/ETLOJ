@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Typography, Radio, Space, DatePicker, Table, Avatar, Message, Card,
+  Typography, Radio, Space, DatePicker, Table, Avatar, Message, Card, Button,
 } from "@arco-design/web-react";
 import { IconUser } from "@arco-design/web-react/icon";
 import ReactECharts from "echarts-for-react";
 import { useNavigate } from "react-router-dom";
 import { rankingApi } from "../../api/ranking";
+import { useAuthStore } from "../../stores/auth";
 
 const { RangePicker } = DatePicker;
 
@@ -33,6 +34,8 @@ interface RankItem {
 
 export default function RankingPage() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const authLoading = useAuthStore((s) => s.loading);
 
   const [mode, setMode] = useState<"ac" | "score">("ac");
   const [range, setRange] = useState("all");
@@ -68,9 +71,10 @@ export default function RankingPage() {
 
   // 当 mode / range / customDates 变化时，重置到第一页并拉取数据
   useEffect(() => {
+    if (!user) return;
     setPage(1);
     fetchData(1, pageSize, true);
-  }, [mode, range, customDates]);
+  }, [mode, range, customDates, user]);
 
   // 日期选择回调
   const handleRangeChange = (val: string) => {
@@ -190,6 +194,22 @@ export default function RankingPage() {
       render: (v: number) => <span style={{ fontWeight: 600 }}>{v}</span>,
     },
   ];
+
+  if (!authLoading && !user) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <Typography.Title heading={4} style={{ marginBottom: 8 }}>排名</Typography.Title>
+          <Typography.Paragraph style={{ color: "var(--color-muted)", marginBottom: 24 }}>
+            登录后即可查看排名
+          </Typography.Paragraph>
+          <Button type="primary" size="large" onClick={() => navigate("/login")}>
+            去登录
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // ========== 渲染 ==========
   return (
