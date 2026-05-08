@@ -173,7 +173,7 @@ export default function ProfilePage() {
 
 // ===================== Sub-components =====================
 
-import { GitHubCalendar } from "react-github-calendar";
+import { ActivityCalendar } from "react-activity-calendar";
 
 import { Tooltip } from "@arco-design/web-react";
 
@@ -252,13 +252,13 @@ function HeatmapChart({ data }: { data: [string, number][] }) {
   const { sum6Months, sum1Month, sum1Week } = sums;
 
   return (
-    <div className="gh-calendar-container" style={{ display: 'flex', alignItems: 'center', paddingTop: '10px' }}>
-      {/* 左侧热力图主体 */}
-      <div ref={calendarRef} style={{ flex: 1, overflowX: 'auto' }}>
-        <GitHubCalendar
+    <div className="gh-calendar-container" style={{ paddingTop: '10px' }}>
+      {/* 热力图主体 */}
+      <div ref={calendarRef} style={{ overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
+        <ActivityCalendar
           data={calendarData}
           showWeekdayLabels
-          blockSize={15}
+          blockSize={20}
           blockMargin={5}
           blockRadius={3}
           labels={{
@@ -295,28 +295,24 @@ function HeatmapChart({ data }: { data: [string, number][] }) {
         />
       </div>
 
-      {/* 右侧统计信息 */}
-      <div style={{ width: '180px', marginLeft: '32px', borderLeft: '1px solid var(--color-border-2)', paddingLeft: '24px' }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div>
-            <Text type="secondary" style={{ fontSize: 13 }}>最近半年通过了</Text>
+      {/* 下方统计卡片 - 3列水平排列 */}
+      <div className="heatmap-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
+        {[
+          { label: '最近半年通过了', value: sum6Months },
+          { label: '最近一个月通过了', value: sum1Month },
+          { label: '最近一周通过了', value: sum1Week },
+        ].map((item) => (
+          <div key={item.label} style={{
+            background: 'var(--color-fill-1)',
+            borderRadius: '8px',
+            padding: '12px',
+          }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>{item.label}</Text>
             <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-1)', marginTop: 4 }}>
-              {sum6Months} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
+              {item.value} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
             </div>
           </div>
-          <div>
-            <Text type="secondary" style={{ fontSize: 13 }}>最近一个月通过了</Text>
-            <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-1)', marginTop: 4 }}>
-              {sum1Month} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
-            </div>
-          </div>
-          <div>
-            <Text type="secondary" style={{ fontSize: 13 }}>最近一周通过了</Text>
-            <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-text-1)', marginTop: 4 }}>
-              {sum1Week} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--color-text-3)' }}>道题</span>
-            </div>
-          </div>
-        </Space>
+        ))}
       </div>
     </div>
   );
@@ -378,7 +374,7 @@ function WordCloudChart({ data }: { data: { name: string; value: number }[] }) {
         fontFamily: 'sans-serif',
         fontWeight: 'bold',
         color: function () {
-          const palette = ['#165dff', '#0fc6c2', '#00b42a', '#ff7d00', '#f53f3f', '#7816ff', '#b37feb', '#ffb470'];
+          const palette = ['#111111', '#6b7280', '#00b42a', '#ff7d00', '#f53f3f', '#7816ff', '#b37feb', '#ffb470'];
           return palette[Math.floor(Math.random() * palette.length)];
         }
       },

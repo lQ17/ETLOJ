@@ -83,7 +83,7 @@ export default function AppHeader() {
                   alignItems: "center",
                   fontSize: 15,
                   fontWeight: isActive ? 600 : 400,
-                  color: isActive ? "#165dff" : "var(--color-muted)",
+                  color: isActive ? "var(--color-primary)" : "var(--color-muted)",
                   transition: "color 0.2s"
                 }}
               >
@@ -96,7 +96,7 @@ export default function AppHeader() {
               position: "absolute",
               bottom: 0,
               height: 2,
-              backgroundColor: "#165dff",
+              backgroundColor: "var(--color-primary)",
               left: indicatorStyle.left,
               width: indicatorStyle.width,
               opacity: indicatorStyle.opacity,

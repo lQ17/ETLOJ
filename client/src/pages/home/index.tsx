@@ -1,5 +1,5 @@
 import { Typography, Button, Space } from "@arco-design/web-react";
-import { IconArrowRight, IconClockCircle, IconDashboard } from "@arco-design/web-react/icon";
+import { IconArrowRight, IconClockCircle, IconDashboard, IconThunderbolt, IconRobot, IconBook } from "@arco-design/web-react/icon";
 import { useNavigate } from "react-router-dom";
 
 const { Title, Paragraph } = Typography;
@@ -14,7 +14,7 @@ export default function HomePage() {
         gridTemplateColumns: "1.2fr 0.8fr",
         gap: "48px",
         alignItems: "center",
-        marginBottom: 96
+        marginBottom: 64
       }}>
         <div>
           <Title heading={1} style={{ fontSize: 56, lineHeight: 1.1, marginBottom: 24 }}>
@@ -73,29 +73,75 @@ export default function HomePage() {
       </div>
 
       <div style={{
-        background: "var(--color-surface-soft)",
-        borderRadius: "var(--rounded-xl, 16px)",
-        padding: "64px 32px",
-        textAlign: "center",
-        border: "1px solid var(--color-hairline)"
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "32px",
+        marginBottom: 64
       }}>
-        <Title heading={2} style={{ fontSize: 36, marginBottom: 24 }}>平台实时数据</Title>
-        <Paragraph style={{ maxWidth: 600, margin: "0 auto 48px", color: "var(--color-muted)", fontSize: 16 }}>
-          基于分布式评测集群，为竞赛者提供极速反馈
-        </Paragraph>
-        <div style={{ display: "flex", justifyContent: "center", gap: 96, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 48, fontWeight: 600, color: "var(--color-ink)", letterSpacing: "-0.04em" }}>0</div>
-            <div style={{ fontSize: 14, color: "var(--color-muted)", marginTop: 8 }}>题目总数</div>
+        <div style={{
+          background: "var(--color-surface-soft)",
+          borderRadius: "var(--rounded-xl, 16px)",
+          padding: "48px 32px",
+          border: "1px solid var(--color-hairline)"
+        }}>
+          <Title heading={3} style={{ fontSize: 24, marginBottom: 8, marginTop: 0 }}>平台实时数据</Title>
+          <Paragraph style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 32 }}>
+            记录每一次进步
+          </Paragraph>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+            {["题目总数", "提交总数", "用户总数"].map((label) => (
+              <div key={label}>
+                <div
+                  style={{
+                    width: 60,
+                    height: 32,
+                    borderRadius: 4,
+                    background: "var(--color-hairline)",
+                    animation: "skeletonPulse 1.8s ease-in-out infinite",
+                  }}
+                />
+                <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>{label}</div>
+              </div>
+            ))}
           </div>
-          <div>
-            <div style={{ fontSize: 48, fontWeight: 600, color: "var(--color-ink)", letterSpacing: "-0.04em" }}>0</div>
-            <div style={{ fontSize: 14, color: "var(--color-muted)", marginTop: 8 }}>提交总数</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 48, fontWeight: 600, color: "var(--color-ink)", letterSpacing: "-0.04em" }}>0</div>
-            <div style={{ fontSize: 14, color: "var(--color-muted)", marginTop: 8 }}>用户总数</div>
-          </div>
+        </div>
+
+        <div style={{
+          background: "linear-gradient(135deg, #f8f9fa, #e8e9ea)",
+          borderRadius: "var(--rounded-xl, 16px)",
+          padding: "40px 32px",
+          border: "1px solid var(--color-hairline)",
+          animation: "borderBreathe 3s ease-in-out infinite",
+          display: "flex",
+          flexDirection: "column",
+          gap: 28
+        }}>
+          {[
+            { icon: <IconThunderbolt style={{ fontSize: 20 }} />, title: "智能评测", desc: "多语言支持，毫秒级判题" },
+            { icon: <IconRobot style={{ fontSize: 20 }} />, title: "AI 题解", desc: "智能算法引导，直观理解思路" },
+            { icon: <IconBook style={{ fontSize: 20 }} />, title: "学习社区", desc: "题单系统，系统化刷题路径" },
+          ].map((item) => (
+            <div key={item.title} style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "var(--color-canvas)",
+                border: "1px solid var(--color-hairline)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                color: "var(--color-ink)",
+              }}>
+                {item.icon}
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "var(--color-ink)", marginBottom: 2 }}>{item.title}</div>
+                <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.5 }}>{item.desc}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -107,7 +107,10 @@ export default function RankingPage() {
     grid: { left: 60, right: 30, top: 30, bottom: 30 },
     xAxis: {
       type: "category",
-      data: top10.map((_, i) => `#${i + 1}`),
+      data: top10.map((item) => {
+        const name = item.username || "";
+        return name.length > 6 ? name.slice(0, 6) + "..." : name;
+      }),
       axisTick: { show: false },
       axisLine: { lineStyle: { color: "#e5e6eb" } },
       axisLabel: { color: "#86909c", fontSize: 12 },
@@ -165,7 +168,7 @@ export default function RankingPage() {
       dataIndex: "username",
       render: (username: string, record: RankItem) => (
         <Space size={8}>
-          <Avatar size={28} shape="circle" style={{ backgroundColor: "#165dff", flexShrink: 0 }}>
+          <Avatar size={28} shape="circle" style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
             {record.avatar
               ? <img src={record.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : (username?.[0]?.toUpperCase() || <IconUser />)
@@ -231,34 +234,6 @@ export default function RankingPage() {
           <Typography.Title heading={6} style={{ marginBottom: 12 }}>
             Top 10 {mode === "ac" ? "(AC数)" : "(累计分数)"}
           </Typography.Title>
-          {/* 头像行 */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-around",
-            marginBottom: 4,
-            padding: "0 30px 0 60px",
-          }}>
-            {top10.map((user) => (
-              <div key={user.id} style={{ textAlign: "center", width: 60 }}>
-                <Avatar size={36} shape="circle" style={{ backgroundColor: "#165dff" }}>
-                  {user.avatar
-                    ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : (user.username?.[0]?.toUpperCase() || <IconUser />)
-                  }
-                </Avatar>
-                <div style={{
-                  fontSize: 11,
-                  marginTop: 2,
-                  color: "var(--color-text-2)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>
-                  {user.username}
-                </div>
-              </div>
-            ))}
-          </div>
           <ReactECharts option={chartOption} style={{ height: 260 }} />
         </Card>
       )}

@@ -28,8 +28,6 @@
 
 /* ---- User Card ---- */
 .user-card {
-  position: sticky;
-  top: 80px;
 }
 
 .user-card-inner {
@@ -92,7 +90,7 @@
 .stat-value {
   font-size: 26px;
   font-weight: 800;
-  background: linear-gradient(135deg, #165dff, #0fc6c2);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-muted));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   line-height: 1.2;
@@ -162,5 +160,9 @@
 
   .stat-value {
     font-size: 22px;
+  }
+
+  .heatmap-stats-grid {
+    grid-template-columns: 1fr !important;
   }
 }
