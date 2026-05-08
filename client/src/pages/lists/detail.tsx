@@ -129,18 +129,19 @@ export default function ProblemListDetailPage() {
       title: "题号",
       dataIndex: ["problem", "slug"],
       width: 120,
-      render: (slug: string) => (
-        <Text
-          style={{ cursor: "pointer", color: "var(--color-primary)" }}
-          onClick={() => navigate(`/problems/${slug}`)}
-        >
-          {slug}
-        </Text>
-      ),
+      render: (slug: string) => <span style={{ fontFamily: "Consolas, monospace" }}>{slug}</span>,
     },
     {
       title: "标题",
       dataIndex: ["problem", "title"],
+      render: (title: string, record: any) => (
+        <Text
+          style={{ cursor: "pointer", color: "#3b82f6" }}
+          onClick={() => navigate(`/problems/${record.problem?.slug}`)}
+        >
+          {title}
+        </Text>
+      ),
     },
     {
       title: "难度",

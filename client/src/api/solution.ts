@@ -4,6 +4,8 @@ export const solutionApi = {
   list: (problemId: number) =>
     client.get("/solutions", { params: { problemId } }),
 
+  mine: () => client.get("/solutions/mine"),
+
   getOne: (id: number) => client.get(`/solutions/${id}`),
 
   create: (data: { problemId: number; content: string }) =>

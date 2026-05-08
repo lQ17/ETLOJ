@@ -17,6 +17,17 @@ export class SolutionService {
     });
   }
 
+  async findByAuthor(authorId: number) {
+    return this.prisma.solution.findMany({
+      where: { authorId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: { select: { id: true, username: true, avatar: true } },
+        problem: { select: { id: true, slug: true, title: true } },
+      },
+    });
+  }
+
   async findOne(id: number) {
     const solution = await this.prisma.solution.findUnique({
       where: { id },

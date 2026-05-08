@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Typography, Select, Button, Space, Tag, Spin, Message, Card, Input, Divider, Modal, Popover, Radio,
+  Typography, Select, Button, Space, Tag, Spin, Message, Card, Input, Divider, Modal, Popover, Radio, Avatar,
 } from "@arco-design/web-react";
 import {
   IconCopy, IconCheck, IconPlayArrow, IconExpand, IconShrink, IconSettings,
-  IconFile, IconEdit, IconRobot, IconDelete, IconPen,
+  IconFile, IconEdit, IconRobot, IconPen,
 } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
 import MDEditor from "@uiw/react-md-editor";
@@ -111,6 +111,7 @@ function parseSamples(md: string): { input: string; output: string }[] {
 export default function ProblemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const authLoading = useAuthStore((s) => s.loading);
   const [problem, setProblem] = useState<any>(null);
@@ -140,14 +141,19 @@ export default function ProblemDetailPage() {
   });
 
   // 二级导航
-  const [activeTab, setActiveTab] = useState<"detail" | "solutions" | "ai">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "solutions" | "ai">(() => {
+    const tab = searchParams.get("tab");
+    return tab === "solutions" || tab === "ai" ? tab : "detail";
+  });
 
   // 题解相关状态
   const [solutions, setSolutions] = useState<any[]>([]);
   const [solutionsLoading, setSolutionsLoading] = useState(false);
-  const [editingSolution, setEditingSolution] = useState<any>(null);
+  const [selectedSolution, setSelectedSolution] = useState<any>(null);
   const [solutionContent, setSolutionContent] = useState("");
   const [submittingSolution, setSubmittingSolution] = useState(false);
+  const [writeModalVisible, setWriteModalVisible] = useState(false);
+  const [editingSolutionId, setEditingSolutionId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -168,6 +174,9 @@ export default function ProblemDetailPage() {
     try {
       const data: any = await solutionApi.list(problem.id);
       setSolutions(data);
+      if (data.length > 0 && !selectedSolution) {
+        setSelectedSolution(data[0]);
+      }
     } catch {
       Message.error("加载题解失败");
     } finally {
@@ -181,6 +190,21 @@ export default function ProblemDetailPage() {
     }
   }, [activeTab, problem]);
 
+  // 从个人主页跳转编辑题解时，自动打开编辑弹窗
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || solutions.length === 0) return;
+    const sol = solutions.find((s: any) => s.id === Number(editId));
+    if (sol) {
+      setEditingSolutionId(sol.id);
+      setSolutionContent(sol.content);
+      setWriteModalVisible(true);
+      // 清除 URL 中的 edit 参数，避免重复触发
+      searchParams.delete("edit");
+      navigate(`/problems/${id}?${searchParams.toString()}`, { replace: true });
+    }
+  }, [solutions, searchParams]);
+
   const handleSubmitSolution = async () => {
     if (!solutionContent.trim()) {
       Message.warning("请输入题解内容");
@@ -188,30 +212,21 @@ export default function ProblemDetailPage() {
     }
     setSubmittingSolution(true);
     try {
-      if (editingSolution) {
-        await solutionApi.update(editingSolution.id, solutionContent);
+      if (editingSolutionId) {
+        await solutionApi.update(editingSolutionId, solutionContent);
         Message.success("题解已更新");
       } else {
         await solutionApi.create({ problemId: problem.id, content: solutionContent });
         Message.success("题解已发布");
       }
       setSolutionContent("");
-      setEditingSolution(null);
+      setEditingSolutionId(null);
+      setWriteModalVisible(false);
       loadSolutions();
     } catch (err: any) {
       Message.error(err?.message || "操作失败");
     } finally {
       setSubmittingSolution(false);
-    }
-  };
-
-  const handleDeleteSolution = async (solutionId: number) => {
-    try {
-      await solutionApi.delete(solutionId);
-      Message.success("已删除");
-      loadSolutions();
-    } catch (err: any) {
-      Message.error(err?.message || "删除失败");
     }
   };
 
@@ -367,7 +382,7 @@ export default function ProblemDetailPage() {
         {activeTab === "detail" && (
           <div style={{ display: "flex", gap: 24, width: "100%" }}>
             {/* 左侧：题面 */}
-            <div style={{ flex: "0 0 60%", overflow: "auto", paddingRight: 8 }}>
+            <div style={{ flex: "0 0 40%", overflow: "auto", paddingRight: 8 }}>
               {markdownBefore && (
                 <div className="problem-markdown" style={{ fontSize: 16 }}>
                   <ReactMarkdown
@@ -722,21 +737,19 @@ export default function ProblemDetailPage() {
         {activeTab === "solutions" && (authLoading || user) && (
           <div style={{ display: "flex", gap: 24, width: "100%", overflow: "hidden" }}>
             {/* 左侧：题解列表 */}
-            <div style={{ flex: "0 0 45%", overflow: "auto", paddingRight: 8 }}>
+            <div style={{ flex: "0 0 35%", overflow: "auto", paddingRight: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <Typography.Title heading={5} style={{ margin: 0 }}>
                   题解列表
                 </Typography.Title>
-                {user && (
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<IconPen />}
-                    onClick={() => { setEditingSolution(null); setSolutionContent(""); }}
-                  >
-                    写题解
-                  </Button>
-                )}
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<IconPen />}
+                  onClick={() => { setEditingSolutionId(null); setSolutionContent(""); setWriteModalVisible(true); }}
+                >
+                  写题解
+                </Button>
               </div>
               {solutionsLoading ? (
                 <div style={{ textAlign: "center", paddingTop: 40 }}><Spin /></div>
@@ -745,87 +758,117 @@ export default function ProblemDetailPage() {
                   暂无题解，快来写第一篇吧
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {solutions.map((sol: any) => (
-                    <Card
-                      key={sol.id}
-                      size="small"
-                      hoverable
-                      style={{ cursor: "pointer" }}
-                      onClick={() => { setEditingSolution(sol); setSolutionContent(sol.content); }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Space>
-                          <span style={{ fontWeight: 600, fontSize: 14 }}>{sol.author.username}</span>
-                          <span style={{ color: "var(--color-text-3)", fontSize: 12 }}>
-                            {new Date(sol.createdAt).toLocaleString("zh-CN")}
-                          </span>
-                        </Space>
-                        {user && (user.id === sol.authorId || user.role === "ADMIN") && (
-                          <Button
-                            type="text"
-                            size="mini"
-                            status="danger"
-                            icon={<IconDelete />}
-                            onClick={(e) => { e.stopPropagation(); handleDeleteSolution(sol.id); }}
-                          />
-                        )}
-                      </div>
-                      <div
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {solutions.map((sol: any) => {
+                    const isSelected = selectedSolution?.id === sol.id;
+                    return (
+                      <Card
+                        key={sol.id}
+                        size="small"
+                        hoverable
                         style={{
-                          marginTop: 8,
-                          fontSize: 13,
-                          color: "var(--color-text-2)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: "vertical",
+                          cursor: "pointer",
+                          borderLeft: isSelected ? "3px solid var(--color-primary)" : "3px solid transparent",
+                          background: isSelected ? "var(--color-fill-1)" : undefined,
                         }}
+                        onClick={() => setSelectedSolution(sol)}
                       >
-                        {sol.content.replace(/[#*`>\-\[\]()]/g, "").slice(0, 150)}
-                      </div>
-                    </Card>
-                  ))}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <Avatar size={24} style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
+                            {sol.author.avatar
+                              ? <img src={sol.author.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : sol.author.username?.[0]?.toUpperCase()
+                            }
+                          </Avatar>
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>{sol.author.username}</span>
+                          <span style={{ color: "var(--color-text-3)", fontSize: 12, marginLeft: "auto" }}>
+                            {new Date(sol.createdAt).toLocaleDateString("zh-CN")}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            style={{
+                              flex: 1,
+                              fontSize: 13,
+                              color: "var(--color-text-2)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {sol.content.replace(/[#*`>\-\[\]()]/g, "").split("\n").find((l: string) => l.trim()) || ""}
+                          </span>
+                          <span style={{ fontSize: 12, color: "var(--color-text-3)", flexShrink: 0 }}>
+                            点击在右侧查看
+                          </span>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* 右侧：写/编辑题解 */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <Typography.Title heading={5} style={{ margin: 0 }}>
-                  {editingSolution ? "编辑题解" : "写题解"}
-                </Typography.Title>
-                {editingSolution && (
-                  <Button
-                    size="small"
-                    onClick={() => { setEditingSolution(null); setSolutionContent(""); }}
-                  >
-                    取消编辑
-                  </Button>
-                )}
-              </div>
-              <div style={{ flex: 1, overflow: "auto" }} data-color-mode="light">
-                <MDEditor
-                  value={solutionContent}
-                  onChange={(val) => setSolutionContent(val || "")}
-                  preview="live"
-                  height="100%"
-                />
-              </div>
-              <Button
-                type="primary"
-                long
-                style={{ marginTop: 12 }}
-                loading={submittingSolution}
-                onClick={handleSubmitSolution}
-              >
-                {editingSolution ? "更新题解" : "发布题解"}
-              </Button>
+            {/* 右侧：题解详情展示 */}
+            <div style={{ flex: 1, overflow: "auto", minWidth: 0, borderLeft: "1px solid var(--color-border)", paddingLeft: 24 }}>
+              {selectedSolution ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-border)" }}>
+                    <Avatar size={36} style={{ backgroundColor: "var(--color-primary)" }}>
+                      {selectedSolution.author.avatar
+                        ? <img src={selectedSolution.author.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : selectedSolution.author.username?.[0]?.toUpperCase()
+                      }
+                    </Avatar>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{selectedSolution.author.username}</div>
+                      <div style={{ color: "var(--color-text-3)", fontSize: 13 }}>
+                        发布于 {new Date(selectedSolution.createdAt).toLocaleString("zh-CN")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="problem-markdown" style={{ fontSize: 15, lineHeight: 1.8 }}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {selectedSolution.content}
+                    </ReactMarkdown>
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: "center", color: "var(--color-text-3)", paddingTop: 80 }}>
+                  请选择一篇题解查看
+                </div>
+              )}
             </div>
           </div>
         )}
+
+        {/* 写题解弹窗 */}
+        <Modal
+          title={editingSolutionId ? "编辑题解" : "写题解"}
+          visible={writeModalVisible}
+          onCancel={() => { setWriteModalVisible(false); setEditingSolutionId(null); }}
+          footer={null}
+          style={{ width: "80%", top: 40 }}
+          unmountOnExit={false}
+        >
+          <div data-color-mode="light" style={{ marginBottom: 12 }}>
+            <MDEditor
+              value={solutionContent}
+              onChange={(val) => setSolutionContent(val || "")}
+              preview="live"
+              height={500}
+            />
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+            <Button onClick={() => { setWriteModalVisible(false); setEditingSolutionId(null); }}>取消</Button>
+            <Button type="primary" loading={submittingSolution} onClick={handleSubmitSolution}>
+              {editingSolutionId ? "更新题解" : "发布题解"}
+            </Button>
+          </div>
+        </Modal>
 
         {/* 问问AI */}
         {activeTab === "ai" && (

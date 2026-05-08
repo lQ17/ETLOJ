@@ -17,6 +17,12 @@ export class SolutionController {
     return this.solutionService.findByProblem(problemId);
   }
 
+  @Get("mine")
+  @UseGuards(JwtAuthGuard)
+  findMine(@CurrentUser("id") userId: number) {
+    return this.solutionService.findByAuthor(userId);
+  }
+
   @Get(":id")
   findOne(@Param("id", ParseIntPipe) id: number) {
     return this.solutionService.findOne(id);

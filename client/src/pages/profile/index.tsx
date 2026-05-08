@@ -1,10 +1,12 @@
-import { useParams, Link } from "react-router-dom";
-import { useEffect, useLayoutEffect, useState, useRef } from "react";
-import { Grid, Card, Typography, Space, Divider, Tabs, Tag, Spin, Empty, Avatar } from "@arco-design/web-react";
-import { IconUser, IconCalendar, IconStar, IconThunderbolt } from "@arco-design/web-react/icon";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
+import { Grid, Card, Typography, Space, Divider, Tabs, Tag, Spin, Empty, Avatar, Button, Message, Popconfirm } from "@arco-design/web-react";
+import { IconUser, IconCalendar, IconStar, IconThunderbolt, IconEdit, IconDelete } from "@arco-design/web-react/icon";
 import * as echarts from "echarts";
 import ReactECharts from "echarts-for-react";
 import { profileApi } from "../../api/profile";
+import { solutionApi } from "../../api/solution";
+import { useAuthStore } from "../../stores/auth";
 import "echarts-wordcloud";
 import "./profile.css";
 
@@ -50,6 +52,8 @@ interface ProfileStats {
 // ===================== Component =====================
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const currentUser = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,6 +168,11 @@ export default function ProfilePage() {
                 </Tabs.TabPane>
               </Tabs>
             </Card>
+
+            {/* ---- 我的题解（仅自己可见）---- */}
+            {currentUser && currentUser.username === username && (
+              <MySolutions userId={currentUser.id} />
+            )}
           </Space>
         </Col>
       </Row>
@@ -406,5 +415,121 @@ function ProblemWall({ problems }: { problems: { problem_id: number; slug: strin
         </Link>
       ))}
     </div>
+  );
+}
+
+/** 我的题解（懒加载） */
+function MySolutions({ userId }: { userId: number }) {
+  const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [solutions, setSolutions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const loadSolutions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data: any = await solutionApi.mine();
+      setSolutions(data);
+      setLoaded(true);
+    } catch {
+      Message.error("加载题解失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || loaded) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadSolutions();
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loaded, loadSolutions]);
+
+  const handleDelete = async (solutionId: number) => {
+    try {
+      await solutionApi.delete(solutionId);
+      Message.success("已删除");
+      setSolutions((prev) => prev.filter((s) => s.id !== solutionId));
+    } catch (err: any) {
+      Message.error(err?.message || "删除失败");
+    }
+  };
+
+  return (
+    <Card bordered={false} className="profile-card" ref={containerRef}>
+      <Title heading={6} className="card-title" style={{ marginBottom: 16 }}>我的题解</Title>
+      {loading && <div style={{ textAlign: "center", padding: 32 }}><Spin /></div>}
+      {!loading && loaded && solutions.length === 0 && (
+        <Empty description="还没有写过题解" style={{ padding: 32 }} />
+      )}
+      {!loading && solutions.length > 0 && (
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {solutions.map((sol: any) => (
+            <div
+              key={sol.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                background: "var(--color-fill-1)",
+                borderRadius: 8,
+                gap: 16,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link
+                  to={`/problems/${sol.problem?.slug}`}
+                  style={{ fontWeight: 600, fontSize: 14, color: "var(--color-primary)" }}
+                >
+                  {sol.problem?.slug} {sol.problem?.title}
+                </Link>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--color-text-2)",
+                    marginTop: 4,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 1,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {sol.content.replace(/[#*`>\-\[\]()]/g, "").slice(0, 100)}
+                </div>
+                <span style={{ fontSize: 12, color: "var(--color-text-3)" }}>
+                  {new Date(sol.createdAt).toLocaleString("zh-CN")}
+                </span>
+              </div>
+              <Space size={4}>
+                <Button
+                  type="text"
+                  size="mini"
+                  icon={<IconEdit />}
+                  onClick={() => navigate(`/problems/${sol.problem?.slug}?tab=solutions&edit=${sol.id}`)}
+                />
+                <Popconfirm
+                  title="确定删除这篇题解吗？"
+                  onOk={() => handleDelete(sol.id)}
+                >
+                  <Button type="text" size="mini" status="danger" icon={<IconDelete />} />
+                </Popconfirm>
+              </Space>
+            </div>
+          ))}
+        </Space>
+      )}
+    </Card>
   );
 }
