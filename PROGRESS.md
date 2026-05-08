@@ -80,9 +80,26 @@
 ### 题解系统
 - [x] Solution 数据模型（`solutions` 表，关联 Problem + User，LongText 内容）
 - [x] 题解 CRUD API（公开查看，JWT 创建/编辑，仅作者可编辑，Admin 可删除）
+- [x] `GET /solutions/mine` 接口（JWT，返回当前用户题解列表含题目 slug/title）
 - [x] 题目详情页左侧导航栏（题目详情 / 查看题解 / 问问AI）
-- [x] 题解 Tab：左侧题解列表（卡片式，作者+时间+摘要），右侧 MDEditor 写题解
+- [x] 题解 Tab 重构：右侧改为 markdown 渲染选中题解（作者+时间+内容），列表选中高亮
+- [x] 写题解改为居中 Modal（MDEditor），草稿在组件 state 持久化，切换 tab 不丢失
+- [x] 支持 `?tab=solutions&edit={id}` 深链接，从个人主页跳转编辑
+- [x] 个人主页"我的题解"区块（IntersectionObserver 懒加载，仅自己可见，可编辑/删除）
 - [x] AI 助手占位符页面
+- [x] 题解审核系统（status: PENDING/APPROVED/REJECTED + rejectReason）
+- [x] 管理员审核 API（approve/reject/pending/adminList）
+- [x] 后台"题解管理"Tab（待审核 + 题解列表两个子 Tab）
+- [x] 个人主页题解状态标签（已通过/正在审核/被驳回）+ 驳回原因展示
+- [x] 已通过题解禁止编辑（后端 403 + 前端隐藏编辑按钮）
+
+### UI/UX 优化
+- [x] 未登录访问评测记录/排名页显示居中登录提示卡片（不报 401）
+- [x] 题目详情页提交/测试运行未登录时提示并跳转登录页
+- [x] 题库页题目标题改为 #3b82f6 蓝色可点击链接
+- [x] 题单详情页题目标题改为蓝色链接，题号改为纯文本
+- [x] 全局卡片背景改为白色（canvas），输入框填充色改为 surface-soft，提升对比度
+- [x] 题面区域宽度从 60% 调整为 40%
 
 ### 示例数据
 - [x] P1012 [NOIP 1998 提高组] 拼数（含 2 组测试数据）

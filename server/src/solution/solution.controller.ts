@@ -6,6 +6,8 @@ import { SolutionService } from "./solution.service";
 import { CreateSolutionDto } from "./dto/create-solution.dto";
 import { UpdateSolutionDto } from "./dto/update-solution.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
 
 @Controller("solutions")
@@ -21,6 +23,28 @@ export class SolutionController {
   @UseGuards(JwtAuthGuard)
   findMine(@CurrentUser("id") userId: number) {
     return this.solutionService.findByAuthor(userId);
+  }
+
+  @Get("pending")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  findPending() {
+    return this.solutionService.findPending();
+  }
+
+  @Get("admin")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  findAllForAdmin(
+    @Query("problemId") problemId?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ) {
+    return this.solutionService.findAllForAdmin(
+      problemId ? +problemId : undefined,
+      page ? +page : 1,
+      pageSize ? +pageSize : 20,
+    );
   }
 
   @Get(":id")
@@ -45,6 +69,23 @@ export class SolutionController {
     @Body() dto: UpdateSolutionDto,
   ) {
     return this.solutionService.update(id, user.id, user.role, dto);
+  }
+
+  @Patch(":id/approve")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  approve(@Param("id", ParseIntPipe) id: number) {
+    return this.solutionService.approve(id);
+  }
+
+  @Patch(":id/reject")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  reject(
+    @Param("id", ParseIntPipe) id: number,
+    @Body("reason") reason: string,
+  ) {
+    return this.solutionService.reject(id, reason);
   }
 
   @Delete(":id")

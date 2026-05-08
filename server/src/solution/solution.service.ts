@@ -9,7 +9,7 @@ export class SolutionService {
 
   async findByProblem(problemId: number) {
     return this.prisma.solution.findMany({
-      where: { problemId },
+      where: { problemId, status: "APPROVED" },
       orderBy: { createdAt: "desc" },
       include: {
         author: { select: { id: true, username: true, avatar: true } },
@@ -45,6 +45,7 @@ export class SolutionService {
         problemId: dto.problemId,
         authorId,
         content: dto.content,
+        status: "PENDING",
       },
       include: {
         author: { select: { id: true, username: true, avatar: true } },
@@ -57,9 +58,12 @@ export class SolutionService {
     if (solution.authorId !== userId && userRole !== "ADMIN") {
       throw new ForbiddenException("只能修改自己的题解");
     }
+    if (solution.status === "APPROVED") {
+      throw new ForbiddenException("已通过的题解不可修改");
+    }
     return this.prisma.solution.update({
       where: { id },
-      data: { content: dto.content },
+      data: { content: dto.content, status: "PENDING", rejectReason: null },
       include: {
         author: { select: { id: true, username: true, avatar: true } },
       },
@@ -72,5 +76,50 @@ export class SolutionService {
       throw new ForbiddenException("只能删除自己的题解");
     }
     return this.prisma.solution.delete({ where: { id } });
+  }
+
+  async approve(id: number) {
+    await this.findOne(id);
+    return this.prisma.solution.update({
+      where: { id },
+      data: { status: "APPROVED", rejectReason: null },
+    });
+  }
+
+  async reject(id: number, reason: string) {
+    await this.findOne(id);
+    return this.prisma.solution.update({
+      where: { id },
+      data: { status: "REJECTED", rejectReason: reason },
+    });
+  }
+
+  async findPending() {
+    return this.prisma.solution.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: { select: { id: true, username: true, avatar: true } },
+        problem: { select: { id: true, slug: true, title: true } },
+      },
+    });
+  }
+
+  async findAllForAdmin(problemId?: number, page = 1, pageSize = 20) {
+    const where = problemId ? { problemId } : {};
+    const [items, total] = await Promise.all([
+      this.prisma.solution.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          author: { select: { id: true, username: true, avatar: true } },
+          problem: { select: { id: true, slug: true, title: true } },
+        },
+      }),
+      this.prisma.solution.count({ where }),
+    ]);
+    return { items, total };
   }
 }

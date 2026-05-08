@@ -474,60 +474,75 @@ function MySolutions({ userId }: { userId: number }) {
       )}
       {!loading && solutions.length > 0 && (
         <Space direction="vertical" size={12} style={{ width: "100%" }}>
-          {solutions.map((sol: any) => (
-            <div
-              key={sol.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "12px 16px",
-                background: "var(--color-fill-1)",
-                borderRadius: 8,
-                gap: 16,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <Link
-                  to={`/problems/${sol.problem?.slug}`}
-                  style={{ fontWeight: 600, fontSize: 14, color: "var(--color-primary)" }}
-                >
-                  {sol.problem?.slug} {sol.problem?.title}
-                </Link>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "var(--color-text-2)",
-                    marginTop: 4,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 1,
-                    WebkitBoxOrient: "vertical",
-                  }}
-                >
-                  {sol.content.replace(/[#*`>\-\[\]()]/g, "").slice(0, 100)}
+          {solutions.map((sol: any) => {
+            const statusMap: Record<string, { label: string; color: string }> = {
+              APPROVED: { label: "已通过", color: "green" },
+              PENDING: { label: "正在审核", color: "blue" },
+              REJECTED: { label: "被驳回", color: "red" },
+            };
+            const st = statusMap[sol.status] || statusMap.PENDING;
+            return (
+              <div
+                key={sol.id}
+                style={{
+                  padding: "12px 16px",
+                  background: "var(--color-fill-1)",
+                  borderRadius: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <Link
+                        to={`/problems/${sol.problem?.slug}`}
+                        style={{ fontWeight: 600, fontSize: 14, color: "var(--color-primary)" }}
+                      >
+                        {sol.problem?.slug} {sol.problem?.title}
+                      </Link>
+                      <Tag size="small" color={st.color}>{st.label}</Tag>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--color-text-2)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {sol.content.replace(/[#*`>\-\[\]()]/g, "").slice(0, 100)}
+                    </div>
+                    <span style={{ fontSize: 12, color: "var(--color-text-3)" }}>
+                      {new Date(sol.createdAt).toLocaleString("zh-CN")}
+                    </span>
+                  </div>
+                  <Space size={4}>
+                    {sol.status !== "APPROVED" && (
+                      <Button
+                        type="text"
+                        size="mini"
+                        icon={<IconEdit />}
+                        onClick={() => navigate(`/problems/${sol.problem?.slug}?tab=solutions&edit=${sol.id}`)}
+                      />
+                    )}
+                    <Popconfirm
+                      title="确定删除这篇题解吗？"
+                      onOk={() => handleDelete(sol.id)}
+                    >
+                      <Button type="text" size="mini" status="danger" icon={<IconDelete />} />
+                    </Popconfirm>
+                  </Space>
                 </div>
-                <span style={{ fontSize: 12, color: "var(--color-text-3)" }}>
-                  {new Date(sol.createdAt).toLocaleString("zh-CN")}
-                </span>
+                {sol.status === "REJECTED" && sol.rejectReason && (
+                  <div style={{ marginTop: 8, fontSize: 13, color: "var(--color-error)", background: "var(--color-danger-light-1)", padding: "6px 10px", borderRadius: 4 }}>
+                    驳回原因：{sol.rejectReason}
+                  </div>
+                )}
               </div>
-              <Space size={4}>
-                <Button
-                  type="text"
-                  size="mini"
-                  icon={<IconEdit />}
-                  onClick={() => navigate(`/problems/${sol.problem?.slug}?tab=solutions&edit=${sol.id}`)}
-                />
-                <Popconfirm
-                  title="确定删除这篇题解吗？"
-                  onOk={() => handleDelete(sol.id)}
-                >
-                  <Button type="text" size="mini" status="danger" icon={<IconDelete />} />
-                </Popconfirm>
-              </Space>
-            </div>
-          ))}
+            );
+          })}
         </Space>
       )}
     </Card>

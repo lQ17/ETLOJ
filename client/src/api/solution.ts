@@ -15,4 +15,14 @@ export const solutionApi = {
     client.patch(`/solutions/${id}`, { content }),
 
   delete: (id: number) => client.delete(`/solutions/${id}`),
+
+  approve: (id: number) => client.patch(`/solutions/${id}/approve`),
+
+  reject: (id: number, reason: string) =>
+    client.patch(`/solutions/${id}/reject`, { reason }),
+
+  pending: () => client.get("/solutions/pending"),
+
+  adminList: (params: { problemId?: number; page?: number; pageSize?: number }) =>
+    client.get("/solutions/admin", { params }),
 };

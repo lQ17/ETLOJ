@@ -193,17 +193,19 @@ export default function ProblemDetailPage() {
   // 从个人主页跳转编辑题解时，自动打开编辑弹窗
   useEffect(() => {
     const editId = searchParams.get("edit");
-    if (!editId || solutions.length === 0) return;
-    const sol = solutions.find((s: any) => s.id === Number(editId));
-    if (sol) {
+    if (!editId) return;
+    // 直接通过 API 获取题解（被驳回的不在公开列表中）
+    solutionApi.getOne(Number(editId)).then((sol: any) => {
       setEditingSolutionId(sol.id);
       setSolutionContent(sol.content);
       setWriteModalVisible(true);
-      // 清除 URL 中的 edit 参数，避免重复触发
+    }).catch(() => {
+      Message.error("加载题解失败");
+    }).finally(() => {
       searchParams.delete("edit");
       navigate(`/problems/${id}?${searchParams.toString()}`, { replace: true });
-    }
-  }, [solutions, searchParams]);
+    });
+  }, [searchParams.get("edit")]);
 
   const handleSubmitSolution = async () => {
     if (!solutionContent.trim()) {
@@ -214,10 +216,10 @@ export default function ProblemDetailPage() {
     try {
       if (editingSolutionId) {
         await solutionApi.update(editingSolutionId, solutionContent);
-        Message.success("题解已更新");
+        Message.success("题解已更新，等待审核通过后展示");
       } else {
         await solutionApi.create({ problemId: problem.id, content: solutionContent });
-        Message.success("题解已发布");
+        Message.success("题解已提交，等待审核通过后展示");
       }
       setSolutionContent("");
       setEditingSolutionId(null);
@@ -382,7 +384,7 @@ export default function ProblemDetailPage() {
         {activeTab === "detail" && (
           <div style={{ display: "flex", gap: 24, width: "100%" }}>
             {/* 左侧：题面 */}
-            <div style={{ flex: "0 0 40%", overflow: "auto", paddingRight: 8 }}>
+            <div style={{ flex: "0 0 50%", overflow: "auto", paddingRight: 8 }}>
               {markdownBefore && (
                 <div className="problem-markdown" style={{ fontSize: 16 }}>
                   <ReactMarkdown
