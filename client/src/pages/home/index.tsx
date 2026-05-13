@@ -1,10 +1,61 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Typography, Button, Space } from "@arco-design/web-react";
 import { IconArrowRight, IconClockCircle, IconDashboard, IconNotification } from "@arco-design/web-react/icon";
 import { useNavigate } from "react-router-dom";
 import { announcementApi } from "../../api/announcement";
+import { statsApi } from "../../api/stats";
 
 const { Title, Paragraph } = Typography;
+
+/** 元素进入可视区域时返回 true（仅触发一次） */
+function useInViewport<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); observer.disconnect(); } },
+      { threshold: 0.2 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, inView };
+}
+
+/** easeOutExpo: 快起慢停的缓动函数，start 为 true 时开始动画 */
+function useCountUp(target: number, start: boolean, duration = 1500) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number>(0);
+  const firedRef = useRef(false);
+
+  const animate = useCallback(() => {
+    const begin = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - begin;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(2, -10 * progress);
+      setValue(Math.round(eased * target));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [target, duration]);
+
+  useEffect(() => {
+    if (start && target > 0 && !firedRef.current) {
+      firedRef.current = true;
+      animate();
+    }
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [start, target, animate]);
+
+  return value;
+}
 
 interface Announcement {
   id: number;
@@ -17,10 +68,19 @@ interface Announcement {
 export default function HomePage() {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [stats, setStats] = useState({ problemCount: 0, submissionCount: 0, userCount: 0 });
+  const { ref: statsRef, inView: statsInView } = useInViewport<HTMLDivElement>();
+
+  const displayProblems = useCountUp(stats.problemCount, statsInView);
+  const displaySubmissions = useCountUp(stats.submissionCount, statsInView);
+  const displayUsers = useCountUp(stats.userCount, statsInView);
 
   useEffect(() => {
     announcementApi.list({ pageSize: 5 }).then((res: any) => {
       setAnnouncements(res.items);
+    }).catch(() => {});
+    statsApi.getPlatform().then((res: any) => {
+      setStats(res);
     }).catch(() => {});
   }, []);
 
@@ -105,18 +165,16 @@ export default function HomePage() {
           <Paragraph style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 32 }}>
             记录每一次进步
           </Paragraph>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-            {["题目总数", "提交总数", "用户总数"].map((label) => (
+          <div ref={statsRef} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", textAlign: "center" }}>
+            {[
+              { label: "题目总数", value: displayProblems },
+              { label: "提交总数", value: displaySubmissions },
+              { label: "用户总数", value: displayUsers },
+            ].map(({ label, value }) => (
               <div key={label}>
-                <div
-                  style={{
-                    width: 60,
-                    height: 32,
-                    borderRadius: 4,
-                    background: "var(--color-hairline)",
-                    animation: "skeletonPulse 1.8s ease-in-out infinite",
-                  }}
-                />
+                <div style={{ fontSize: 32, fontWeight: 700, color: "var(--color-ink)", fontVariantNumeric: "tabular-nums" }}>
+                  {value.toLocaleString()}
+                </div>
                 <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>{label}</div>
               </div>
             ))}
