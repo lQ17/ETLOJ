@@ -276,8 +276,13 @@ export class ProblemService {
       fs.rmSync(dir, { recursive: true, force: true });
     } catch {}
 
-    await this.prisma.submission.deleteMany({ where: { problemId: problem.id } });
-    return this.prisma.problem.delete({ where: { id: problem.id } });
+    await this.prisma.$transaction([
+      this.prisma.solution.deleteMany({ where: { problemId: problem.id } }),
+      this.prisma.submission.deleteMany({ where: { problemId: problem.id } }),
+      this.prisma.problemListItem.deleteMany({ where: { problemId: problem.id } }),
+      this.prisma.contestProblem.deleteMany({ where: { problemId: problem.id } }),
+      this.prisma.problem.delete({ where: { id: problem.id } }),
+    ]);
   }
 
   async saveTestcases(idOrSlug: number | string, testcases: { input: string; output: string }[]) {
