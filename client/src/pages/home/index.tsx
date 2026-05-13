@@ -1,11 +1,28 @@
+import { useState, useEffect } from "react";
 import { Typography, Button, Space } from "@arco-design/web-react";
-import { IconArrowRight, IconClockCircle, IconDashboard, IconThunderbolt, IconRobot, IconBook } from "@arco-design/web-react/icon";
+import { IconArrowRight, IconClockCircle, IconDashboard, IconNotification } from "@arco-design/web-react/icon";
 import { useNavigate } from "react-router-dom";
+import { announcementApi } from "../../api/announcement";
 
 const { Title, Paragraph } = Typography;
 
+interface Announcement {
+  id: number;
+  title: string;
+  summary: string;
+  isPinned: boolean;
+  createdAt: string;
+}
+
 export default function HomePage() {
   const navigate = useNavigate();
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    announcementApi.list({ pageSize: 5 }).then((res: any) => {
+      setAnnouncements(res.items);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div style={{ padding: "64px 0" }}>
@@ -32,7 +49,7 @@ export default function HomePage() {
             </Button>
           </Space>
         </div>
-        
+
         <div style={{
           background: "var(--color-surface-card)",
           border: "1px solid var(--color-hairline)",
@@ -55,7 +72,7 @@ export default function HomePage() {
             lineHeight: 1.5,
             whiteSpace: "pre"
           }}><span style={{ color: "#AF00DB" }}>#include</span> <span style={{ color: "#A31515" }}>&lt;bits/stdc++.h&gt;</span>
-{"\n"}<span style={{ color: "#0000FF" }}>using namespace</span> <span style={{ color: "#001080" }}>std</span>; 
+{"\n"}<span style={{ color: "#0000FF" }}>using namespace</span> <span style={{ color: "#001080" }}>std</span>;
 {"\n\n"}<span style={{ color: "#0000FF" }}>int</span> <span style={{ color: "#795E26" }}>main</span>() {"{"}
 {"\n"}    <span style={{ color: "#008000" }}>// ETL -&gt; Easy To Learn</span>
 {"\n"}    <span style={{ color: "#001080" }}>cout</span> &lt;&lt; <span style={{ color: "#A31515" }}>"Hello ETLOJ!"</span> &lt;&lt; <span style={{ color: "#001080" }}>endl</span>;
@@ -107,41 +124,71 @@ export default function HomePage() {
         </div>
 
         <div style={{
-          background: "linear-gradient(135deg, #f8f9fa, #e8e9ea)",
+          background: "var(--color-surface-soft)",
           borderRadius: "var(--rounded-xl, 16px)",
-          padding: "40px 32px",
+          padding: "32px",
           border: "1px solid var(--color-hairline)",
-          animation: "borderBreathe 3s ease-in-out infinite",
           display: "flex",
           flexDirection: "column",
-          gap: 28
         }}>
-          {[
-            { icon: <IconThunderbolt style={{ fontSize: 20 }} />, title: "智能评测", desc: "多语言支持，毫秒级判题" },
-            { icon: <IconRobot style={{ fontSize: 20 }} />, title: "AI 题解", desc: "智能算法引导，直观理解思路" },
-            { icon: <IconBook style={{ fontSize: 20 }} />, title: "学习社区", desc: "题单系统，系统化刷题路径" },
-          ].map((item) => (
-            <div key={item.title} style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: "var(--color-canvas)",
-                border: "1px solid var(--color-hairline)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                color: "var(--color-ink)",
-              }}>
-                {item.icon}
-              </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15, color: "var(--color-ink)", marginBottom: 2 }}>{item.title}</div>
-                <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.5 }}>{item.desc}</div>
-              </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
+            <IconNotification style={{ fontSize: 22, color: "var(--color-primary-6)" }} />
+            <Title heading={3} style={{ fontSize: 24, margin: 0 }}>公告栏</Title>
+          </div>
+          {announcements.length === 0 ? (
+            <div style={{ color: "var(--color-muted)", fontSize: 14, textAlign: "center", padding: "32px 0", flex: 1 }}>暂无公告</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+              {announcements.slice(0, 2).map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => navigate(`/announcements?id=${item.id}`)}
+                  style={{
+                    padding: "12px 16px",
+                    background: "var(--color-canvas)",
+                    borderRadius: 10,
+                    border: "1px solid var(--color-hairline)",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-primary-6)";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--color-hairline)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: "var(--color-ink)", display: "flex", alignItems: "center", gap: 6 }}>
+                      {item.isPinned && <span style={{ color: "var(--color-warning-6)" }}>📌</span>}
+                      {item.title}
+                    </div>
+                    <span style={{ fontSize: 12, color: "var(--color-muted)", flexShrink: 0 }}>
+                      {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.summary}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+          <div
+            onClick={() => navigate("/announcements")}
+            style={{
+              marginTop: 16,
+              textAlign: "center",
+              fontSize: 14,
+              color: "var(--color-primary-6)",
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            查看更多 →
+          </div>
         </div>
       </div>
     </div>

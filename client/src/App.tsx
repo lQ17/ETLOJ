@@ -7,6 +7,7 @@ import ProblemListPage from "./pages/problems";
 import ProblemDetailPage from "./pages/problems/detail";
 import ProblemListsPage from "./pages/lists";
 import ProblemListDetailPage from "./pages/lists/detail";
+import AnnouncementsPage from "./pages/announcements";
 import RankingPage from "./pages/ranking";
 import LoginPage from "./pages/login";
 import AdminPage from "./pages/admin";
@@ -56,6 +57,7 @@ function App() {
             <Route path="/lists/:id" element={<ProblemListDetailPage />} />
             <Route path="/records" element={<RecordsPage />} />
             <Route path="/ranking" element={<RankingPage />} />
+            <Route path="/announcements" element={<AnnouncementsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/profile/:username" element={<ProfilePage />} />
             <Route path="/settings/*" element={<SettingsPage />} />

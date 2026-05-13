@@ -54,6 +54,7 @@ model User {
   tagRecords UserTagRecord[]
   problemLists ProblemList[]
   solutions  Solution[]
+  announcements Announcement[]
 
   @@map("users")
 }
@@ -231,5 +232,24 @@ model Solution {
   @@index([authorId])
   @@index([status])
   @@map("solutions")
+}
+
+model Announcement {
+  id        Int      @id @default(autoincrement())
+  title     String   @db.VarChar(200)
+  summary   String   @db.VarChar(500)
+  content   String   @db.LongText
+  isPinned  Boolean  @default(false) @map("is_pinned")
+  status    String   @default("DRAFT") @db.VarChar(20)
+  authorId  Int      @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([status])
+  @@index([isPinned])
+  @@map("announcements")
 }
 

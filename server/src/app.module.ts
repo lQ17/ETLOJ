@@ -9,6 +9,7 @@ import { RankingModule } from "./ranking/ranking.module";
 import { ProblemListModule } from "./problem-list/problem-list.module";
 import { TagModule } from "./tag/tag.module";
 import { SolutionModule } from "./solution/solution.module";
+import { AnnouncementModule } from "./announcement/announcement.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SolutionModule } from "./solution/solution.module";
     ProblemListModule,
     TagModule,
     SolutionModule,
+    AnnouncementModule,
   ],
 })
 export class AppModule {}

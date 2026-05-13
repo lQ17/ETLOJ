@@ -53,7 +53,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 ### Backend Patterns (NestJS)
 
-- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule, ProblemListModule, TagModule, SolutionModule — each with controller, service, dto/
+- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule, ProblemListModule, TagModule, SolutionModule, AnnouncementModule — each with controller, service, dto/
 - **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only
 - **PrismaModule** is `@Global()` — inject `PrismaService` anywhere without importing
 - **Auth**: JWT + Passport (`jwt.strategy.ts`), `JwtAuthGuard`, `RolesGuard` + `@Roles()` decorator, `@CurrentUser()` param decorator
@@ -70,7 +70,8 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Submission status batch query**: `GET /submissions/status?problemIds=1,2,3` — JWT required, returns `Record<number, 'AC' | 'ATTEMPTED'>` for the current user; used by problem list and problem-list detail pages to show per-problem status icons
 - **Submission rate limiting**: Frontend sliding window — max 3 submissions per 60s per user (client-side `useRef<number[]>` timestamp array)
 - **Optional JWT**: 需要同时支持已登录和未登录访问的端点（如题单详情、题库列表），使用 `OptionalJwtGuard`（`auth/optional-jwt.guard.ts`），有 token 解析用户，无 token 放行
-- **Admin page**: Unified `/admin` route with Tabs (problems / lists / solutions / users); users tab visible to ADMIN only; teachers see problems + lists + solutions; solutions tab has sub-tabs: 待审核 + 题解列表
+- **Announcement module**: `GET /announcements`（公开，PUBLISHED，置顶优先）、`GET /announcements/:id`（公开详情）、`GET /announcements/admin/all`（ADMIN，含草稿分页）、`GET /announcements/admin/:id`（ADMIN，任意状态详情）、`POST /announcements`（ADMIN）、`PATCH/DELETE /announcements/:id`（ADMIN）— 公告系统：首页公告栏显示 2 条 + "查看更多"跳转列表页；列表页左侧列表 + 右侧 Markdown/LaTeX 详情，默认选中置顶公告；后台"公告管理"Tab 仅 ADMIN 可见，使用 MDEditor 编辑（与题目创建页相同），支持置顶 + 草稿/已发布状态
+- **Admin page**: Unified `/admin` route with Tabs (problems / lists / solutions / announcements / users); users + announcements tabs visible to ADMIN only; teachers see problems + lists + solutions; solutions tab has sub-tabs: 待审核 + 题解列表
 - **Raw SQL pitfalls**: MySQL `COUNT(*)`/`SUM()` via `$queryRawUnsafe` returns BigInt (must `Number()`); LongText fields return Buffer (must `.toString()`). Avatar in DB already contains `data:image/...;base64,` prefix — frontend should use `src={avatar}` directly, not re-prepend
 
 ### Frontend Patterns
@@ -97,6 +98,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Problem import/export**: zip format — `{slug}/problem.json` + `{slug}/problem.md` + `{slug}/testcases/`, uses `adm-zip` library
 - **Problem lists**: `problem_lists` + `problem_list_items` tables — 题单支持公共（isPublic=true, ADMIN/TEACHER 管理）和个人（isPublic=false, 用户自管），中间表带 `sort_order` 排序
 - **Solutions**: `solutions` table — 题解内容存 `content`（LongText），关联 `problemId` + `authorId`，每人可对同一题写多篇题解；含 `status`（PENDING/APPROVED/REJECTED）和 `rejectReason` 审核字段
+- **Announcements**: `announcements` table — 公告标题 `title`（VarChar 200）、摘要 `summary`（VarChar 500）、详情 `content`（LongText，Markdown）、`isPinned`（Boolean）、`status`（DRAFT/PUBLISHED）、关联 `authorId`；排序逻辑：置顶优先 + 时间倒序
 - **Prisma version**: Pinned to v5 (v7 has breaking changes) — do NOT upgrade
 
 ### Key Enums

@@ -3,6 +3,7 @@ import AdminProblemsPage from "./problems";
 import AdminListsPage from "./lists";
 import AdminUsersPage from "./users";
 import AdminSolutionsPage from "./solutions";
+import AdminAnnouncementsPage from "./announcements";
 import { useAuthStore } from "../../stores/auth";
 
 export default function AdminPage() {
@@ -22,6 +23,11 @@ export default function AdminPage() {
         <Tabs.TabPane key="solutions" title="题解管理">
           <AdminSolutionsPage />
         </Tabs.TabPane>
+        {isAdmin && (
+          <Tabs.TabPane key="announcements" title="公告管理">
+            <AdminAnnouncementsPage />
+          </Tabs.TabPane>
+        )}
         {isAdmin && (
           <Tabs.TabPane key="users" title="用户管理">
             <AdminUsersPage />
