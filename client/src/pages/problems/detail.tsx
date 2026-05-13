@@ -139,6 +139,11 @@ export default function ProblemDetailPage() {
   const [editorTheme, setEditorTheme] = useState(() => {
     return localStorage.getItem("oj_editor_theme") || "vs";
   });
+  const [codeCompletion, setCodeCompletion] = useState(() => {
+    return localStorage.getItem("oj_editor_codeCompletion") === "true";
+  });
+  const editorRef = useRef<any>(null);
+  const [codeCollapsed, setCodeCollapsed] = useState(false);
 
   // 二级导航
   const [activeTab, setActiveTab] = useState<"detail" | "solutions" | "ai">(() => {
@@ -162,6 +167,12 @@ export default function ProblemDetailPage() {
         const p: any = await problemApi.getOne(id);
         setProblem(p);
         setMarkdown(p.markdown || "");
+        // 恢复浏览器本地保存的代码
+        const uid = user?.id || "anon";
+        const saved = localStorage.getItem(`oj_code_${p.id}_${uid}`);
+        if (saved != null) {
+          setCode(saved);
+        }
       } catch {
         Message.error("加载题目失败");
       }
@@ -330,6 +341,14 @@ export default function ProblemDetailPage() {
     };
   }, []);
 
+  // 提交通过后删除浏览器本地保存的代码
+  useEffect(() => {
+    if (result?.status === "AC" && problem) {
+      const uid = user?.id || "anon";
+      localStorage.removeItem(`oj_code_${problem.id}_${uid}`);
+    }
+  }, [result?.status]);
+
   if (!problem) {
     return <div style={{ textAlign: "center", paddingTop: 80 }}><Spin /></div>;
   }
@@ -384,7 +403,22 @@ export default function ProblemDetailPage() {
         {activeTab === "detail" && (
           <div style={{ display: "flex", gap: 24, width: "100%" }}>
             {/* 左侧：题面 */}
-            <div style={{ flex: "0 0 50%", overflow: "auto", paddingRight: 8 }}>
+            <div style={{
+              flex: codeCollapsed ? 1 : "0 0 50%",
+              overflow: "auto",
+              paddingRight: 8,
+              transition: "flex 0.3s ease",
+            }}>
+              {codeCollapsed && (
+                <Button
+                  type="outline"
+                  size="mini"
+                  onClick={() => setCodeCollapsed(false)}
+                  style={{ position: "sticky", top: 0, float: "right", zIndex: 1, marginBottom: 8 }}
+                >
+                  打开IDE
+                </Button>
+              )}
               {markdownBefore && (
                 <div className="problem-markdown" style={{ fontSize: 16 }}>
                   <ReactMarkdown
@@ -420,7 +454,7 @@ export default function ProblemDetailPage() {
               {/* 样例横排展示 */}
               {samples.length > 0 && (
                 <div style={{ marginTop: 24 }} className="problem-markdown">
-                  <h2 style={{ marginTop: 0, marginBottom: 16 }}>样例</h2>
+                  <h2 style={{ marginTop: 0, marginBottom: 16 }}>输入输出样例</h2>
                   {samples.map((s, i) => (
                     <div
                       key={i}
@@ -486,7 +520,16 @@ export default function ProblemDetailPage() {
             </div>
 
             {/* 右侧：代码编辑器 + 测试区 */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <div style={{
+              flex: codeCollapsed ? "0 0 0px" : 1,
+              display: "flex",
+              flexDirection: "column",
+              minWidth: 0,
+              overflow: "hidden",
+              opacity: codeCollapsed ? 0 : 1,
+              pointerEvents: codeCollapsed ? "none" : "auto",
+              transition: "flex 0.3s ease, opacity 0.3s ease",
+            }}>
               <Card size="small" style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <Select value={language} onChange={handleLanguageChange} style={{ width: 120 }}>
@@ -513,7 +556,14 @@ export default function ProblemDetailPage() {
                       )}
                     </Space>
                   )}
-                  <div style={{ marginLeft: "auto" }}>
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Button
+                      type="text"
+                      size="mini"
+                      onClick={() => setCodeCollapsed(true)}
+                    >
+                      收起IDE
+                    </Button>
                     <Popover
                       trigger="click"
                       position="br"
@@ -545,7 +595,7 @@ export default function ProblemDetailPage() {
                               ))}
                             </Select>
                           </div>
-                          <div>
+                          <div style={{ marginBottom: 12 }}>
                             <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>编辑器主题</div>
                             <Radio.Group
                               value={editorTheme}
@@ -555,6 +605,17 @@ export default function ProblemDetailPage() {
                               <Radio value="vs">亮色</Radio>
                               <Radio value="vs-dark">暗色</Radio>
                               <Radio value="hc-black">跟随网站</Radio>
+                            </Radio.Group>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>代码补全</div>
+                            <Radio.Group
+                              value={codeCompletion}
+                              onChange={(v) => { setCodeCompletion(v); localStorage.setItem("oj_editor_codeCompletion", String(v)); }}
+                              size="small"
+                            >
+                              <Radio value={false}>关闭</Radio>
+                              <Radio value={true}>开启</Radio>
                             </Radio.Group>
                           </div>
                         </div>
@@ -574,15 +635,28 @@ export default function ProblemDetailPage() {
                   value={code}
                   onChange={(v) => setCode(v || "")}
                   theme={editorTheme}
+                  onMount={(editor, monaco) => {
+                    editorRef.current = editor;
+                    // Ctrl+S 保存代码到本地
+                    editor.addCommand(
+                      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+                      () => {
+                        if (!problem) return;
+                        const uid = user?.id || "anon";
+                        localStorage.setItem(`oj_code_${problem.id}_${uid}`, editor.getValue());
+                        Message.success("代码已保存到浏览器本地");
+                      },
+                    );
+                  }}
                   options={{
                     fontSize: editorFontSize,
                     minimap: { enabled: false },
                     scrollBeyondLastLine: false,
                     automaticLayout: true,
                     tabSize: editorTabSize,
-                    quickSuggestions: false,
-                    suggestOnTriggerCharacters: false,
-                    wordBasedSuggestions: false,
+                    quickSuggestions: codeCompletion,
+                    suggestOnTriggerCharacters: codeCompletion,
+                    wordBasedSuggestions: codeCompletion,
                   }}
                 />
               </div>
