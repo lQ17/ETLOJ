@@ -17,6 +17,7 @@ import { problemApi } from "../../api/problem";
 import { submissionApi } from "../../api/submission";
 import { solutionApi } from "../../api/solution";
 import { useAuthStore } from "../../stores/auth";
+import confetti from "canvas-confetti";
 
 const langMap: Record<string, string> = {
   c: "c",
@@ -348,6 +349,28 @@ export default function ProblemDetailPage() {
       localStorage.removeItem(`oj_code_${problem.id}_${uid}`);
     }
   }, [result?.status]);
+
+  // 满分通过时播放五彩纸屑特效
+  useEffect(() => {
+    if (result?.status === "AC" && result?.score === 100) {
+      // 基于 1080p (1920px) 的比例缩放，适配任意分辨率
+      const scale = window.innerWidth / 1536;
+      const count = Math.round(100 * scale);
+      const spread = Math.round(55 * scale);
+      confetti({
+        particleCount: count,
+        angle: 60,
+        spread,
+        origin: { x: 0, y: 0.6 },
+      });
+      confetti({
+        particleCount: count,
+        angle: 120,
+        spread,
+        origin: { x: 1, y: 0.6 },
+      });
+    }
+  }, [result?.score, result?.status]);
 
   if (!problem) {
     return <div style={{ textAlign: "center", paddingTop: 80 }}><Spin /></div>;
