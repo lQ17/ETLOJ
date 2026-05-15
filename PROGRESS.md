@@ -129,5 +129,5 @@
 
 ### 工程优化
 - [ ] WebSocket 实时推送判题结果（替代轮询）
-- [ ] Docker 部署方案
+- [x] Docker 全容器化部署（server/client/judge 三个 Dockerfile + docker-compose 编排 6 服务 + Nginx 反向代理 + deploy.sh 一键部署脚本）
 - [ ] CI/CD 流水线

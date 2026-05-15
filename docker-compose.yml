@@ -1,39 +1,107 @@
 version: "3.8"
 
 services:
+  # ==================== 基础设施 ====================
+
   mysql:
     image: mysql:8.0
     container_name: etloj-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: etloj123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-etloj123}
       MYSQL_DATABASE: etloj
       MYSQL_CHARSET: utf8mb4
       MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: etloj-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   go-judge:
     image: criyle/go-judge:latest
     container_name: etloj-go-judge
     restart: unless-stopped
     ports:
-      - "5050:5050"
+      - "${GO_JUDGE_PORT:-5050}:5050"
     volumes:
       - judge_run:/run
     privileged: true
+
+  # ==================== 应用服务 ====================
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: etloj-server
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: "mysql://root:${MYSQL_ROOT_PASSWORD:-etloj123}@mysql:3306/etloj"
+      REDIS_URL: "redis://redis:6379"
+      JWT_SECRET: "${JWT_SECRET:-change-me-in-production}"
+      JUDGE_SECRET: "${JUDGE_SECRET:-change-me-in-production}"
+      GO_JUDGE_URL: "http://go-judge:5050"
+      PROBLEMS_DIR: "/data/problems"
+      PORT: 3000
+    volumes:
+      - ./data/problems:/data/problems
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  judge:
+    build:
+      context: ./judge
+      dockerfile: Dockerfile
+    container_name: etloj-judge
+    restart: unless-stopped
+    environment:
+      JUDGE_MODE: go-judge
+      REDIS_URL: "redis://redis:6379"
+      GO_JUDGE_URL: "http://go-judge:5050"
+      SERVER_URL: "http://server:3000"
+      JUDGE_SECRET: "${JUDGE_SECRET:-change-me-in-production}"
+    volumes:
+      - ./data/problems:/data/problems
+    depends_on:
+      - server
+      - redis
+      - go-judge
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: etloj-client
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT:-80}:80"
+    depends_on:
+      - server
 
 volumes:
   mysql_data:

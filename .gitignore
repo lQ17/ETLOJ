@@ -32,6 +32,7 @@ server/prisma/migrations/
 
 # Problem data (testcases, problem.md)
 /problems/
+/data/
 
 # Local manual (contains credentials)
 manual.md

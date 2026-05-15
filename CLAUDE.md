@@ -108,6 +108,38 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - `Difficulty`: EASY, MEDIUM, HARD
 - `ContestMode`: ACM, OI (schema only, no API yet)
 
+## Production Deployment (Docker)
+
+全容器化部署，`docker-compose.yml` 编排 6 个服务：
+
+```
+用户 → :80 client(Nginx) → /api → :3000 server(NestJS) → MySQL / Redis
+                                                ↑ judge(Node.js) ← Redis 队列 → :5050 go-judge 沙箱
+```
+
+- **server/Dockerfile** — 多阶段构建：prisma generate → nest build → 生产运行；启动时自动 `prisma db push`
+- **client/Dockerfile** — 多阶段构建：vite build → Nginx 托管静态文件
+- **judge/Dockerfile** — 多阶段构建：含 gcc/g++/java/python 编译器，`JUDGE_MODE=go-judge`
+- **nginx/default.conf** — 静态文件 + `/api` 反向代理到 server:3000 + WebSocket 预留
+- **数据持久化**：MySQL/Redis 使用 Docker named volume；题目数据使用 bind mount `./data/problems`
+- **题目不入 Git**：`/problems/` 和 `/data/` 均在 `.gitignore`，题目通过管理后台导入
+- **配置**：`.env.production` 为模板，部署时复制为 `.env` 并修改密码/密钥
+- **部署脚本**：`deploy.sh` — 支持首次克隆 + 后续更新（自动 git pull + 重建）
+
+### 部署步骤
+
+```bash
+git clone https://github.com/YangQX465/ETLOJ_Project.git /opt/etloj
+cd /opt/etloj
+cp .env.production .env
+vim .env                    # 修改 MYSQL_ROOT_PASSWORD / JWT_SECRET / JUDGE_SECRET
+chmod +x deploy.sh
+./deploy.sh
+
+# 后续更新
+cd /opt/etloj && ./deploy.sh
+```
+
 ## Important Constraints
 
 - **No public registration** — users created by admins only
