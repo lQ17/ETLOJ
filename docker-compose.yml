@@ -16,7 +16,18 @@ services:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: >-
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=128M
+      --innodb-log-buffer-size=8M
+      --max-connections=30
+      --table-definition-cache=400
+      --performance-schema=OFF
+    deploy:
+      resources:
+        limits:
+          memory: 400M
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -31,6 +42,11 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 96M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -46,6 +62,10 @@ services:
     volumes:
       - judge_run:/run
     privileged: true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   # ==================== 应用服务 ====================
 
@@ -65,8 +85,13 @@ services:
       GO_JUDGE_URL: "http://go-judge:5050"
       PROBLEMS_DIR: "/data/problems"
       PORT: 3000
+      NODE_OPTIONS: "--max-old-space-size=256"
     volumes:
       - ./data/problems:/data/problems
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       mysql:
         condition: service_healthy
@@ -87,6 +112,10 @@ services:
       JUDGE_SECRET: "${JUDGE_SECRET:-change-me-in-production}"
     volumes:
       - ./data/problems:/data/problems
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       - server
       - redis
@@ -100,6 +129,10 @@ services:
     restart: unless-stopped
     ports:
       - "${CLIENT_PORT:-80}:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
     depends_on:
       - server
 
