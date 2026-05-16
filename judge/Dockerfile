@@ -11,10 +11,6 @@ COPY src ./src/
 # ---- Production Stage ----
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ python3 openjdk-17-jdk-headless \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 COPY package*.json ./
