@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # ==================== 基础设施 ====================
 
@@ -54,9 +52,7 @@ services:
       retries: 5
 
   go-judge:
-    build:
-      context: ./go-judge
-      dockerfile: Dockerfile
+    image: 1900nap/etloj-go-judge:latest
     container_name: etloj-go-judge
     restart: unless-stopped
     ports:
@@ -72,9 +68,7 @@ services:
   # ==================== 应用服务 ====================
 
   server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    image: 1900nap/etloj-server:latest
     container_name: etloj-server
     restart: unless-stopped
     ports:
@@ -101,9 +95,7 @@ services:
         condition: service_healthy
 
   judge:
-    build:
-      context: ./judge
-      dockerfile: Dockerfile
+    image: 1900nap/etloj-judge:latest
     container_name: etloj-judge
     restart: unless-stopped
     environment:
@@ -124,9 +116,7 @@ services:
       - go-judge
 
   client:
-    build:
-      context: .
-      dockerfile: client/Dockerfile
+    image: 1900nap/etloj-client:latest
     container_name: etloj-client
     restart: unless-stopped
     ports:
