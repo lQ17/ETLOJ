@@ -129,7 +129,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 ### 部署步骤
 
 ```bash
-git clone https://github.com/YangQX465/ETLOJ_Project.git /opt/etloj
+git clone https://github.com/lQ17/ETLOJ.git /opt/etloj
 cd /opt/etloj
 cp .env.production .env
 vim .env                    # 修改 MYSQL_ROOT_PASSWORD / JWT_SECRET / JUDGE_SECRET

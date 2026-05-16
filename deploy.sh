@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_URL="https://github.com/YangQX465/ETLOJ_Project.git"
+REPO_URL="https://github.com/lQ17/ETLOJ.git"
 INSTALL_DIR="/opt/etloj"
 
 echo "=========================================="
@@ -66,8 +66,8 @@ echo "=========================================="
 echo "  部署完成！"
 echo "=========================================="
 echo ""
-echo "  前端: http://127.0.0.1"
-echo "  API:  http://127.0.0.1/api"
+echo "  前端: http://150.158.39.151"
+echo "  API:  http://150.158.39.151/api"
 echo ""
 echo "  查看日志:   docker compose logs -f"
 echo "  更新部署:   cd $INSTALL_DIR && ./deploy.sh"
