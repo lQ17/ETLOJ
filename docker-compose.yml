@@ -54,7 +54,9 @@ services:
       retries: 5
 
   go-judge:
-    image: criyle/go-judge:latest
+    build:
+      context: ./go-judge
+      dockerfile: Dockerfile
     container_name: etloj-go-judge
     restart: unless-stopped
     ports:
@@ -65,7 +67,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
 
   # ==================== 应用服务 ====================
 
