@@ -1,75 +1,154 @@
 #!/bin/bash
 set -e
 
-REPO_URL="https://github.com/lQ17/ETLOJ.git"
 INSTALL_DIR="/opt/etloj"
+REPO_URL="https://github.com/lQ17/ETLOJ.git"
 
 echo "=========================================="
-echo "  ETLOJ 部署脚本"
+echo "  ETLOJ 裸机部署脚本"
 echo "=========================================="
 
-# ---- 首次部署：拉取代码 ----
-if [ ! -d ".git" ]; then
+# ---- 首次部署：克隆代码 ----
+if [ ! -d "$INSTALL_DIR/.git" ]; then
   echo ""
-  echo "[INFO] 当前目录不是 Git 仓库，正在克隆..."
+  echo "[INFO] 克隆项目..."
   git clone "$REPO_URL" "$INSTALL_DIR"
   cd "$INSTALL_DIR"
 fi
 
+cd "$INSTALL_DIR"
+
 # ---- 检查 .env ----
-if [ ! -f .env ]; then
+if [ ! -f server/.env ]; then
   echo ""
-  echo "[INFO] 未找到 .env，从模板创建..."
-  cp .env.production .env
-  echo ""
-  echo "[WARN] 请先编辑 .env 修改密码和密钥："
-  echo "       vim .env"
-  echo ""
-  echo "  修改后重新运行此脚本即可"
-  exit 1
+  echo "[INFO] 创建 server/.env..."
+  cat > server/.env << 'ENVEOF'
+DATABASE_URL=mysql://root:zhhaqTNjjQqwFnQ4j@127.0.0.1:3306/etloj
+REDIS_URL=redis://127.0.0.1:6379
+JWT_SECRET=9szdoPFyhEgzrQrVKrTFtT3xmzAnd
+JUDGE_SECRET=dLHxafmrNmwgdyBwpKtDO0qx7ZDbcSN
+GO_JUDGE_URL=http://127.0.0.1:5050
+PROBLEMS_DIR=/opt/etloj/data/problems
+PORT=3000
+ENVEOF
 fi
 
-# ---- 创建数据目录 ----
-mkdir -p ./data/problems
-
-# ---- 拉取最新代码（更新部署时） ----
-if [ -d ".git" ]; then
+if [ ! -f judge/.env ]; then
   echo ""
-  echo "[1/5] 拉取最新代码..."
-  git pull origin main
+  echo "[INFO] 创建 judge/.env..."
+  cat > judge/.env << 'ENVEOF'
+JUDGE_SECRET=dLHxafmrNmwgdyBwpKtDO0qx7ZDbcSN
+ENVEOF
 fi
 
-# ---- 构建镜像 ----
+# ---- 1. 安装系统依赖 ----
 echo ""
-echo "[2/5] 构建 Docker 镜像..."
-docker compose build --no-cache
+echo "[1/8] 安装系统依赖..."
+if ! command -v mysql &> /dev/null; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server redis-server nginx gcc g++ python3 curl wget
+fi
 
-# ---- 启动基础设施 ----
+# ---- 2. 安装 Node.js 20 ----
 echo ""
-echo "[3/5] 启动基础设施..."
-docker compose up -d mysql redis go-judge
-echo "等待 MySQL 就绪..."
-sleep 15
+echo "[2/8] 检查 Node.js..."
+if ! command -v node &> /dev/null || [ "$(node -v | cut -d. -f1)" != "v20" ] && [ "$(node -v | cut -d. -f1)" != "v22" ]; then
+  echo "安装 Node.js 20..."
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  apt-get install -y nodejs
+fi
+echo "  Node: $(node -v)  npm: $(npm -v)"
 
-# ---- 启动全部服务 ----
+# ---- 3. 配置 MySQL ----
 echo ""
-echo "[4/5] 启动应用服务..."
-docker compose up -d
+echo "[3/8] 配置 MySQL..."
+if ! mysql -u root -e "USE etloj;" &>/dev/null; then
+  # 设置 root 密码（如果还没有）
+  mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'zhhaqTNjjQqwFnQ4j'; FLUSH PRIVILEGES;" 2>/dev/null || true
+  mysql -u root -pzhhaqTNjjQqwFnQ4j -e "CREATE DATABASE IF NOT EXISTS etloj CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || true
+fi
+echo "  MySQL OK"
 
-# ---- 初始化数据库 ----
+# ---- 4. 下载 go-judge ----
 echo ""
-echo "[5/5] 初始化数据库..."
-docker compose exec -T server npx prisma db push --skip-generate --accept-data-loss 2>/dev/null || true
+echo "[4/8] 检查 go-judge..."
+if [ ! -f /usr/local/bin/go-judge ]; then
+  GOJUDGE_VER=$(curl -sL https://api.github.com/repos/criyle/go-judge/releases/latest | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+  echo "  下载 go-judge $GOJUDGE_VER..."
+  wget -q "https://github.com/criyle/go-judge/releases/download/${GOJUDGE_VER}/go-judge_${GOJUDGE_VER#v}_linux_amd64.tar.gz" -O /tmp/go-judge.tar.gz
+  tar -xzf /tmp/go-judge.tar.gz -C /tmp/
+  mv /tmp/go-judge /usr/local/bin/go-judge
+  chmod +x /usr/local/bin/go-judge
+  rm -f /tmp/go-judge.tar.gz
+fi
+echo "  go-judge OK"
+
+# ---- 5. 拉取最新代码 ----
+echo ""
+echo "[5/8] 拉取最新代码..."
+git checkout -- .
+git pull origin main
+
+# ---- 6. 构建后端 ----
+echo ""
+echo "[6/8] 构建后端..."
+cd "$INSTALL_DIR/server"
+npm ci
+npx prisma generate
+npm run build
+npx prisma db push --skip-generate --accept-data-loss 2>/dev/null || true
+
+# ---- 7. 构建前端 ----
+echo ""
+echo "[7/8] 构建前端..."
+cd "$INSTALL_DIR/client"
+npm ci --legacy-peer-deps
+npm run build
+mkdir -p /var/www/etloj
+cp -r dist/* /var/www/etloj/
+
+# ---- 8. 配置服务 ----
+echo ""
+echo "[8/8] 配置服务..."
+
+# Nginx
+cp "$INSTALL_DIR/nginx/default.conf" /etc/nginx/sites-available/etloj
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/etloj /etc/nginx/sites-enabled/etloj
+nginx -t && systemctl restart nginx
+
+# Systemd services
+cp "$INSTALL_DIR"/deploy/etloj-*.service /etc/systemd/system/
+systemctl daemon-reload
+
+# 创建数据目录
+mkdir -p "$INSTALL_DIR/data/problems"
+
+# 启动服务
+systemctl enable etloj-go-judge etloj-server etloj-judge
+systemctl restart etloj-go-judge
+sleep 2
+systemctl restart etloj-server
+sleep 2
+systemctl restart etloj-judge
+
+# 创建管理员
+sleep 3
+cd "$INSTALL_DIR/server"
+node dist/seed.js 2>/dev/null || echo "管理员可能已存在"
 
 echo ""
 echo "=========================================="
 echo "  部署完成！"
 echo "=========================================="
 echo ""
-echo "  前端: http://150.158.39.151"
-echo "  API:  http://150.158.39.151/api"
+echo "  前端: http://$(hostname -I | awk '{print $1}')"
+echo "  API:  http://$(hostname -I | awk '{print $1}')/api"
 echo ""
-echo "  查看日志:   docker compose logs -f"
-echo "  更新部署:   cd $INSTALL_DIR && ./deploy.sh"
-echo "  停止服务:   docker compose down"
+echo "  查看日志:"
+echo "    journalctl -u etloj-server -f"
+echo "    journalctl -u etloj-judge -f"
+echo "    journalctl -u etloj-go-judge -f"
+echo ""
+echo "  更新部署: cd $INSTALL_DIR && ./deploy.sh"
 echo "=========================================="

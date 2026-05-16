@@ -1,0 +1,19 @@
+[Unit]
+Description=ETLOJ Judge Service
+After=network.target redis.service etloj-server.service etloj-go-judge.service
+Wants=redis.service etloj-go-judge.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/etloj/judge
+Environment=JUDGE_MODE=go-judge
+Environment=REDIS_URL=redis://127.0.0.1:6379
+Environment=GO_JUDGE_URL=http://127.0.0.1:5050
+Environment=SERVER_URL=http://127.0.0.1:3000
+EnvironmentFile=/opt/etloj/judge/.env
+ExecStart=/usr/bin/npx tsx src/index.ts
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=ETLOJ Server (NestJS)
+After=network.target mysql.service redis.service
+Wants=mysql.service redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/etloj/server
+EnvironmentFile=/opt/etloj/server/.env
+ExecStart=/usr/bin/node dist/main
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

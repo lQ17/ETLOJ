@@ -1,0 +1,13 @@
+[Unit]
+Description=ETLOJ go-judge Sandbox
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/go-judge -http-addr 0.0.0.0:5050 -dir /tmp/go-judge -silent
+Restart=on-failure
+RestartSec=5
+LimitNPROC=infinity
+
+[Install]
+WantedBy=multi-user.target
