@@ -7,7 +7,7 @@ COPY client/package*.json ./
 RUN npm ci --legacy-peer-deps
 
 COPY client/ .
-RUN npm run build
+RUN npx vite build
 
 # ---- Production Stage ----
 FROM nginx:alpine
