@@ -4,7 +4,7 @@ FROM node:18-slim AS builder
 WORKDIR /app
 
 COPY client/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY client/ .
 RUN npm run build
