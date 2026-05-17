@@ -44,9 +44,9 @@ fi
 # ---- 1. 安装系统依赖 ----
 echo ""
 echo "[1/8] 安装系统依赖..."
-if ! command -v mysql &> /dev/null; then
+if ! command -v mysql &> /dev/null && ! command -v mariadb &> /dev/null; then
   apt-get update
-  DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server redis-server nginx gcc g++ python3 curl wget
+  DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server redis-server nginx gcc g++ python3 curl wget
 fi
 
 # ---- 2. 安装 Node.js 20 ----
@@ -63,9 +63,9 @@ echo "  Node: $(node -v)  npm: $(npm -v)"
 echo ""
 echo "[3/8] 配置 MySQL..."
 if ! mysql -u root -e "USE etloj;" &>/dev/null; then
-  # 设置 root 密码（如果还没有）
-  mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'zhhaqTNjjQqwFnQ4j'; FLUSH PRIVILEGES;" 2>/dev/null || true
-  mysql -u root -pzhhaqTNjjQqwFnQ4j -e "CREATE DATABASE IF NOT EXISTS etloj CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || true
+  # MariaDB: root 用 socket 认证，先创建数据库，再设置密码
+  mysql -u root -e "CREATE DATABASE IF NOT EXISTS etloj CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'zhhaqTNjjQqwFnQ4j'; FLUSH PRIVILEGES;" 2>/dev/null || true
 fi
 echo "  MySQL OK"
 
