@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Layout, Spin } from "@arco-design/web-react";
 import AppHeader from "./components/AppHeader";
+import AppFooter from "./components/AppFooter";
+import ScrollToTop from "./components/ScrollToTop";
 import HomePage from "./pages/home";
 import ProblemListPage from "./pages/problems";
 import ProblemDetailPage from "./pages/problems/detail";
@@ -38,12 +40,13 @@ function App() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
+      <ScrollToTop />
       <AppHeader />
       <Content
         style={{
           maxWidth: isDetailPage ? "100%" : 1200,
           margin: "0 auto",
-          padding: isDetailPage ? "24px 32px" : "48px 32px",
+          padding: isDetailPage ? "24px 32px" : "96px 32px",
           width: "100%",
         }}
       >
@@ -64,6 +67,7 @@ function App() {
           </Routes>
         </div>
       </Content>
+      <AppFooter />
     </Layout>
   );
 }

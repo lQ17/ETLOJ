@@ -50,7 +50,6 @@ export default function AppHeader() {
     <Header
       style={{
         background: "var(--color-canvas)",
-        borderBottom: "1px solid var(--color-hairline)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",

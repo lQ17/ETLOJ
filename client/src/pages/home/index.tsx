@@ -85,13 +85,13 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ padding: "64px 0" }}>
+    <div style={{ padding: "96px 0" }}>
       <div style={{
         display: "grid",
         gridTemplateColumns: "1.2fr 0.8fr",
         gap: "48px",
         alignItems: "center",
-        marginBottom: 64
+        marginBottom: 96
       }}>
         <div>
           <Title heading={1} style={{ fontSize: 56, lineHeight: 1.1, marginBottom: 24 }}>
@@ -101,10 +101,10 @@ export default function HomePage() {
             ETLOJ 专注于 <strong>Easy To Learn</strong> 体验。通过 AI 智能引导解题与沉浸式算法可视化，打破枯燥的刷题模式，带你直观领悟算法精髓。
           </Paragraph>
           <Space size="large">
-            <Button type="primary" size="large" style={{ padding: "0 24px", height: 48, fontSize: 16 }} onClick={() => navigate("/problems")}>
+            <Button type="primary" style={{ padding: "0 20px", height: 40, fontSize: 14, borderRadius: 8 }} onClick={() => navigate("/problems")}>
               开始刷题
             </Button>
-            <Button size="large" style={{ padding: "0 24px", height: 48, fontSize: 16 }} onClick={() => navigate("/ranking")}>
+            <Button style={{ padding: "0 20px", height: 40, fontSize: 14, borderRadius: 8 }} onClick={() => navigate("/ranking")}>
               查看排名 <IconArrowRight style={{ marginLeft: 8 }} />
             </Button>
           </Space>
@@ -153,11 +153,11 @@ export default function HomePage() {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "32px",
-        marginBottom: 64
+        marginBottom: 96
       }}>
         <div style={{
           background: "var(--color-surface-soft)",
-          borderRadius: "var(--rounded-xl, 16px)",
+          borderRadius: "var(--rounded-lg, 12px)",
           padding: "48px 32px",
           border: "1px solid var(--color-hairline)"
         }}>
@@ -183,7 +183,7 @@ export default function HomePage() {
 
         <div style={{
           background: "var(--color-surface-soft)",
-          borderRadius: "var(--rounded-xl, 16px)",
+          borderRadius: "var(--rounded-lg, 12px)",
           padding: "32px",
           border: "1px solid var(--color-hairline)",
           display: "flex",
@@ -207,15 +207,7 @@ export default function HomePage() {
                     borderRadius: 10,
                     border: "1px solid var(--color-hairline)",
                     cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-primary-6)";
-                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--color-hairline)";
-                    e.currentTarget.style.boxShadow = "none";
+                    transition: "border-color 0.2s",
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>

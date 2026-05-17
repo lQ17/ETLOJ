@@ -79,12 +79,9 @@ h1, h2, h3, h4, h5, h6,
   box-shadow: none !important;
   transition: transform 0.2s, box-shadow 0.2s !important;
 }
-.arco-input-inner-wrapper {
-  background-color: var(--color-surface-soft) !important;
-}
-.arco-card-hoverable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.04) !important;
+
+.arco-card-hoverable {
+  transition: transform 0.2s, box-shadow 0.2s !important;
 }
 .arco-btn {
   font-weight: 600 !important;
@@ -311,4 +308,81 @@ h1, h2, h3, h4, h5, h6,
     rgba(245, 158, 11, 0.2) 50%,
     rgba(245, 158, 11, 0) 100%
   ) !important;
+}
+
+/* Footer Styles */
+.footer {
+  background: var(--color-surface-dark);
+  color: var(--color-on-dark-soft);
+  padding: 80px 0 48px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 48px;
+  margin-bottom: 48px;
+}
+@media (max-width: 1024px) {
+  .footer-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .footer-grid { grid-template-columns: 1fr; }
+}
+.footer-col h4 {
+  color: var(--color-on-dark) !important;
+  font-size: 14px;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.footer-links {
+  list-style: none;
+}
+.footer-links li {
+  margin-bottom: 12px;
+}
+.footer-links a {
+  color: var(--color-on-dark-soft);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+.footer-links a:hover {
+  color: var(--color-on-dark);
+}
+.footer-bottom {
+  border-top: 1px solid #222;
+  padding-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+/* Nav Pill Group Styles */
+.nav-pill-group {
+  background: var(--color-surface-soft);
+  padding: 6px;
+  border-radius: var(--rounded-pill);
+  display: inline-flex;
+  gap: 4px;
+}
+.nav-pill {
+  padding: 8px 16px;
+  border-radius: var(--rounded-pill);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--color-muted);
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+.nav-pill:hover {
+  color: var(--color-ink);
+}
+.nav-pill.active {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
