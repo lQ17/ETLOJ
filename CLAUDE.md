@@ -149,6 +149,14 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **cgroup pids.max 问题**：go-judge 启动时会自动创建 systemd transient scope `gojudge.scope`，其 `pids.max` 默认继承 systemd 的 2259，会导致容器内 fork 子进程被拒绝（g++ 编译 cc1plus 等子进程超限）。`etloj-go-judge.service` 已配置 `ExecStartPost` 在启动后自动将 `pids.max` 设为 999999
 - **不要覆盖**：部署更新时不要用 `deploy.sh` 中的旧版 go-judge 二进制替换服务器的 v1.9.0
 
+### 部署注意事项（踩坑记录）
+
+- **Nginx 上传限制**：`client_max_body_size` 必须 ≥ Multer 的 `fileSize` 限制（当前 100m）。默认 5m 会导致上传 zip 超过 5MB 时 `ERR_CONNECTION_RESET`。同时 `proxy_read_timeout` 需设为 300s，避免大量题目导入超时
+- **部署必须同时构建 client 和 server**：tar 打包排除了 `dist/`，部署后需 `npm run build` 两端。只构建 client 会导致 server 启动失败（找不到编译产物）
+- **MariaDB 密码恢复**：若 root 密码丢失，用 `mysqld_safe --skip-grant-tables` 启动后，必须先 `FLUSH PRIVILEGES` 再 `ALTER USER`，否则报 `ERROR 1290`。启动前确保旧进程已完全退出（`killall -9 mysqld mariadbd`），否则 `ibdata1` 文件锁会导致 InnoDB 启动失败
+- **tar 排除路径**：`--exclude='./problems/'` 只排除项目根目录的 problems，不会误伤 `client/src/pages/admin/problems/`。不要用 `--exclude='problems'`（会匹配所有包含 "problems" 的路径）
+- **tar 必须排除所有 .env**：`--exclude='./.env'` 只排除根目录 `.env`，不会排除 `server/.env`。tar 解压会覆盖服务器的 .env（含数据库密码、PROBLEMS_DIR 等生产配置），导致服务崩溃。打包时必须加 `--exclude='*.env'` 排除所有 .env 文件
+
 ## Important Constraints
 
 - **No public registration** — users created by admins only
