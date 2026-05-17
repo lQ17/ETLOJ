@@ -108,37 +108,30 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - `Difficulty`: EASY, MEDIUM, HARD
 - `ContestMode`: ACM, OI (schema only, no API yet)
 
-## Production Deployment (Docker)
+## Production Deployment (Bare Metal)
 
-全容器化部署，`docker-compose.yml` 编排 6 个服务：
+裸机部署在云服务器（2C2G，Debian 12），systemd 管理服务，无 Docker。
 
 ```
-用户 → :80 client(Nginx) → /api → :3000 server(NestJS) → MySQL / Redis
-                                                ↑ judge(Node.js) ← Redis 队列 → :5050 go-judge 沙箱
+用户 → :80 Nginx → /var/www/etloj (前端静态文件)
+                 → /api → :3000 server(NestJS) → MariaDB / Redis
+                                         ↑ judge(Node.js) ← Redis 队列 → :5050 go-judge 沙箱
 ```
 
-- **server/Dockerfile** — 多阶段构建：prisma generate → nest build → 生产运行；启动时自动 `prisma db push`
-- **client/Dockerfile** — 多阶段构建：vite build → Nginx 托管静态文件
-- **judge/Dockerfile** — 多阶段构建：含 gcc/g++/java/python 编译器，`JUDGE_MODE=go-judge`
-- **nginx/default.conf** — 静态文件 + `/api` 反向代理到 server:3000 + WebSocket 预留
-- **数据持久化**：MySQL/Redis 使用 Docker named volume；题目数据使用 bind mount `./data/problems`
+- **服务器**：150.158.39.151（root，SSH 免密已配）
+- **系统依赖**：mariadb-server, redis-server, nginx, nodejs 20, gcc, g++, python3, go-judge
+- **systemd 服务**：
+  - `etloj-server.service` — NestJS 后端，WorkingDirectory=/opt/etloj/server，ExecStart=node dist/src/main.js
+  - `etloj-judge.service` — 判题服务，WorkingDirectory=/opt/etloj/judge，ExecStart=npx tsx src/index.ts
+  - `etloj-go-judge.service` — 沙箱，ExecStart=/usr/local/bin/go-judge
+- **Nginx**：`/etc/nginx/sites-available/etloj` — 前端 `root /var/www/etloj` + `/api/` 反向代理 `127.0.0.1:3000`
+- **前端部署**：`client/dist/` 复制到 `/var/www/etloj/`
+- **数据目录**：`/opt/etloj/data/problems`（题目测试数据）
+- **环境变量**：`server/.env`（DATABASE_URL, REDIS_URL, JWT_SECRET, JUDGE_SECRET 等）
 - **题目不入 Git**：`/problems/` 和 `/data/` 均在 `.gitignore`，题目通过管理后台导入
-- **配置**：`.env.production` 为模板，部署时复制为 `.env` 并修改密码/密钥
-- **部署脚本**：`deploy.sh` — 支持首次克隆 + 后续更新（自动 git pull + 重建）
-
-### 部署步骤
-
-```bash
-git clone https://github.com/lQ17/ETLOJ.git /opt/etloj
-cd /opt/etloj
-cp .env.production .env
-vim .env                    # 修改 MYSQL_ROOT_PASSWORD / JWT_SECRET / JUDGE_SECRET
-chmod +x deploy.sh
-./deploy.sh
-
-# 后续更新
-cd /opt/etloj && ./deploy.sh
-```
+- **部署脚本**：`deploy.sh` — 首次安装 + 后续更新（详见 `manual.md`）
+- **服务文件**：`deploy/etloj-*.service` — 部署时复制到 `/etc/systemd/system/`
+- **注意**：服务器无法直连 GitHub，git pull 需代理或手动 scp；go-judge 二进制需从本机下载后 scp 上传
 
 ## Important Constraints
 

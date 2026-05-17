@@ -7,7 +7,7 @@ Wants=mysql.service redis.service
 Type=simple
 WorkingDirectory=/opt/etloj/server
 EnvironmentFile=/opt/etloj/server/.env
-ExecStart=/usr/bin/node dist/main
+ExecStart=/usr/bin/node dist/src/main.js
 Restart=on-failure
 RestartSec=5
 
