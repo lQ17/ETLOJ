@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  Tabs, Table, Tag, Button, Space, Modal, Input, Message, Typography, Popconfirm,
+  Table, Tag, Button, Space, Input, Message, Typography, Popconfirm,
   Switch, Radio, Select,
 } from "@arco-design/web-react";
 import { IconPlus, IconLeft } from "@arco-design/web-react/icon";

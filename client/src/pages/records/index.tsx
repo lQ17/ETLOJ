@@ -126,7 +126,7 @@ export default function RecordsPage() {
     return record.user?.id === user.id || user.role === "TEACHER" || user.role === "ADMIN";
   };
 
-  const columns = [
+  const columns: any[] = [
     {
       title: "用户名", dataIndex: ["user", "username"], width: 100,
     },
@@ -282,7 +282,7 @@ export default function RecordsPage() {
           showTotal: true,
           showJumper: true,
           sizeCanChange: true,
-          pageSizeOptions: [10, 20, 50],
+          sizeOptions: [10, 20, 50],
           onChange: (p, ps) => { setPage(p); setPageSize(ps); fetchData(p, ps); },
         }}
       />

@@ -372,7 +372,7 @@ function ManageUsersTab() {
           showTotal: true,
           showJumper: true,
           sizeCanChange: true,
-          pageSizeOptions: [10, 20, 50],
+          sizeOptions: [10, 20, 50],
           onChange: (p, ps) => { setPage(p); setPageSize(ps); fetchData(p, ps); },
         }}
       />

@@ -57,15 +57,15 @@ export default function SecuritySettings() {
             dependencies={['newPassword']}
             rules={[
               { required: true, message: '请再次输入新密码' },
-              ({ getFieldValue }) => ({
-                validator(value, cb) {
+              (({ getFieldValue }: any) => ({
+                validator(value: any, cb: any) {
                   if (!value || getFieldValue('newPassword') === value) {
                     cb();
                   } else {
                     cb('两次输入的密码不匹配');
                   }
                 },
-              }),
+              })) as any,
             ]}
           >
             <Input.Password placeholder="请再次输入新密码" />

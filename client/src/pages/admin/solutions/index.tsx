@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  Tabs, Table, Tag, Button, Space, Modal, Input, Message, Typography, Popconfirm, Select,
+  Tabs, Table, Tag, Button, Space, Modal, Input, Message, Typography, Popconfirm,
 } from "@arco-design/web-react";
 import { solutionApi } from "../../../api/solution";
 import ReactMarkdown from "react-markdown";

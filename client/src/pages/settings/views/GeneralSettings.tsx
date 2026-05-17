@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Typography, Form, Input, Button, Message, Avatar, Upload, Space, Divider, Grid } from "@arco-design/web-react";
+import { Typography, Form, Input, Button, Message, Avatar, Upload, Divider, Grid } from "@arco-design/web-react";
 import { IconCamera, IconUser } from "@arco-design/web-react/icon";
 import { useAuthStore } from "../../../stores/auth";
 import { userApi } from "../../../api/user";

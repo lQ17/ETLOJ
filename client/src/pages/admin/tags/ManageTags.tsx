@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Table, Button, Input, Space, Popconfirm, Message, Modal, Form, Tag, Typography,
+  Table, Button, Input, Space, Popconfirm, Message, Modal, Form, Tag,
 } from "@arco-design/web-react";
 import { tagApi } from "../../../api/tag";
 

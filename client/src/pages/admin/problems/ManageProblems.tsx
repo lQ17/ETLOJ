@@ -123,7 +123,7 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
     },
     {
       title: "操作",
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         <Space>
           <Button type="text" size="small" onClick={() => onEdit && onEdit(record.id)}>编辑</Button>
           <Popconfirm title="确认删除该题目及其所有提交记录？" onOk={() => handleDelete(record.id)}>

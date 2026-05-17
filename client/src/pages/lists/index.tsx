@@ -3,7 +3,7 @@ import {
   Tabs, Card, Input, Button, Grid, Pagination, Modal, Form, Message,
   Typography, Empty, Tag, Space, Popconfirm,
 } from "@arco-design/web-react";
-import { IconPlus, IconSearch, IconEdit, IconDelete } from "@arco-design/web-react/icon";
+import { IconPlus, IconEdit, IconDelete } from "@arco-design/web-react/icon";
 import { useNavigate } from "react-router-dom";
 import { problemListApi } from "../../api/problem-list";
 import { useAuthStore } from "../../stores/auth";
@@ -77,7 +77,7 @@ export default function ProblemListsPage() {
     setModalVisible(true);
   };
 
-  const handleEdit = (item: any, e: React.MouseEvent) => {
+  const handleEdit = (item: any, e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setEditingId(item.id);
     form.setFieldsValue({ title: item.title, description: item.description });
@@ -141,7 +141,7 @@ export default function ProblemListsPage() {
                       type="text"
                       size="mini"
                       icon={<IconEdit />}
-                      onClick={(e) => handleEdit(item, e)}
+                      onClick={(e: any) => handleEdit(item, e)}
                     />
                     <Popconfirm
                       title="确定删除此题单？"

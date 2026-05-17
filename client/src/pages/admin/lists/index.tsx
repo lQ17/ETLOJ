@@ -77,7 +77,7 @@ function ManageLists({ onEdit, onManageItems }: { onEdit: (id: number) => void; 
     }
   };
 
-  const columns = [
+  const columns: any[] = [
     { title: "ID", dataIndex: "id", width: 70 },
     { title: "标题", dataIndex: "title" },
     { title: "简介", dataIndex: "description", ellipsis: true },
@@ -133,7 +133,7 @@ function ManageLists({ onEdit, onManageItems }: { onEdit: (id: number) => void; 
           total: pagination.total,
           showTotal: true,
           sizeCanChange: true,
-          pageSizeOptions: [10, 20, 50],
+          sizeOptions: [10, 20, 50],
           onChange: (page, pageSize) => fetchData(page, pageSize),
         }}
       />
@@ -256,7 +256,7 @@ function ManageItems({ listId }: { listId: number }) {
     }
   };
 
-  const columns = [
+  const columns: any[] = [
     { title: "排序", dataIndex: "sortOrder", width: 70 },
     { title: "题号", dataIndex: ["problem", "slug"], width: 120 },
     { title: "标题", dataIndex: ["problem", "title"] },

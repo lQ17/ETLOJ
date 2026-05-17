@@ -2,7 +2,6 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from "react";
 import { Grid, Card, Typography, Space, Divider, Tabs, Tag, Spin, Empty, Avatar, Button, Message, Popconfirm } from "@arco-design/web-react";
 import { IconUser, IconCalendar, IconStar, IconThunderbolt, IconEdit, IconDelete } from "@arco-design/web-react/icon";
-import * as echarts from "echarts";
 import ReactECharts from "echarts-for-react";
 import { profileApi } from "../../api/profile";
 import { solutionApi } from "../../api/solution";
@@ -49,7 +48,6 @@ interface ProfileStats {
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const currentUser = useAuthStore((s) => s.user);
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -413,7 +411,7 @@ function ProblemWall({ problems }: { problems: { problem_id: number; slug: strin
 }
 
 /** 我的题解（懒加载） */
-function MySolutions({ userId }: { userId: number }) {
+function MySolutions({ userId: _userId }: { userId: number }) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const [solutions, setSolutions] = useState<any[]>([]);

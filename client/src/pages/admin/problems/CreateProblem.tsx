@@ -232,7 +232,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
         Message.success("题目及测试节点修改成功");
         if (onFinish) onFinish();
       } else {
-        await problemApi.create({ ...payload, slug: values.slug });
+        await problemApi.create({ ...payload, slug: values.slug } as any);
         if (testCases.length > 0) {
           await problemApi.saveTestcases(
             values.slug,
@@ -288,7 +288,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
     { title: "测试点名称", dataIndex: "name" },
     { 
       title: "输入", 
-      render: (_, record: TestCase) => (
+      render: (_: any, record: TestCase) => (
         <Space>
           <Typography.Text ellipsis={{ showTooltip: true }} style={{ width: 100 }}>
             {record.input ? "已上传" : "未上传"}
@@ -304,9 +304,9 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
         </Space>
       )
     },
-    { 
-      title: "输出", 
-      render: (_, record: TestCase) => (
+    {
+      title: "输出",
+      render: (_: any, record: TestCase) => (
         <Space>
           <Typography.Text ellipsis={{ showTooltip: true }} style={{ width: 100 }}>
             {record.output ? "已上传" : "未上传"}
@@ -324,7 +324,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
     },
     {
       title: "操作",
-      render: (_, record: TestCase) => (
+      render: (_: any, record: TestCase) => (
         <Space>
           <Button type="text" onClick={() => openEditModal(record)}>修改</Button>
           <Button type="text" status="danger" onClick={() => handleDeleteTestCase(record.id)}>删除</Button>
@@ -447,7 +447,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
                   height="300px"
                   language="plaintext"
                   value={editingTestCase.input}
-                  onChange={(val) => setEditingTestCase({ ...editingTestCase, input: val || "" })}
+                  onChange={(val: string | undefined) => setEditingTestCase({ ...editingTestCase, input: val || "" })}
                   options={{ minimap: { enabled: false }, wordWrap: "on" }}
                 />
               </div>
@@ -459,7 +459,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
                   height="300px"
                   language="plaintext"
                   value={editingTestCase.output}
-                  onChange={(val) => setEditingTestCase({ ...editingTestCase, output: val || "" })}
+                  onChange={(val: string | undefined) => setEditingTestCase({ ...editingTestCase, output: val || "" })}
                   options={{ minimap: { enabled: false }, wordWrap: "on" }}
                 />
               </div>

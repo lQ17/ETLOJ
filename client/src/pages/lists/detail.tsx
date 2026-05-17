@@ -94,7 +94,7 @@ export default function ProblemListDetailPage() {
     return <span style={{ color: "var(--color-text-4)", fontSize: 18 }}>•</span>;
   };
 
-  const columns = [
+  const columns: any[] = [
     ...(user
       ? [
           {

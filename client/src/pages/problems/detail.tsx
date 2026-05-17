@@ -750,7 +750,6 @@ export default function ProblemDetailPage() {
               visible={isModalVisible}
               onCancel={() => setIsModalVisible(false)}
               footer={null}
-              width="80%"
               style={{ width: '80%', top: '20px' }}
               closeIcon={<IconShrink />}
             >

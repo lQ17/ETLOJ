@@ -61,12 +61,14 @@ export default function AppHeader() {
         zIndex: 100,
       }}
     >
-      <Space size="small" style={{ cursor: "pointer", marginRight: 48 }} onClick={() => navigate("/")}>
+      <div style={{ cursor: "pointer", marginRight: 48 }} onClick={() => navigate("/")}>
+      <Space size="small">
         <div style={{ width: 24, height: 24, background: "var(--color-ink)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <IconCode style={{ fontSize: 16, color: "var(--color-canvas)" }} />
         </div>
         <span style={{ fontWeight: 600, fontSize: 18, color: "var(--color-ink)", letterSpacing: "-0.02em" }}>ETLOJ</span>
       </Space>
+      </div>
       <div style={{ flex: 1, display: "flex", justifyContent: "center", height: "100%" }}>
         <div ref={navContainerRef} style={{ position: "relative", display: "flex", height: "100%", gap: 40 }}>
           {menuItems.map((item, index) => {

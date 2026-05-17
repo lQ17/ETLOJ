@@ -84,7 +84,7 @@ export default function RankingPage() {
     }
   };
 
-  const handleCustomDateChange = (_: any, dateStrings: [string, string]) => {
+  const handleCustomDateChange = (dateStrings: string[], _date: any[]) => {
     if (dateStrings[0]) {
       setCustomDates([dateStrings[0], dateStrings[1] || ""]);
     } else {
@@ -272,7 +272,7 @@ export default function RankingPage() {
             showTotal: true,
             showJumper: true,
             sizeCanChange: true,
-            pageSizeOptions: [10, 20, 50],
+            sizeOptions: [10, 20, 50],
             onChange: (p, ps) => {
               setPage(p);
               setPageSize(ps);

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Layout, Menu, Typography, Card } from "@arco-design/web-react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { IconUser, IconSafe } from "@arco-design/web-react/icon";

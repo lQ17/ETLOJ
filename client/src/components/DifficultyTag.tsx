@@ -1,5 +1,5 @@
 import { Tag } from "@arco-design/web-react";
-import { DIFFICULTY_CONFIG, getDifficultyLabel } from "../constants/difficulty";
+import { DIFFICULTY_CONFIG } from "../constants/difficulty";
 import type { DifficultyLevel } from "../constants/difficulty";
 
 interface DifficultyTagProps {
