@@ -18,6 +18,7 @@ import { submissionApi } from "../../api/submission";
 import { solutionApi } from "../../api/solution";
 import { useAuthStore } from "../../stores/auth";
 import confetti from "canvas-confetti";
+import DifficultyTag from "../../components/DifficultyTag";
 
 const langMap: Record<string, string> = {
   c: "c",
@@ -26,12 +27,6 @@ const langMap: Record<string, string> = {
   python: "python",
 };
 
-const difficultyLabel: Record<string, string> = {
-  EASY: "简单", MEDIUM: "中等", HARD: "困难",
-};
-const difficultyColor: Record<string, string> = {
-  EASY: "green", MEDIUM: "orange", HARD: "red",
-};
 
 const statusLabel: Record<string, string> = {
   PENDING: "等待中",
@@ -454,9 +449,7 @@ export default function ProblemDetailPage() {
                             {children}
                           </Typography.Title>
                           <Space>
-                            <Tag color={difficultyColor[problem.difficulty]}>
-                              {difficultyLabel[problem.difficulty]}
-                            </Tag>
+                            <DifficultyTag difficulty={problem.difficulty} />
                             {problem.score != null && problem.score > 0 && (
                               <Tag color="purple" size="small">{problem.score}分</Tag>
                             )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Switch, Upload, Modal, Typography, Tooltip } from "@arco-design/web-react";
 import { problemApi } from "../../../api/problem";
+import DifficultyTag from "../../../components/DifficultyTag";
 
 export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => void }) {
   const [data, setData] = useState<any[]>([]);
@@ -11,6 +12,7 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
   const [importResultVisible, setImportResultVisible] = useState(false);
+  const [importFileList, setImportFileList] = useState<any[]>([]);
 
   const fetchData = async (current = pagination.current, pageSize = pagination.pageSize) => {
     setLoading(true);
@@ -95,6 +97,7 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
       Message.error(err?.message || "导入失败");
     } finally {
       setImporting(false);
+      setImportFileList([]);
     }
   };
 
@@ -105,11 +108,7 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
     {
       title: "难度",
       dataIndex: "difficulty",
-      render: (val: string) => {
-        const color = val === "EASY" ? "green" : val === "MEDIUM" ? "orange" : "red";
-        const text = val === "EASY" ? "简单" : val === "MEDIUM" ? "中等" : "困难";
-        return <Tag color={color}>{text}</Tag>;
-      }
+      render: (val: string) => <DifficultyTag difficulty={val} />,
     },
     {
       title: "分数", dataIndex: "score", width: 70,
@@ -160,8 +159,10 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
             autoUpload={false}
             showUploadList={false}
             accept=".zip"
+            fileList={importFileList}
             onChange={(fileList) => {
-              const file = fileList[0]?.originFile;
+              setImportFileList(fileList);
+              const file = fileList[fileList.length - 1]?.originFile;
               if (file) handleImport(file);
             }}
           >
@@ -191,7 +192,7 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
 {`{
   "slug": "P1001",
   "title": "题目标题",
-  "difficulty": "EASY",   // EASY | MEDIUM | HARD
+  "difficulty": "IRON",   // IRON | BRONZE | SILVER | GOLD | PLATINUM | DIAMOND | MASTER | CHAMPION | LEGENDARY
   "score": 1,             // 可选，默认按难度
   "timeLimit": 1000,      // 毫秒，默认 1000
   "memoryLimit": 256      // MB，默认 256
@@ -230,8 +231,8 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
       >
         {importResult && (
           <div>
-            <p>成功导入：<Tag color="green">{importResult.imported}</Tag> 题</p>
-            <p>跳过（已存在）：<Tag color="orange">{importResult.skipped?.length ?? 0}</Tag> 题</p>
+            <div>成功导入：<Tag color="green">{importResult.imported}</Tag> 题</div>
+            <div style={{ marginTop: 8 }}>跳过（已存在）：<Tag color="orange">{importResult.skipped?.length ?? 0}</Tag> 题</div>
             {importResult.skipped?.length > 0 && (
               <div style={{ marginBottom: 8 }}>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -240,10 +241,10 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
               </div>
             )}
             {importResult.errors?.length > 0 && (
-              <div>
-                <p style={{ color: "var(--color-danger-6)" }}>错误：</p>
+              <div style={{ marginTop: 8 }}>
+                <div style={{ color: "var(--color-danger-6)", marginBottom: 4 }}>错误：</div>
                 {importResult.errors.map((err: string, i: number) => (
-                  <p key={i} style={{ fontSize: 12, color: "var(--color-text-3)" }}>{err}</p>
+                  <div key={i} style={{ fontSize: 12, color: "var(--color-text-3)" }}>{err}</div>
                 ))}
               </div>
             )}

@@ -1,10 +1,11 @@
 import client from "./client";
+import type { DifficultyLevel } from "../constants/difficulty";
 
 export const problemApi = {
   list: (params?: {
     page?: number;
     pageSize?: number;
-    difficulty?: string;
+    difficulty?: DifficultyLevel;
     keyword?: string;
     tags?: string[];
     tagMode?: "AND" | "OR";
@@ -18,7 +19,7 @@ export const problemApi = {
   create: (data: {
     slug: string;
     title: string;
-    difficulty?: string;
+    difficulty?: DifficultyLevel;
     timeLimit?: number;
     memoryLimit?: number;
     tags?: string[];

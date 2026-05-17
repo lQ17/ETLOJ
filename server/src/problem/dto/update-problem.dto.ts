@@ -1,4 +1,6 @@
 import { IsOptional, IsIn, IsInt, IsString, IsArray, Min, Max, IsBoolean } from "class-validator";
+import { DIFFICULTY_VALUES, MAX_SCORE } from "../difficulty.constants";
+import type { DifficultyLevel } from "../difficulty.constants";
 
 export class UpdateProblemDto {
   @IsOptional()
@@ -6,8 +8,8 @@ export class UpdateProblemDto {
   title?: string;
 
   @IsOptional()
-  @IsIn(["EASY", "MEDIUM", "HARD"])
-  difficulty?: "EASY" | "MEDIUM" | "HARD";
+  @IsIn([...DIFFICULTY_VALUES])
+  difficulty?: DifficultyLevel;
 
   @IsOptional()
   @IsInt()
@@ -37,7 +39,7 @@ export class UpdateProblemDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  @Max(100)
+  @Max(MAX_SCORE)
   score?: number;
 
   @IsOptional()

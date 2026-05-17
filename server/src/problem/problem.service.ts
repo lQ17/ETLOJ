@@ -3,6 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import * as fs from "fs";
 import * as path from "path";
 import { PrismaService } from "../prisma/prisma.service";
+import { DIFFICULTY_VALUES, getDefaultScore } from "./difficulty.constants";
+import type { DifficultyLevel } from "./difficulty.constants";
 import { CreateProblemDto } from "./dto/create-problem.dto";
 import { UpdateProblemDto } from "./dto/update-problem.dto";
 import { QueryProblemDto } from "./dto/query-problem.dto";
@@ -16,6 +18,23 @@ export class ProblemService {
     private config: ConfigService,
   ) {
     this.problemsDir = this.config.get("PROBLEMS_DIR") || path.resolve(__dirname, "../../../problems");
+  }
+
+  /** 将任意难度字符串映射为合法的 Difficulty 枚举值，无法识别时返回 IRON */
+  private normalizeDifficulty(raw?: string): DifficultyLevel {
+    if (!raw) return "IRON";
+    const upper = raw.trim().toUpperCase();
+    if (DIFFICULTY_VALUES.includes(upper as DifficultyLevel)) {
+      return upper as DifficultyLevel;
+    }
+    // 兼容旧版枚举 / 中文别名
+    const ALIASES: Record<string, DifficultyLevel> = {
+      EASY: "IRON", MEDIUM: "BRONZE", HARD: "SILVER",
+      黑铁: "IRON", 青铜: "BRONZE", 白银: "SILVER", 黄金: "GOLD",
+      铂金: "PLATINUM", 钻石: "DIAMOND", 大师: "MASTER",
+      王者: "CHAMPION", 传说: "LEGENDARY",
+    };
+    return ALIASES[upper] ?? "IRON";
   }
 
   private getProblemDir(slug: string) {
@@ -58,20 +77,20 @@ export class ProblemService {
       tagNames = tags.map(t => t.name);
     }
 
+    const difficulty = this.normalizeDifficulty(dto.difficulty as string);
+    const score = dto.score ?? getDefaultScore(difficulty);
+
     const problem = await this.prisma.problem.create({
       data: {
         slug: dto.slug,
         title: dto.title,
-        difficulty: (dto.difficulty as any) || "EASY",
+        difficulty,
         timeLimit: dto.timeLimit || 1000,
         memoryLimit: dto.memoryLimit || 256,
         filePath: this.getMarkdownPath(dto.slug),
         tags: tagNames,
         isPublic: dto.isPublic ?? true,
-        score: dto.score ?? (() => {
-          const d = (dto.difficulty as any) || "EASY";
-          return d === "HARD" ? 7 : d === "MEDIUM" ? 3 : 1;
-        })(),
+        score,
       },
     });
 
@@ -402,11 +421,6 @@ export class ProblemService {
         const existing = await this.prisma.problem.findUnique({ where: { slug: meta.slug } });
         if (existing) { skipped.push(meta.slug); continue; }
 
-        // Validate difficulty
-        if (meta.difficulty && !['EASY', 'MEDIUM', 'HARD'].includes(meta.difficulty)) {
-          errors.push(`${meta.slug}: difficulty 无效`); continue;
-        }
-
         // Write files
         const tcDir = this.getTestcasesDir(meta.slug);
         fs.mkdirSync(tcDir, { recursive: true });
@@ -428,22 +442,53 @@ export class ProblemService {
         }
 
         // Create DB record
-        await this.prisma.problem.create({
-          data: {
-            slug: meta.slug,
-            title: meta.title || meta.slug,
-            difficulty: meta.difficulty || 'EASY',
-            score: meta.score ?? (() => {
-              const d = meta.difficulty || 'EASY';
-              return d === 'HARD' ? 7 : d === 'MEDIUM' ? 3 : 1;
-            })(),
-            timeLimit: meta.timeLimit || 1000,
-            memoryLimit: meta.memoryLimit || 256,
-            filePath: this.getMarkdownPath(meta.slug),
-            tags: meta.tags || [],
-            isPublic: meta.isPublic ?? true,
-          },
-        });
+        const importDifficulty = this.normalizeDifficulty(meta.difficulty);
+        const importScore = meta.score ?? getDefaultScore(importDifficulty);
+
+        // 先按名称查找数据库中已有的标签
+        const tagNames: string[] = meta.tags || [];
+        let matchedTagNames: string[] = [];
+        if (tagNames.length > 0) {
+          const matchedTags = await this.prisma.tag.findMany({
+            where: { name: { in: tagNames } },
+            select: { id: true, name: true },
+          });
+          matchedTagNames = matchedTags.map(t => t.name);
+
+          const problem = await this.prisma.problem.create({
+            data: {
+              slug: meta.slug,
+              title: meta.title || meta.slug,
+              difficulty: importDifficulty,
+              score: importScore,
+              timeLimit: meta.timeLimit || 1000,
+              memoryLimit: meta.memoryLimit || 256,
+              filePath: this.getMarkdownPath(meta.slug),
+              tags: matchedTagNames,
+              isPublic: meta.isPublic ?? true,
+            },
+          });
+
+          if (matchedTags.length > 0) {
+            await this.prisma.problemTag.createMany({
+              data: matchedTags.map(t => ({ problemId: problem.id, tagId: t.id })),
+            });
+          }
+        } else {
+          await this.prisma.problem.create({
+            data: {
+              slug: meta.slug,
+              title: meta.title || meta.slug,
+              difficulty: importDifficulty,
+              score: importScore,
+              timeLimit: meta.timeLimit || 1000,
+              memoryLimit: meta.memoryLimit || 256,
+              filePath: this.getMarkdownPath(meta.slug),
+              tags: [],
+              isPublic: meta.isPublic ?? true,
+            },
+          });
+        }
 
         imported++;
       } catch (e: any) {

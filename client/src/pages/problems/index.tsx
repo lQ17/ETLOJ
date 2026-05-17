@@ -8,17 +8,8 @@ import { problemApi } from "../../api/problem";
 import { tagApi } from "../../api/tag";
 import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
-
-const difficultyColor: Record<string, string> = {
-  EASY: "green",
-  MEDIUM: "orange",
-  HARD: "red",
-};
-const difficultyLabel: Record<string, string> = {
-  EASY: "简单",
-  MEDIUM: "中等",
-  HARD: "困难",
-};
+import DifficultyTag from "../../components/DifficultyTag";
+import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../constants/difficulty";
 
 export default function ProblemListPage() {
   const navigate = useNavigate();
@@ -137,7 +128,7 @@ export default function ProblemListPage() {
       title: "难度",
       dataIndex: "difficulty",
       width: 100,
-      render: (d: string) => <Tag color={difficultyColor[d]}>{difficultyLabel[d]}</Tag>,
+      render: (d: string) => <DifficultyTag difficulty={d} />,
     },
     {
       title: "分数", dataIndex: "score", width: 70,
@@ -184,9 +175,9 @@ export default function ProblemListPage() {
           value={difficulty}
           onChange={(v) => setDifficulty(v || undefined)}
         >
-          <Select.Option value="EASY">简单</Select.Option>
-          <Select.Option value="MEDIUM">中等</Select.Option>
-          <Select.Option value="HARD">困难</Select.Option>
+          {DIFFICULTY_VALUES.map(d => (
+            <Select.Option key={d} value={d}>{DIFFICULTY_CONFIG[d].label}</Select.Option>
+          ))}
         </Select>
         <Button type="outline" onClick={openTagModal}>
           标签筛选{selectedTags.length > 0 ? `（${selectedTags.length}个）` : ""}

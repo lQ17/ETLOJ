@@ -9,6 +9,7 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { problemApi } from "../../../api/problem";
 import { tagApi } from "../../../api/tag";
+import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../../constants/difficulty";
 
 const Row = Grid.Row;
 const Col = Grid.Col;
@@ -347,11 +348,11 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item field="difficulty" label="难度" initialValue="EASY">
+            <Form.Item field="difficulty" label="难度" initialValue="IRON">
               <Select>
-                <Select.Option value="EASY">简单</Select.Option>
-                <Select.Option value="MEDIUM">中等</Select.Option>
-                <Select.Option value="HARD">困难</Select.Option>
+                {DIFFICULTY_VALUES.map(d => (
+                  <Select.Option key={d} value={d}>{DIFFICULTY_CONFIG[d].label}</Select.Option>
+                ))}
               </Select>
             </Form.Item>
           </Col>
@@ -359,7 +360,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
         <Row gutter={16}>
           <Col span={6}>
             <Form.Item field="score" label="分数" extra="留空则按难度自动计算">
-              <InputNumber placeholder="自动" min={0} max={100} style={{ width: "100%" }} />
+              <InputNumber placeholder="自动" min={0} max={270} style={{ width: "100%" }} />
             </Form.Item>
           </Col>
           <Col span={6}>

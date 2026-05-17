@@ -54,11 +54,12 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 ### Backend Patterns (NestJS)
 
 - **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule, ProblemListModule, TagModule, SolutionModule, AnnouncementModule — each with controller, service, dto/
-- **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only
+- **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only；导入时自动匹配数据库已有标签创建 `ProblemTag` 关联，未匹配的标签忽略
 - **PrismaModule** is `@Global()` — inject `PrismaService` anywhere without importing
 - **Auth**: JWT + Passport (`jwt.strategy.ts`), `JwtAuthGuard`, `RolesGuard` + `@Roles()` decorator, `@CurrentUser()` param decorator
 - **Global validation**: `ValidationPipe` with `whitelist: true, transform: true`
 - **Body limit**: `express.json({ limit: '5mb' })` configured in `main.ts` for Base64 avatar uploads
+- **Difficulty normalization**: `ProblemService.normalizeDifficulty()` 将任意字符串（小写、中文、旧版 EASY/MEDIUM/HARD）映射为合法的 `Difficulty` 枚举值，兜底返回 IRON；`create()` 和 `importProblems()` 均通过此函数处理难度字段
 - **Problem routing**: All `:id` params accept both numeric ID and slug string — `parseIdOrSlug()` helper in controllers, `resolveProblem()` in service
 - **Route priority**: In controllers with both `me/*` and `:id` routes, `me/*` MUST be defined before `:id` — NestJS matches top-to-bottom and `:id` captures "me" as a param
 - **Profile module**: `ProfileController` (public, no auth guards) serves `GET /api/profile/:username` and `/api/profile/:username/stats`
@@ -78,6 +79,8 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 - **State**: Zustand (`stores/auth.ts`) — user/token/login/logout; login fetches full profile (including avatar) immediately after token set
 - **UI**: Arco Design (`@arco-design/web-react`) — never use other component libraries
+- **Arco Upload 陷阱**: 使用 `autoUpload={false}` 的 Upload 组件时必须用受控 `fileList` 状态，否则组件内部会缓存上一次的文件，导致重复上传旧文件；导入/上传完成后需在 `finally` 中清空 `fileList`
+- **TypeScript type import**: Vite 的 esbuild 会 strip type-only exports，因此从 `constants/` 导入仅用作类型的符号（如 `DifficultyLevel`）时必须使用 `import type { ... }`，否则运行时报 "does not provide an export" 错误
 - **Charts**: ECharts via `echarts-for-react` — used in profile page for pie, wordCloud (requires `echarts-wordcloud` plugin); heatmap uses `react-github-calendar`
 - **Problem detail submit**: Submit button is async — disabled during polling, result (status tag + score + time/memory) displayed inline next to button; rate-limited to 3 submissions per 60s (sliding window)
 - **Problem detail page tabs**: Left sidebar navigation with three tabs — 题目详情 (problem text + code editor, 40%/60% split), 查看题解 (solution list + markdown rendering, write via Modal), 问问AI (placeholder); supports `?tab=solutions&edit={solutionId}` query params for deep-linking to edit mode from profile page
@@ -93,9 +96,10 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Avatar storage**: Base64 in `User.avatar` field (`@db.LongText`) — no file upload, stored inline
 - **Problem content**: Markdown files on filesystem at `problems/{slug}/problem.md`
 - **Testcases**: Filesystem at `problems/{slug}/testcases/{n}.in` and `{n}.out`
-- **Problem score**: `Problem.score` field (Int, default 0), admin can customize; default by difficulty: EASY=1, MEDIUM=3, HARD=7
+- **Problem score**: `Problem.score` field (Int, default 0), admin can customize; default by difficulty: IRON=10, BRONZE=20, SILVER=35, GOLD=55, PLATINUM=80, DIAMOND=110, MASTER=150, CHAMPION=200, LEGENDARY=270
 - **Total score**: User's total score = sum of `problem.score` for each problem's first AC only (`UserService.getPublicProfile`)
-- **Problem import/export**: zip format — `{slug}/problem.json` + `{slug}/problem.md` + `{slug}/testcases/`, uses `adm-zip` library
+- **Problem import/export**: zip format — `{slug}/problem.json` + `{slug}/problem.md` + `{slug}/testcases/`, uses `adm-zip` library；导入时 `difficulty` 字段通过 `normalizeDifficulty()` 容错处理，支持小写/中文/旧版枚举
+- **Difficulty constants**: 前端 `client/src/constants/difficulty.ts`（DIFFICULTY_VALUES + DIFFICULTY_CONFIG），后端 `server/src/problem/difficulty.constants.ts`（DIFFICULTY_VALUES + getDefaultScore + MAX_SCORE）；两侧值必须保持同步
 - **Problem lists**: `problem_lists` + `problem_list_items` tables — 题单支持公共（isPublic=true, ADMIN/TEACHER 管理）和个人（isPublic=false, 用户自管），中间表带 `sort_order` 排序
 - **Solutions**: `solutions` table — 题解内容存 `content`（LongText），关联 `problemId` + `authorId`，每人可对同一题写多篇题解；含 `status`（PENDING/APPROVED/REJECTED）和 `rejectReason` 审核字段
 - **Announcements**: `announcements` table — 公告标题 `title`（VarChar 200）、摘要 `summary`（VarChar 500）、详情 `content`（LongText，Markdown）、`isPinned`（Boolean）、`status`（DRAFT/PUBLISHED）、关联 `authorId`；排序逻辑：置顶优先 + 时间倒序
@@ -105,7 +109,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 - `Role`: USER, ADMIN, TEACHER (no STUDENT — students are USER)
 - `SubmissionStatus`: PENDING, JUDGING, AC, WA, TLE, MLE, RE, CE, SE
-- `Difficulty`: EASY, MEDIUM, HARD
+- `Difficulty`: IRON, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, MASTER, CHAMPION, LEGENDARY
 - `ContestMode`: ACM, OI (schema only, no API yet)
 
 ## Production Deployment (Bare Metal)

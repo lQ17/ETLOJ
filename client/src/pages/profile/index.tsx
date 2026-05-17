@@ -7,6 +7,8 @@ import ReactECharts from "echarts-for-react";
 import { profileApi } from "../../api/profile";
 import { solutionApi } from "../../api/solution";
 import { useAuthStore } from "../../stores/auth";
+import DifficultyTag from "../../components/DifficultyTag";
+import { getDifficultyHexColor } from "../../constants/difficulty";
 import "echarts-wordcloud";
 import "./profile.css";
 
@@ -29,12 +31,6 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   MLE: COLORS.mle, RE: COLORS.re, CE: COLORS.ce, SE: COLORS.se,
 };
 
-const DIFF_COLOR: Record<string, string> = {
-  EASY: "#00b42a", MEDIUM: "#ff7d00", HARD: "#f53f3f",
-};
-const DIFF_LABEL: Record<string, string> = {
-  EASY: "简单", MEDIUM: "中等", HARD: "困难",
-};
 
 // ---------- Types ----------
 interface ProfileInfo {
@@ -406,11 +402,9 @@ function ProblemWall({ problems }: { problems: { problem_id: number; slug: strin
           key={p.problem_id}
           to={`/problems/${p.slug}`}
           className="problem-tag"
-          style={{ borderLeftColor: DIFF_COLOR[p.difficulty] || "#86909c" }}
+          style={{ borderLeftColor: getDifficultyHexColor(p.difficulty) }}
         >
-          <Tag size="small" color={DIFF_COLOR[p.difficulty] === "#00b42a" ? "green" : DIFF_COLOR[p.difficulty] === "#ff7d00" ? "orange" : "red"}>
-            {DIFF_LABEL[p.difficulty] || p.difficulty}
-          </Tag>
+          <DifficultyTag difficulty={p.difficulty} size="small" />
           <span className="problem-tag-title">{p.title}</span>
         </Link>
       ))}

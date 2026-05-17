@@ -1,5 +1,6 @@
 import { IsOptional, IsIn, IsString, IsInt, IsArray, Min } from "class-validator";
 import { Type, Transform } from "class-transformer";
+import { DIFFICULTY_VALUES } from "../difficulty.constants";
 
 export class QueryProblemDto {
   @IsOptional()
@@ -15,7 +16,7 @@ export class QueryProblemDto {
   pageSize?: number = 20;
 
   @IsOptional()
-  @IsIn(["EASY", "MEDIUM", "HARD"])
+  @IsIn([...DIFFICULTY_VALUES])
   difficulty?: string;
 
   @IsOptional()

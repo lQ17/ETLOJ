@@ -15,9 +15,15 @@ enum Role {
 }
 
 enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
+  IRON
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  MASTER
+  CHAMPION
+  LEGENDARY
 }
 
 enum SubmissionStatus {
@@ -64,7 +70,7 @@ model Problem {
   id          Int        @id @default(autoincrement())
   slug        String     @unique @db.VarChar(100)
   title       String     @db.VarChar(200)
-  difficulty  Difficulty @default(EASY)
+  difficulty  Difficulty @default(IRON)
   timeLimit   Int        @default(1000) @map("time_limit")
   memoryLimit Int        @default(256) @map("memory_limit")
   filePath    String     @map("file_path") @db.VarChar(500)

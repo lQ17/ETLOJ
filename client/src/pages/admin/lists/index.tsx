@@ -5,6 +5,7 @@ import {
 } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
 import { problemListApi } from "../../../api/problem-list";
+import DifficultyTag from "../../../components/DifficultyTag";
 
 const { Text } = Typography;
 const FormItem = Form.Item;
@@ -263,11 +264,7 @@ function ManageItems({ listId }: { listId: number }) {
       title: "难度",
       dataIndex: ["problem", "difficulty"],
       width: 90,
-      render: (val: string) => {
-        const color = val === "EASY" ? "green" : val === "MEDIUM" ? "orange" : "red";
-        const text = val === "EASY" ? "简单" : val === "MEDIUM" ? "中等" : "困难";
-        return <Tag color={color}>{text}</Tag>;
-      },
+      render: (val: string) => <DifficultyTag difficulty={val} size="small" />,
     },
     {
       title: "操作",

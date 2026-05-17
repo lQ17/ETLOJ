@@ -7,20 +7,9 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { problemListApi } from "../../api/problem-list";
 import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
+import DifficultyTag from "../../components/DifficultyTag";
 
 const { Title, Text, Paragraph } = Typography;
-
-const difficultyColor: Record<string, string> = {
-  EASY: "green",
-  MEDIUM: "orange",
-  HARD: "red",
-};
-
-const difficultyLabel: Record<string, string> = {
-  EASY: "简单",
-  MEDIUM: "中等",
-  HARD: "困难",
-};
 
 export default function ProblemListDetailPage() {
   const navigate = useNavigate();
@@ -149,9 +138,7 @@ export default function ProblemListDetailPage() {
       render: (_: any, record: any) => {
         const diff = record.problem?.difficulty;
         return diff ? (
-          <Tag color={difficultyColor[diff]} size="small">
-            {difficultyLabel[diff] || diff}
-          </Tag>
+          <DifficultyTag difficulty={diff} size="small" />
         ) : "-";
       },
     },
