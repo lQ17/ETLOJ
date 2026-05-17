@@ -1,4 +1,3 @@
-import React from 'react';
 import { IconCode } from '@arco-design/web-react/icon';
 import { useNavigate } from 'react-router-dom';
 
