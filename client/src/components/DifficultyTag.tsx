@@ -1,4 +1,3 @@
-import { Tag } from "@arco-design/web-react";
 import { DIFFICULTY_CONFIG } from "../constants/difficulty";
 import type { DifficultyLevel } from "../constants/difficulty";
 
@@ -11,38 +10,27 @@ interface DifficultyTagProps {
 export default function DifficultyTag({ difficulty, size, style }: DifficultyTagProps) {
   const config = DIFFICULTY_CONFIG[difficulty as DifficultyLevel];
   if (!config) {
-    return <Tag color="gray" size={size} style={style}>{difficulty}</Tag>;
-  }
-
-  if (config.animated) {
     return (
-      <Tag
-        size={size}
-        className={config.animationClass}
-        style={{
-          color: '#fff',
-          border: 'none',
-          fontWeight: 600,
-          ...style,
-        }}
+      <span
+        className="difficulty-badge"
+        style={{ background: '#F3F4F6', color: '#6B7280', ...style, fontSize: size === 'small' ? 12 : 13 }}
       >
-        {config.label}
-      </Tag>
+        {difficulty}
+      </span>
     );
   }
 
   return (
-    <Tag
-      size={size}
+    <span
+      className={`difficulty-badge${config.animationClass ? ` ${config.animationClass}` : ''}`}
       style={{
-        background: config.hexColor,
-        color: '#fff',
-        border: 'none',
-        fontWeight: 500,
+        background: config.bgColor,
+        color: config.textColor,
+        fontSize: size === 'small' ? 12 : 13,
         ...style,
       }}
     >
       {config.label}
-    </Tag>
+    </span>
   );
 }

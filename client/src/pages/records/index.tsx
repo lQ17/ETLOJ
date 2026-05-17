@@ -149,7 +149,7 @@ export default function RecordsPage() {
       title: "题号/题目", width: 220,
       render: (_: any, record: any) => (
         <Typography.Text
-          style={{ cursor: "pointer", color: "var(--color-primary)" }}
+          style={{ cursor: "pointer", color: "#3b82f6" }}
           onClick={() => navigate(`/problems/${record.problem?.slug}`)}
         >
           {record.problem?.slug} {record.problem?.title}

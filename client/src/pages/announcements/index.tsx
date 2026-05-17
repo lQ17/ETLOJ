@@ -136,7 +136,7 @@ export default function AnnouncementsPage() {
             <Text style={{ fontSize: 13, color: "var(--color-muted)", display: "block", marginBottom: 24 }}>
               {new Date(selected.createdAt).toLocaleString("zh-CN")}
             </Text>
-            <div className="problem-markdown">
+            <div className="problem-markdown" style={{ fontSize: 16 }}>
               <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                 {selected.content || "暂无详情"}
               </ReactMarkdown>

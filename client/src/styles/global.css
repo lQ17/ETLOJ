@@ -237,68 +237,78 @@ h1, h2, h3, h4, h5, h6,
   transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
+/* ===== Difficulty Badge (Cal.com Soft Pill) ===== */
+
+.difficulty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 10px;
+  font-weight: 500;
+  line-height: 1.6;
+  border-radius: 9999px;
+  white-space: nowrap;
+  letter-spacing: 0;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s, color 0.2s;
+}
+
 /* ===== Difficulty Level Animations ===== */
 
-@keyframes shimmerDifficulty {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+@keyframes shimmerSweep {
+  0%   { left: -100%; }
+  20%  { left: 200%; }
+  100% { left: 200%; }
+}
+
+.difficulty-badge[class*="difficulty-shimmer-"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+  animation: shimmerSweep 3s infinite;
 }
 
 /* Diamond - Animated Ice Blue Shimmer */
 .difficulty-shimmer-ice {
-  background: linear-gradient(
-    90deg,
-    #60A5FA 0%, #93C5FD 25%, #BFDBFE 50%, #93C5FD 75%, #60A5FA 100%
-  ) !important;
-  background-size: 200% auto !important;
-  animation: shimmerDifficulty 3s linear infinite;
+  background: #3B82F6 !important;
   color: #fff !important;
-  border: none !important;
 }
 
 /* Master - Animated Starlight Purple Shimmer */
 .difficulty-shimmer-purple {
-  background: linear-gradient(
-    90deg,
-    #7C3AED 0%, #A78BFA 25%, #C4B5FD 50%, #A78BFA 75%, #7C3AED 100%
-  ) !important;
-  background-size: 200% auto !important;
-  animation: shimmerDifficulty 3s linear infinite;
+  background: #8B5CF6 !important;
   color: #fff !important;
-  border: none !important;
 }
 
-/* Champion - Animated Radiant Gold Pulse */
-.difficulty-shimmer-gold {
-  background: linear-gradient(
-    90deg,
-    #D97706 0%, #F59E0B 25%, #FDE68A 50%, #F59E0B 75%, #D97706 100%
-  ) !important;
-  background-size: 200% auto !important;
-  animation: shimmerDifficulty 2.5s linear infinite;
+/* Champion - Animated Pink Shimmer */
+.difficulty-shimmer-pink {
+  background: #EC4899 !important;
   color: #fff !important;
-  border: none !important;
-  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
 }
 
-/* Legendary - Animated Dark Gold + Wings Effect */
+/* Legendary - Animated Black + Gold */
 .difficulty-shimmer-legendary {
-  background: linear-gradient(
-    90deg,
-    #92400E 0%, #B45309 15%, #D4A017 30%, #FDE68A 50%, #D4A017 70%, #B45309 85%, #92400E 100%
-  ) !important;
-  background-size: 200% auto !important;
-  animation: shimmerDifficulty 2s linear infinite;
-  color: #fff !important;
-  border: 1px solid rgba(253, 230, 138, 0.6) !important;
-  text-shadow: 0 0 10px rgba(253, 230, 138, 0.7), 0 0 20px rgba(180, 83, 9, 0.3);
-  box-shadow: 0 0 12px rgba(212, 160, 23, 0.4), 0 0 24px rgba(180, 83, 9, 0.2);
-  letter-spacing: 2px;
+  background: #111111 !important;
+  color: #F59E0B !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
 }
 
-.difficulty-shimmer-legendary::before,
 .difficulty-shimmer-legendary::after {
-  content: '\2726';
-  margin: 0 2px;
-  font-size: 0.85em;
+  background: linear-gradient(
+    to right,
+    rgba(245, 158, 11, 0) 0%,
+    rgba(245, 158, 11, 0.2) 50%,
+    rgba(245, 158, 11, 0) 100%
+  ) !important;
 }

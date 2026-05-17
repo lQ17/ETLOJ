@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   Typography, Select, Button, Space, Tag, Spin, Message, Card, Input, Divider, Modal, Popover, Radio, Avatar,
 } from "@arco-design/web-react";
 import {
   IconCopy, IconCheck, IconPlayArrow, IconExpand, IconShrink, IconSettings,
-  IconFile, IconEdit, IconRobot, IconPen,
+  IconFile, IconEdit, IconRobot, IconPen, IconLeft,
 } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
 import MDEditor from "@uiw/react-md-editor";
@@ -107,7 +107,9 @@ function parseSamples(md: string): { input: string; output: string }[] {
 export default function ProblemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const backToListParams = (location.state as any)?.listParams as string | undefined;
   const { user } = useAuthStore();
   const authLoading = useAuthStore((s) => s.loading);
   const [problem, setProblem] = useState<any>(null);
@@ -413,6 +415,22 @@ export default function ProblemDetailPage() {
             {item.label}
           </Button>
         ))}
+        <div style={{ flex: 1 }} />
+        <Button
+          type="text"
+          size="small"
+          icon={<IconLeft />}
+          onClick={() => navigate(backToListParams ? `/problems?${backToListParams}` : "/problems")}
+          style={{
+            justifyContent: "flex-start",
+            paddingLeft: 12,
+            height: 36,
+            borderRadius: 8,
+            color: "var(--color-text-3)",
+          }}
+        >
+          返回题库
+        </Button>
       </div>
 
       {/* 内容区 */}

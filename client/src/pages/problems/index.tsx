@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Table, Tag, Input, Select, Space, Typography, Button, Switch, Modal, Checkbox, Tooltip,
 } from "@arco-design/web-react";
-import { IconQuestionCircle } from "@arco-design/web-react/icon";
+import { IconQuestionCircle, IconSearch } from "@arco-design/web-react/icon";
 import { problemApi } from "../../api/problem";
 import { tagApi } from "../../api/tag";
 import { submissionApi } from "../../api/submission";
@@ -13,19 +13,23 @@ import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../constants/difficulty
 
 export default function ProblemListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState("");
-  const [difficulty, setDifficulty] = useState<string | undefined>();
+  const [keyword, setKeyword] = useState(() => searchParams.get("keyword") || "");
+  const [difficulty, setDifficulty] = useState<string | undefined>(() => searchParams.get("difficulty") || undefined);
   const [loading, setLoading] = useState(false);
   const [statusMap, setStatusMap] = useState<Record<number, string>>({});
 
   // 标签筛选
   const [allTags, setAllTags] = useState<any[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tagMode, setTagMode] = useState<"AND" | "OR">("AND");
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    const tags = searchParams.get("tags");
+    return tags ? tags.split(",") : [];
+  });
+  const [tagMode, setTagMode] = useState<"AND" | "OR">(() => (searchParams.get("tagMode") as "AND" | "OR") || "AND");
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [tagSearchKeyword, setTagSearchKeyword] = useState("");
   const [tempSelectedTags, setTempSelectedTags] = useState<string[]>([]);
@@ -69,6 +73,15 @@ export default function ProblemListPage() {
   useEffect(() => {
     fetchData(1);
     setPage(1);
+    // Sync filter state to URL params for back navigation
+    const params: Record<string, string> = {};
+    if (keyword) params.keyword = keyword;
+    if (difficulty) params.difficulty = difficulty;
+    if (selectedTags.length > 0) {
+      params.tags = selectedTags.join(",");
+      params.tagMode = tagMode;
+    }
+    setSearchParams(params, { replace: true });
   }, [keyword, difficulty, selectedTags, tagMode]);
 
   const openTagModal = () => {
@@ -110,7 +123,7 @@ export default function ProblemListPage() {
       title: "题号",
       dataIndex: "slug",
       width: 120,
-      render: (slug: string) => <span style={{ fontFamily: "Consolas, monospace" }}>{slug}</span>,
+      render: (slug: string) => <span>{slug}</span>,
     },
     {
       title: "标题",
@@ -118,7 +131,17 @@ export default function ProblemListPage() {
       render: (title: string, record: any) => (
         <Typography.Text
           style={{ cursor: "pointer", color: "#3b82f6" }}
-          onClick={() => navigate(`/problems/${record.slug}`)}
+          onClick={() => {
+            const params = new URLSearchParams();
+            if (keyword) params.set("keyword", keyword);
+            if (difficulty) params.set("difficulty", difficulty);
+            if (selectedTags.length > 0) {
+              params.set("tags", selectedTags.join(","));
+              params.set("tagMode", tagMode);
+            }
+            const qs = params.toString();
+            navigate(`/problems/${record.slug}`, { state: { listParams: qs || undefined } });
+          }}
         >
           {title}
         </Typography.Text>
@@ -162,11 +185,18 @@ export default function ProblemListPage() {
     <div>
       <Typography.Title heading={4}>题库</Typography.Title>
       <Space style={{ marginBottom: 16 }} wrap>
-        <Input.Search
+        <Input
           placeholder="搜索题号或标题"
           allowClear
           style={{ width: 240 }}
-          onSearch={(v) => setKeyword(v)}
+          value={keyword}
+          onChange={setKeyword}
+          onPressEnter={() => { setPage(1); fetchData(1); }}
+        />
+        <Button
+          type="primary"
+          icon={<IconSearch />}
+          onClick={() => { setPage(1); fetchData(1); }}
         />
         <Select
           placeholder="难度筛选"
