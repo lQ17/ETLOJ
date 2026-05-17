@@ -3,6 +3,7 @@ import {
   Form, Input, Select, Button, Card, Message, Space, InputNumber, Grid, Table, Modal, Upload, Typography, Checkbox, Tag
 } from "@arco-design/web-react";
 import MDEditor from "@uiw/react-md-editor";
+import Editor from "@monaco-editor/react";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";

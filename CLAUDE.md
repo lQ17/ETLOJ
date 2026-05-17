@@ -133,6 +133,18 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **服务文件**：`deploy/etloj-*.service` — 部署时复制到 `/etc/systemd/system/`
 - **注意**：服务器无法直连 GitHub，git pull 需代理或手动 scp；go-judge 二进制需从本机下载后 scp 上传
 
+### go-judge 版本与兼容性（重要）
+
+- **go-judge 版本必须锁定 v1.9.0**，不能升级到 v1.10+（尤其是 v1.12.0）
+  - v1.12.0 使用 `clone3(CLONE_INTO_CGROUP)` 系统调用，在 Debian 12 的 6.1 内核上与 cgroup v2 存在兼容性问题，会导致所有沙箱执行均返回 `clone: resource temporarily unavailable`，连 `echo hello` 都无法运行
+  - v1.9.0 使用传统 `clone/vfork`，兼容性正常
+- **v1.9.0 API 差异**（judge 代码已适配，修改时注意）：
+  - `files` 字段中 stdin 不能用空对象 `{}`，必须用 `{"src":"/dev/null"}` 或 `{"content":"..."}`
+  - `copyIn` 中引用已编译文件用 `{"fileId":"xxx"}`，不是 v1.12 的 `{"file":"xxx"}`
+  - 返回的 `status` 是字符串（`"Accepted"`、`"Time Limit Exceeded"` 等），不是数字
+- **cgroup pids.max 问题**：go-judge 启动时会自动创建 systemd transient scope `gojudge.scope`，其 `pids.max` 默认继承 systemd 的 2259，会导致容器内 fork 子进程被拒绝（g++ 编译 cc1plus 等子进程超限）。`etloj-go-judge.service` 已配置 `ExecStartPost` 在启动后自动将 `pids.max` 设为 999999
+- **不要覆盖**：部署更新时不要用 `deploy.sh` 中的旧版 go-judge 二进制替换服务器的 v1.9.0
+
 ## Important Constraints
 
 - **No public registration** — users created by admins only

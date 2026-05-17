@@ -73,13 +73,10 @@ echo "  MySQL OK"
 echo ""
 echo "[4/8] 检查 go-judge..."
 if [ ! -f /usr/local/bin/go-judge ]; then
-  GOJUDGE_VER=$(curl -sL https://api.github.com/repos/criyle/go-judge/releases/latest | grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+  GOJUDGE_VER="v1.9.0"  # 不要升级！v1.10+ 的 clone3(CLONE_INTO_CGROUP) 在 Debian 6.1 内核上有兼容性问题
   echo "  下载 go-judge $GOJUDGE_VER..."
-  wget -q "https://github.com/criyle/go-judge/releases/download/${GOJUDGE_VER}/go-judge_${GOJUDGE_VER#v}_linux_amd64.tar.gz" -O /tmp/go-judge.tar.gz
-  tar -xzf /tmp/go-judge.tar.gz -C /tmp/
-  mv /tmp/go-judge /usr/local/bin/go-judge
+  wget -q "https://github.com/criyle/go-judge/releases/download/${GOJUDGE_VER}/go-judge_${GOJUDGE_VER#v}_linux_amd64v2" -O /usr/local/bin/go-judge
   chmod +x /usr/local/bin/go-judge
-  rm -f /tmp/go-judge.tar.gz
 fi
 echo "  go-judge OK"
 

@@ -69,7 +69,7 @@ async function goJudgeRun(params: {
           args: params.cmd,
           env: ["PATH=/usr/bin:/bin", "HOME=/tmp"],
           files: [
-            params.stdin !== undefined ? { content: params.stdin } : {},
+            params.stdin !== undefined ? { content: params.stdin } : { src: "/dev/null" },
             { name: "stdout", max: 10240 },
             { name: "stderr", max: 10240 },
           ],
@@ -145,11 +145,11 @@ async function goJudgeRunOneTest(
     case "c":
     case "cpp":
       cmd = ["./main"];
-      copyIn = { main: { file: binaryId! } };
+      copyIn = { main: { fileId: binaryId! } };
       break;
     case "java":
       cmd = ["java", "Main"];
-      copyIn = { "Main.class": { file: binaryId! } };
+      copyIn = { "Main.class": { fileId: binaryId! } };
       break;
     case "python":
       cmd = ["python3", "main.py"];
@@ -458,11 +458,12 @@ async function runSingle(task: RunTask): Promise<RunResult> {
     copyOut: ["stdout", "stderr"],
   });
   const r0 = runResult[0];
+  const statusStr = r0?.status as string;
   return {
-    status: r0.status === 0 ? "OK" : (r0.status === 3 ? "TLE" : (r0.status === 4 ? "MLE" : "RE")),
-    stdout: r0.files?.stdout || "",
-    stderr: r0.files?.stderr || "",
-    timeUsed: Math.round((r0.time || 0) / 1e6),
+    status: statusStr === "Accepted" ? "OK" : (statusStr === "Time Limit Exceeded" ? "TLE" : (statusStr === "Memory Limit Exceeded" ? "MLE" : "RE")),
+    stdout: r0?.files?.stdout || "",
+    stderr: r0?.files?.stderr || "",
+    timeUsed: Math.round((r0?.time || 0) / 1e6),
   };
 }
 

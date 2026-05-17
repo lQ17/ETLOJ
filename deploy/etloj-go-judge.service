@@ -5,8 +5,10 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/go-judge -http-addr 0.0.0.0:5050 -dir /tmp/go-judge -silent
+ExecStartPost=/bin/bash -c "sleep 1; echo 999999 > /sys/fs/cgroup/system.slice/gojudge.scope/pids.max 2>/dev/null || true"
 Restart=on-failure
 RestartSec=5
+TasksMax=infinity
 LimitNPROC=infinity
 
 [Install]
