@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Switch, Upload, Modal, Typography, Tooltip } from "@arco-design/web-react";
 import { problemApi } from "../../../api/problem";
 import DifficultyTag from "../../../components/DifficultyTag";
@@ -13,6 +13,37 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
   const [importResult, setImportResult] = useState<any>(null);
   const [importResultVisible, setImportResultVisible] = useState(false);
   const [importFileList, setImportFileList] = useState<any[]>([]);
+  const [exportAllModalVisible, setExportAllModalVisible] = useState(false);
+  const [exportCountdown, setExportCountdown] = useState(10);
+  const countdownRef = useRef<number | null>(null);
+
+  const openExportAllModal = () => {
+    setExportAllModalVisible(true);
+    setExportCountdown(10);
+  };
+
+  const closeExportAllModal = () => {
+    setExportAllModalVisible(false);
+    setExportCountdown(10);
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+  };
+
+  const handleConfirmExportAll = () => {
+    closeExportAllModal();
+    handleExport([]);
+  };
+
+  useEffect(() => {
+    if (!exportAllModalVisible) return;
+    if (exportCountdown <= 0) return;
+    countdownRef.current = window.setInterval(() => {
+      setExportCountdown((prev) => {
+        if (prev <= 1) { clearInterval(countdownRef.current!); countdownRef.current = null; return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; } };
+  }, [exportAllModalVisible]);
 
   const fetchData = async (current = pagination.current, pageSize = pagination.pageSize) => {
     setLoading(true);
@@ -76,10 +107,6 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
       .filter((item) => selectedKeys.includes(item.id))
       .map((item) => item.slug);
     handleExport(selectedSlugs);
-  };
-
-  const handleExportAll = () => {
-    handleExport([]);
   };
 
   const handleImport = async (file: File) => {
@@ -154,7 +181,7 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
           >
             批量导出{selectedKeys.length > 0 ? `（${selectedKeys.length}题）` : ""}
           </Button>
-          <Button onClick={handleExportAll}>导出全部</Button>
+          <Button onClick={openExportAllModal}>导出全部</Button>
           <Upload
             autoUpload={false}
             showUploadList={false}
@@ -250,6 +277,20 @@ export default function ManageProblems({ onEdit }: { onEdit?: (id: number) => vo
             )}
           </div>
         )}
+      </Modal>
+      <Modal
+        title="确认导出全部题目"
+        visible={exportAllModalVisible}
+        onCancel={closeExportAllModal}
+        onOk={handleConfirmExportAll}
+        okText={exportCountdown > 0 ? `请等待 ${exportCountdown}s` : "确认导出"}
+        okButtonProps={{ disabled: exportCountdown > 0 }}
+        cancelText="取消"
+      >
+        <div style={{ padding: "8px 0" }}>
+          <div>即将导出全部题目为 zip 文件，这可能需要较长时间并占用较多服务器资源。</div>
+          <div style={{ marginTop: 8, color: "var(--color-text-3)", fontSize: 13 }}>为防止误操作，请等待倒计时结束后再确认。</div>
+        </div>
       </Modal>
     </Card>
   );
