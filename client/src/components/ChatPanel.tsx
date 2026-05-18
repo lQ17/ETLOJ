@@ -61,13 +61,11 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     transport: new TextStreamChatTransport({
       api: '/api/ai/chat',
       headers: { Authorization: `Bearer ${token}` },
-      get body() {
-        return {
-          problemId,
-          currentCode: latestRef.current.currentCode,
-          language: latestRef.current.currentLanguage,
-        };
-      },
+      body: () => ({
+        problemId,
+        currentCode: latestRef.current.currentCode,
+        language: latestRef.current.currentLanguage,
+      }),
     }),
     onError: (err) => {
       Message.error(err.message || 'AI 服务暂时不可用');
