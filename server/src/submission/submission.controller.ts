@@ -19,7 +19,11 @@ export class SubmissionController {
     private submissionService: SubmissionService,
     private config: ConfigService,
   ) {
-    this.judgeSecret = this.config.get("JUDGE_SECRET") || "judge-callback-secret";
+    const secret = this.config.get<string>("JUDGE_SECRET");
+    if (!secret) {
+      throw new Error("缺少必要的环境变量 JUDGE_SECRET，请在 .env 中配置");
+    }
+    this.judgeSecret = secret;
   }
 
   @Post()

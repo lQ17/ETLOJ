@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { QueryRankingDto } from "./dto/query-ranking.dto";
 
@@ -55,7 +56,7 @@ export class RankingService {
       : await this.countScoreRanking(timeStart, timeEnd);
 
     // BigInt -> Number（MySQL COUNT/SUM 返回 BigInt，JSON.stringify 无法序列化）
-    // LongText（avatar）通过 $queryRawUnsafe 可能返回 Buffer 或 String
+    // LongText（avatar）通过 $queryRaw 可能返回 Buffer 或 String
     const safeItems = (items as any[]).map((r) => ({
       ...r,
       value: Number(r.value),
@@ -67,16 +68,22 @@ export class RankingService {
     return { items: safeItems, total, page: pageNum, pageSize: sizeNum };
   }
 
-  private timeWhere(alias: string, timeStart: Date | null, timeEnd: Date | null): string {
-    const conditions: string[] = [];
-    if (timeStart) conditions.push(`${alias}.created_at >= '${timeStart.toISOString()}'`);
-    if (timeEnd) conditions.push(`${alias}.created_at < '${timeEnd.toISOString()}'`);
-    return conditions.length > 0 ? "AND " + conditions.join(" AND ") : "";
+  // 构建时间过滤条件，返回参数化的 Prisma.Sql 片段，防止 SQL 注入
+  private timeWhere(alias: string, timeStart: Date | null, timeEnd: Date | null): Prisma.Sql {
+    const conditions: Prisma.Sql[] = [];
+    if (timeStart) {
+      conditions.push(Prisma.sql`${Prisma.raw(alias)}.created_at >= ${timeStart}`);
+    }
+    if (timeEnd) {
+      conditions.push(Prisma.sql`${Prisma.raw(alias)}.created_at < ${timeEnd}`);
+    }
+    if (conditions.length === 0) return Prisma.sql``;
+    return Prisma.sql`AND ${Prisma.join(conditions, " AND ")}`;
   }
 
   private async getAcRanking(timeStart: Date | null, timeEnd: Date | null, limit: number, offset: number) {
     const timeFilter = this.timeWhere("s", timeStart, timeEnd);
-    return this.prisma.$queryRawUnsafe(`
+    return this.prisma.$queryRaw`
       SELECT u.id, u.username, u.avatar, COUNT(DISTINCT s.problem_id) as value
       FROM users u
       INNER JOIN submissions s ON s.user_id = u.id AND s.status = 'AC'
@@ -85,12 +92,12 @@ export class RankingService {
       HAVING value > 0
       ORDER BY value DESC
       LIMIT ${limit} OFFSET ${offset}
-    `);
+    `;
   }
 
   private async countAcRanking(timeStart: Date | null, timeEnd: Date | null) {
     const timeFilter = this.timeWhere("s", timeStart, timeEnd);
-    const result: any[] = await this.prisma.$queryRawUnsafe(`
+    const result: any[] = await this.prisma.$queryRaw`
       SELECT COUNT(*) as total FROM (
         SELECT u.id
         FROM users u
@@ -99,13 +106,13 @@ export class RankingService {
         GROUP BY u.id
         HAVING COUNT(DISTINCT s.problem_id) > 0
       ) t
-    `);
+    `;
     return Number(result[0]?.total || 0);
   }
 
   private async getScoreRanking(timeStart: Date | null, timeEnd: Date | null, limit: number, offset: number) {
     const timeFilter = this.timeWhere("s", timeStart, timeEnd);
-    return this.prisma.$queryRawUnsafe(`
+    return this.prisma.$queryRaw`
       SELECT u.id, u.username, u.avatar, COALESCE(SUM(p.score), 0) as value
       FROM users u
       INNER JOIN (
@@ -121,12 +128,12 @@ export class RankingService {
       HAVING value > 0
       ORDER BY value DESC
       LIMIT ${limit} OFFSET ${offset}
-    `);
+    `;
   }
 
   private async countScoreRanking(timeStart: Date | null, timeEnd: Date | null) {
     const timeFilter = this.timeWhere("s", timeStart, timeEnd);
-    const result: any[] = await this.prisma.$queryRawUnsafe(`
+    const result: any[] = await this.prisma.$queryRaw`
       SELECT COUNT(*) as total FROM (
         SELECT u.id
         FROM users u
@@ -142,7 +149,7 @@ export class RankingService {
         GROUP BY u.id
         HAVING COALESCE(SUM(p.score), 0) > 0
       ) t
-    `);
+    `;
     return Number(result[0]?.total || 0);
   }
 }

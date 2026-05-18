@@ -321,7 +321,11 @@ export class AiService {
       return msg.content || '';
     };
 
-    const recentMessages = dto.messages.slice(-20);
+    // 安全限制：最多 20 条消息，单条内容最大 5000 字符
+    const recentMessages = dto.messages.slice(-20).map((m) => ({
+      ...m,
+      content: (m.content || '').slice(0, 5000),
+    }));
 
     // 5. 获取模型配置
     const provider = await this.getActiveProvider();

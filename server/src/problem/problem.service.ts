@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as fs from "fs";
 import * as path from "path";
@@ -38,6 +38,10 @@ export class ProblemService {
   }
 
   private getProblemDir(slug: string) {
+    // 防止路径穿越攻击
+    if (/\.\.|[\/\\]/.test(slug)) {
+      throw new BadRequestException("slug 不能包含路径分隔符或 ..");
+    }
     return path.join(this.problemsDir, slug);
   }
 
@@ -223,7 +227,7 @@ export class ProblemService {
   }
 
   async getMarkdown(idOrSlug: number | string) {
-    const problem = await this.resolveProblem(idOrSlug, true);
+    const problem = await this.resolveProblem(idOrSlug, false);
 
     try {
       return fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");

@@ -6,7 +6,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix("api");
-  app.enableCors();
+  // 限制 CORS 来源，仅允许开发环境和服务器域名
+  const allowedOrigins = [
+    "http://localhost:5173",
+    process.env.CLIENT_ORIGIN, // 服务器域名，如 http://150.158.39.151
+  ].filter(Boolean);
+  app.enableCors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true,
+  });
   
   // Increase payload limit for Base64 image uploads
   const express = require('express');

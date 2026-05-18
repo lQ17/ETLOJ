@@ -17,7 +17,10 @@ export class UserService {
     const existing = await this.prisma.user.findFirst({ where: { OR: conditions } });
     if (existing) throw new ConflictException("用户名、邮箱或手机号已存在");
 
-    const rawPassword: string = password || this.config.get<string>("DEFAULT_USER_PASSWORD") || "123456";
+    const rawPassword = password || this.config.get<string>("DEFAULT_USER_PASSWORD");
+    if (!rawPassword) {
+      throw new Error("缺少必要的环境变量 DEFAULT_USER_PASSWORD，请在 .env 中配置");
+    }
     const hashed = await bcrypt.hash(rawPassword, 10);
 
     return this.prisma.user.create({

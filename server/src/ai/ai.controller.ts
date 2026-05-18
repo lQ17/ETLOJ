@@ -24,7 +24,7 @@ export class AiController {
   @Post('chat')
   @UseGuards(JwtAuthGuard)
   async chat(
-    @Body() dto: any,
+    @Body() dto: ChatDto,
     @CurrentUser() user: { id: number; role: string },
     @Res() res: Response,
   ) {
