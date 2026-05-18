@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Form, Input, Button, Card, Message } from "@arco-design/web-react";
-import { IconCode, IconUser, IconLock } from "@arco-design/web-react/icon";
+import { IconUser, IconLock } from "@arco-design/web-react/icon";
+import logoWithText from "../../assets/images/logo-with-text.png";
 import { useAuthStore } from "../../stores/auth";
 
 export default function LoginPage() {
@@ -31,11 +32,8 @@ export default function LoginPage() {
 
         <div style={{ textAlign: "center", marginBottom: 32, position: "relative" }}>
           {/* 品牌 Logo */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 20 }}>
-            <div style={{ width: 36, height: 36, background: "var(--color-ink)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <IconCode style={{ fontSize: 22, color: "var(--color-canvas)" }} />
-            </div>
-            <span style={{ fontWeight: 700, fontSize: 26, color: "var(--color-ink)", letterSpacing: "-0.02em" }}>ETLOJ</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+            <img src={logoWithText} alt="ETLOJ" style={{ height: 44, objectFit: "contain" }} />
           </div>
           <h1 style={{ fontSize: 24, marginBottom: 8, fontWeight: 600 }}>欢迎回来</h1>
           <p style={{ color: "var(--color-muted)", fontSize: 15 }}>继续你的算法进阶之旅</p>
