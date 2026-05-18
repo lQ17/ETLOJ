@@ -133,8 +133,10 @@ export class AiController {
     @Query('pageSize') pageSize: string,
     @Query('provider') provider?: string,
     @Query('model') model?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    return this.aiService.getUsageLogs(Number(page) || 1, Number(pageSize) || 20, { provider, model });
+    return this.aiService.getUsageLogs(Number(page) || 1, Number(pageSize) || 20, { provider, model, startDate, endDate });
   }
 
   @Patch('admin/config/global-limit')

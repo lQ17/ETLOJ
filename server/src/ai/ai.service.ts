@@ -220,10 +220,15 @@ export class AiService {
     };
   }
 
-  async getUsageLogs(page: number, pageSize: number, filters?: { provider?: string, model?: string }) {
+  async getUsageLogs(page: number, pageSize: number, filters?: { provider?: string, model?: string, startDate?: string, endDate?: string }) {
     const where: any = {};
     if (filters?.provider) where.providerName = { contains: filters.provider };
     if (filters?.model) where.modelName = { contains: filters.model };
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = new Date(filters.startDate);
+      if (filters.endDate) where.createdAt.lte = new Date(filters.endDate);
+    }
 
     const [total, logs] = await Promise.all([
       this.prisma.aiUsageLog.count({ where }),

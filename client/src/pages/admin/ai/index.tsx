@@ -23,7 +23,7 @@ export default function AdminAiPage() {
 
 // ─── 统计面板 ───
 function StatsPanel() {
-  const [stats, setStats] = useState<any>({ todayCalls: 0, todayTokens: 0, totalConversations: 0, totalMessages: 0, cachedTokens: 0, cachedTokensHit: 0, cost: 0 });
+  const [stats, setStats] = useState<any>({ todayCalls: 0, todayTokens: 0, totalConversations: 0, totalMessages: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
   const [logs, setLogs] = useState<any[]>([]);
@@ -31,7 +31,7 @@ function StatsPanel() {
   const [loadingLogs, setLoadingLogs] = useState(true);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
   
-  const [filters, setFilters] = useState({ provider: '', model: '' });
+  const [filters, setFilters] = useState({ provider: '', model: '', startDate: '', endDate: '' });
 
   useEffect(() => {
     adminAiApi.getStats().then((res: any) => {
@@ -60,57 +60,84 @@ function StatsPanel() {
     { title: '计费模型', dataIndex: 'modelName', render: (v: string) => <Tag color="gray">{v}</Tag> },
     { title: '输入', dataIndex: 'inputTokens', render: (v: number) => v.toLocaleString() },
     { title: '输出', dataIndex: 'outputTokens', render: (v: number) => v.toLocaleString() },
-    { title: '总成本', dataIndex: 'cost', render: (v: number) => `$${v.toFixed(4)}` },
+    { title: '总Tokens', dataIndex: 'totalTokens', render: (v: number) => <span style={{ fontWeight: 600 }}>{v.toLocaleString()}</span> },
     { title: '用时', dataIndex: 'timeUsedMs', render: (v: number) => `${(v / 1000).toFixed(1)}s` },
     { title: '状态', dataIndex: 'status', render: (v: number) => <span style={{ color: v === 200 ? 'var(--color-success-light-4)' : 'var(--color-danger-light-4)' }}>{v}</span> },
     { title: '来源', dataIndex: 'source' }
   ];
 
+  const handleDateChange = (dateString: string[]) => {
+    const [startDate, endDate] = dateString;
+    const newFilters = { ...filters, startDate, endDate };
+    setFilters(newFilters);
+    fetchLogs(1, pagination.pageSize, newFilters);
+  };
+
   return (
     <div style={{ padding: "24px 0" }}>
       <Row gutter={24} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+        <Col span={8}>
           <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Statistic title="总请求数" value={stats.todayCalls + stats.totalMessages} groupSeparator style={{ fontWeight: 'bold' }} />
+            <Statistic title="今日总 Tokens 数" value={stats.todayTokens} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Statistic title="总成本" value={stats.cost} prefix="$" precision={4} groupSeparator style={{ fontWeight: 'bold' }} />
+            <Statistic title="总请求数 (全局)" value={stats.totalMessages} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={8}>
           <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Statistic title="总 Token 数" value={stats.todayTokens} groupSeparator style={{ fontWeight: 'bold' }} />
-            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-text-3)', display: 'flex', justifyContent: 'space-between' }}>
-              <span>Input</span><span>—</span>
-              <span>Output</span><span>—</span>
-            </div>
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Statistic title="缓存 Token" value={stats.cachedTokens} groupSeparator style={{ fontWeight: 'bold' }} />
-            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-text-3)', display: 'flex', justifyContent: 'space-between' }}>
-              <span>创建: 0.0k</span>
-              <span>命中: {stats.cachedTokensHit}k</span>
-            </div>
+            <Statistic title="今日请求数" value={stats.todayCalls} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
       </Row>
 
       <Card title="调用明细日志" bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-        <Space style={{ marginBottom: 16 }}>
+        <Space style={{ marginBottom: 16 }} wrap>
           <Input.Search 
             placeholder="搜索供应商..." 
             allowClear 
             onSearch={(v) => { setFilters(prev => ({ ...prev, provider: v })); fetchLogs(1, pagination.pageSize, { ...filters, provider: v }); }} 
+            style={{ width: 160 }}
           />
           <Input.Search 
             placeholder="搜索模型..." 
             allowClear 
             onSearch={(v) => { setFilters(prev => ({ ...prev, model: v })); fetchLogs(1, pagination.pageSize, { ...filters, model: v }); }} 
+            style={{ width: 160 }}
           />
+          
+          <Button type="secondary" onClick={() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const end = new Date(today);
+            end.setHours(23, 59, 59, 999);
+            handleDateChange([today.toISOString(), end.toISOString()]);
+          }}>本日</Button>
+          
+          <Button type="secondary" onClick={() => {
+            const today = new Date();
+            const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)));
+            startOfWeek.setHours(0, 0, 0, 0);
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+            handleDateChange([startOfWeek.toISOString(), endOfWeek.toISOString()]);
+          }}>本周</Button>
+          
+          <Button type="secondary" onClick={() => {
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+            handleDateChange([startOfMonth.toISOString(), endOfMonth.toISOString()]);
+          }}>本月</Button>
+
+          <Button type="secondary" onClick={() => {
+            setFilters({ provider: '', model: '', startDate: '', endDate: '' });
+            fetchLogs(1, pagination.pageSize, { provider: '', model: '', startDate: '', endDate: '' });
+          }}>清除筛选</Button>
+
           <Button type="primary" onClick={() => fetchLogs()}>刷新记录</Button>
         </Space>
         
