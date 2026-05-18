@@ -1,6 +1,6 @@
 import {
-  Controller, Post, Get, Patch,
-  Body, Res, UseGuards,
+  Controller, Post, Get, Patch, Delete,
+  Body, Query, Res, UseGuards, ParseIntPipe,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AiService } from './ai.service';
@@ -31,6 +31,26 @@ export class AiController {
         res.status(status).json({ message });
       }
     }
+  }
+
+  /** 获取某个题目的聊天记录 */
+  @Get('chat/history')
+  @UseGuards(JwtAuthGuard)
+  getHistory(
+    @Query('problemId', ParseIntPipe) problemId: number,
+    @CurrentUser() user: { id: number },
+  ) {
+    return this.aiService.getHistory(user.id, problemId);
+  }
+
+  /** 清空某个题目的聊天记录 */
+  @Delete('chat/history')
+  @UseGuards(JwtAuthGuard)
+  clearHistory(
+    @Query('problemId', ParseIntPipe) problemId: number,
+    @CurrentUser() user: { id: number },
+  ) {
+    return this.aiService.clearHistory(user.id, problemId);
   }
 
   /** 获取当前用户剩余使用次数 */

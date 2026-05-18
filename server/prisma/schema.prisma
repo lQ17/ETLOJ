@@ -62,6 +62,7 @@ model User {
   problemLists ProblemList[]
   solutions  Solution[]
   announcements Announcement[]
+  aiConversations AiConversation[]
 
   @@map("users")
 }
@@ -85,6 +86,7 @@ model Problem {
   problemLists   ProblemListItem[]
   problemTags    ProblemTag[]
   solutions      Solution[]
+  aiConversations AiConversation[]
 
   @@map("problems")
 }
@@ -260,3 +262,32 @@ model Announcement {
   @@map("announcements")
 }
 
+model AiConversation {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  problemId Int      @map("problem_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User      @relation(fields: [userId], references: [id])
+  problem Problem   @relation(fields: [problemId], references: [id])
+  messages AiMessage[]
+
+  @@index([userId])
+  @@index([problemId])
+  @@unique([userId, problemId])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             Int      @id @default(autoincrement())
+  conversationId Int      @map("conversation_id")
+  role           String   @db.VarChar(20)
+  content        String   @db.LongText
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}

@@ -436,16 +436,24 @@ export default function ProblemDetailPage() {
 
       {/* 内容区 */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", marginLeft: 16 }}>
-        {/* 题目详情 */}
-        {activeTab === "detail" && (
+        {/* 题目详情与问问AI（左右分栏共用代码编辑器） */}
+        {(activeTab === "detail" || activeTab === "ai") && (
           <div style={{ display: "flex", gap: 24, width: "100%" }}>
-            {/* 左侧：题面 */}
+            {/* 左侧：动态内容（题面 或 AI） */}
             <div style={{
               flex: codeCollapsed ? 1 : "0 0 50%",
-              overflow: "auto",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
               paddingRight: 8,
               transition: "flex 0.3s ease",
             }}>
+              {/* 题面区域 */}
+              <div style={{
+                display: activeTab === "detail" ? "block" : "none",
+                flex: 1,
+                overflow: "auto",
+              }}>
               {codeCollapsed && (
                 <Button
                   type="outline"
@@ -552,6 +560,36 @@ export default function ProblemDetailPage() {
                   </ReactMarkdown>
                 </div>
               )}
+              </div>
+
+              {/* 问问AI 区域 — 放在左侧，使用 display 控制保留对话状态 */}
+              <div style={{
+                display: activeTab === "ai" ? "flex" : "none",
+                flex: 1,
+                flexDirection: "column",
+                overflow: "hidden",
+              }}>
+                {!user ? (
+                  <div style={{
+                    flex: 1, display: "flex", alignItems: "center",
+                    justifyContent: "center", flexDirection: "column", gap: 16,
+                    color: "var(--color-text-3)",
+                  }}>
+                    <IconRobot style={{ fontSize: 48 }} />
+                    <Typography.Title heading={5} style={{ margin: 0 }}>AI 助手</Typography.Title>
+                    <Typography.Paragraph style={{ color: "var(--color-text-3)" }}>
+                      登录后即可使用 AI 助手
+                    </Typography.Paragraph>
+                    <Button type="primary" onClick={() => navigate("/login")}>去登录</Button>
+                  </div>
+                ) : (
+                  <ChatPanel
+                    problemId={problem.id}
+                    currentCode={code}
+                    problemTitle={problem.title}
+                  />
+                )}
+              </div>
             </div>
 
             {/* 右侧：代码编辑器 + 测试区 */}
@@ -979,34 +1017,6 @@ export default function ProblemDetailPage() {
             </Button>
           </div>
         </Modal>
-
-        {/* 问问AI — 使用 display 控制以保留对话状态 */}
-        {!user && activeTab === "ai" && (
-          <div style={{
-            flex: 1, display: "flex", alignItems: "center",
-            justifyContent: "center", flexDirection: "column", gap: 16,
-            color: "var(--color-text-3)",
-          }}>
-            <IconRobot style={{ fontSize: 48 }} />
-            <Typography.Title heading={5} style={{ margin: 0 }}>AI 助手</Typography.Title>
-            <Typography.Paragraph style={{ color: "var(--color-text-3)" }}>
-              登录后即可使用 AI 助手
-            </Typography.Paragraph>
-            <Button type="primary" onClick={() => navigate("/login")}>去登录</Button>
-          </div>
-        )}
-        {user && (
-          <div style={{
-            flex: 1, overflow: "hidden",
-            display: activeTab === "ai" ? "flex" : "none",
-          }}>
-            <ChatPanel
-              problemId={problem.id}
-              currentCode={code}
-              problemTitle={problem.title}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

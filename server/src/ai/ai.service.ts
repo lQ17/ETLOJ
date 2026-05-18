@@ -77,6 +77,28 @@ export class AiService {
     }
   }
 
+  // ─── 会话历史管理 ───
+
+  async getHistory(userId: number, problemId: number) {
+    const conversation = await this.prisma.aiConversation.findUnique({
+      where: { userId_problemId: { userId, problemId } },
+      include: {
+        messages: {
+          orderBy: { id: 'asc' },
+          select: { role: true, content: true },
+        },
+      },
+    });
+    return conversation?.messages || [];
+  }
+
+  async clearHistory(userId: number, problemId: number) {
+    await this.prisma.aiConversation.deleteMany({
+      where: { userId, problemId },
+    });
+    return { success: true };
+  }
+
   // ─── 核心聊天 ───
 
   async chat(
@@ -143,7 +165,32 @@ export class AiService {
       this.getConfigValue('model', 'AI_MODEL', 'glm-5-fp8'),
     ]);
 
-    // 6. 直接调用 OpenAI 兼容 API（绕过 AI SDK provider，手动解析 SSE）
+    // 6. 处理持久化
+    let conversation = await this.prisma.aiConversation.findUnique({
+      where: { userId_problemId: { userId: user.id, problemId: dto.problemId } },
+    });
+    if (!conversation) {
+      conversation = await this.prisma.aiConversation.create({
+        data: { userId: user.id, problemId: dto.problemId },
+      });
+    } else {
+      // 保持与前端的状态同步，清空旧的重建
+      await this.prisma.aiMessage.deleteMany({
+        where: { conversationId: conversation.id },
+      });
+    }
+
+    if (recentMessages.length > 0) {
+      await this.prisma.aiMessage.createMany({
+        data: recentMessages.map((m) => ({
+          conversationId: conversation!.id,
+          role: m.role,
+          content: extractText(m),
+        })),
+      });
+    }
+
+    // 7. 直接调用 OpenAI 兼容 API（绕过 AI SDK provider，手动解析 SSE）
     try {
       this.logger.log(`Calling LLM: ${apiBase}/chat/completions model=${modelName}`);
 
@@ -184,6 +231,7 @@ export class AiService {
       const decoder = new TextDecoder();
       let buffer = '';
       let totalLength = 0;
+      let aiResponseContent = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -204,6 +252,7 @@ export class AiService {
             // 提取 content（最终回答）
             if (delta?.content) {
               res.write(delta.content);
+              aiResponseContent += delta.content;
               totalLength += delta.content.length;
             }
           } catch { /* 忽略解析错误 */ }
@@ -211,6 +260,18 @@ export class AiService {
       }
 
       res.end();
+      
+      // 保存 AI 回复到数据库
+      if (aiResponseContent) {
+        await this.prisma.aiMessage.create({
+          data: {
+            conversationId: conversation.id,
+            role: 'assistant',
+            content: aiResponseContent,
+          },
+        });
+      }
+
       this.logger.log(`LLM stream done: ${totalLength} chars`);
     } catch (err: any) {
       this.logger.error('AI chat error', err?.message || err);

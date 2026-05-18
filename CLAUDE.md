@@ -84,7 +84,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **TypeScript type import**: Vite 的 esbuild 会 strip type-only exports，因此从 `constants/` 导入仅用作类型的符号（如 `DifficultyLevel`）时必须使用 `import type { ... }`，否则运行时报 "does not provide an export" 错误
 - **Charts**: ECharts via `echarts-for-react` — used in profile page for pie, wordCloud (requires `echarts-wordcloud` plugin); heatmap uses `react-github-calendar`
 - **Problem detail submit**: Submit button is async — disabled during polling, result (status tag + score + time/memory) displayed inline next to button; rate-limited to 3 submissions per 60s (sliding window)
-- **Problem detail page tabs**: Left sidebar navigation with three tabs — 题目详情 (problem text + code editor, 40%/60% split), 查看题解 (solution list + markdown rendering, write via Modal), 问问AI (placeholder); supports `?tab=solutions&edit={solutionId}` query params for deep-linking to edit mode from profile page
+- **Problem detail page tabs**: Left sidebar navigation with three tabs — 题目详情 (problem text), 查看题解 (solution list + markdown rendering, write via Modal), 问问AI (AI chat). When switching tabs, the right-side code editor remains mounted. The left-side content (problem text vs AI chat) is toggled via `display: none / flex` to preserve scroll positions and chat state. Supports `?tab=solutions&edit={solutionId}` query params for deep-linking to edit mode from profile page.
 - **Editor settings**: Gear icon in editor toolbar opens popover for fontSize (default 16px), tabSize (default 4), theme (亮色/暗色/跟随网站); persisted to localStorage
 - **Editor defaults**: No default code templates, code completion disabled (quickSuggestions/suggestOnTriggerCharacters/wordBasedSuggestions all false)
 - **API layer**: `client/src/api/*.ts` — plain objects with async methods using shared Axios instance (auto-attaches JWT, unwraps response, 30s timeout); custom `paramsSerializer` for proper array query parameter serialization (`tags=a&tags=b` format, not `tags[]=a`)
@@ -104,6 +104,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Problem lists**: `problem_lists` + `problem_list_items` tables — 题单支持公共（isPublic=true, ADMIN/TEACHER 管理）和个人（isPublic=false, 用户自管），中间表带 `sort_order` 排序
 - **Solutions**: `solutions` table — 题解内容存 `content`（LongText），关联 `problemId` + `authorId`，每人可对同一题写多篇题解；含 `status`（PENDING/APPROVED/REJECTED）和 `rejectReason` 审核字段
 - **Announcements**: `announcements` table — 公告标题 `title`（VarChar 200）、摘要 `summary`（VarChar 500）、详情 `content`（LongText，Markdown）、`isPinned`（Boolean）、`status`（DRAFT/PUBLISHED）、关联 `authorId`；排序逻辑：置顶优先 + 时间倒序
+- **AI Assistant**: `ai_conversations` (1-to-1 with userId+problemId context) and `ai_messages` (history items) tables. The frontend sends full history per request, and the backend clears & recreates messages for the conversation before streaming the AI response, then appending the AI's final text.
 - **Prisma version**: Pinned to v5 (v7 has breaking changes) — do NOT upgrade
 
 ### Key Enums

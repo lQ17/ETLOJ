@@ -75,9 +75,27 @@ export default function ChatPanel({ problemId, currentCode, problemTitle }: Chat
     } catch { /* ignore */ }
   };
 
+  const loadHistory = async () => {
+    try {
+      const data: any = await aiApi.getHistory(problemId);
+      if (Array.isArray(data) && data.length > 0) {
+        setMessages(
+          data.map((msg: any, index: number) => ({
+            id: `hist-${index}`,
+            role: msg.role,
+            content: msg.content,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to load chat history', err);
+    }
+  };
+
   useEffect(() => {
     loadRemaining();
-  }, []);
+    loadHistory();
+  }, [problemId]);
 
   // 自动滚动到底部
   useEffect(() => {
@@ -96,9 +114,14 @@ export default function ChatPanel({ problemId, currentCode, problemTitle }: Chat
     doSend(message);
   };
 
-  const handleClear = () => {
-    setMessages([]);
-    Message.success('对话已清空');
+  const handleClear = async () => {
+    try {
+      await aiApi.clearHistory(problemId);
+      setMessages([]);
+      Message.success('对话已清空');
+    } catch (err: any) {
+      Message.error(err.response?.data?.message || '清空失败');
+    }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -113,13 +136,15 @@ export default function ChatPanel({ problemId, currentCode, problemTitle }: Chat
     }
   };
 
-  // 提取消息文本内容（v3 的 message 使用 parts 结构）
+  // 提取消息文本内容（v3 的 message 使用 parts 结构，兼容 content）
   const getMessageText = (m: typeof messages[number]): string => {
-    if (!m.parts) return '';
-    return m.parts
-      .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-      .map((p) => p.text)
-      .join('');
+    if (m.parts && m.parts.length > 0) {
+      return m.parts
+        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+        .map((p) => p.text)
+        .join('');
+    }
+    return m.content || '';
   };
 
   return (

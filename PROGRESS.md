@@ -125,7 +125,8 @@
 - [x] 前端 ChatPanel 与 Vercel AI SDK (v3) 集成
 - [x] AI 聊天气泡样式优化与代码块 VS Code 风格白底语法高亮 (`react-syntax-highlighter`)
 - [x] AI Token 用量限制与 Redis 限流策略
-- [ ] AI 会话与消息的数据库持久化（Phase 2）
+- [x] AI 会话与消息的数据库持久化（`AiConversation` / `AiMessage` 表）
+- [x] 题目详情页 AI 助手双栏布局优化（左侧 AI 对话，右侧保留代码编辑器，无缝切换）
 - [ ] 管理员后台查看 AI 使用报告（Phase 3）
 - [ ] AI 代码高亮 diff 标注（Phase 3）
 
