@@ -23,7 +23,13 @@ export default function AdminAiPage() {
 
 // ─── 统计面板 ───
 function StatsPanel() {
-  const [stats, setStats] = useState({ todayCalls: 0, totalConversations: 0, totalMessages: 0 });
+  const [stats, setStats] = useState({ 
+    todayCalls: 0, 
+    todayTokens: 0,
+    totalConversations: 0, 
+    totalMessages: 0,
+    modelStats: {} as Record<string, { calls: number, tokens: number }>
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,25 +39,46 @@ function StatsPanel() {
     });
   }, []);
 
+  const modelColumns = [
+    { title: '模型名称', dataIndex: 'model' },
+    { title: '今日调用次数', dataIndex: 'calls', render: (v: number) => <Typography.Text>{v.toLocaleString()}</Typography.Text> },
+    { title: '今日 Token 消耗 (Tokens)', dataIndex: 'tokens', render: (v: number) => <Typography.Text>{v.toLocaleString()}</Typography.Text> }
+  ];
+  
+  const modelData = Object.entries(stats.modelStats || {}).map(([model, data]) => ({
+    model,
+    calls: data.calls,
+    tokens: data.tokens,
+  }));
+
   return (
     <div style={{ padding: "24px 0" }}>
-      <Row gutter={24}>
-        <Col span={8}>
+      <Row gutter={24} style={{ marginBottom: 24 }}>
+        <Col span={6}>
           <Card loading={loading}>
-            <Statistic title="今日调用次数" value={stats.todayCalls} prefix={<IconThunderbolt />} groupSeparator />
+            <Statistic title="今日总调用次数" value={stats.todayCalls} prefix={<IconThunderbolt />} groupSeparator />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card loading={loading}>
-            <Statistic title="累计会话数" value={stats.totalConversations} prefix={<IconUserGroup />} groupSeparator />
+            <Statistic title="今日 Token 总消耗" value={stats.todayTokens} prefix={<IconThunderbolt />} groupSeparator />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
+          <Card loading={loading}>
+            <Statistic title="累计开启会话数" value={stats.totalConversations} prefix={<IconUserGroup />} groupSeparator />
+          </Card>
+        </Col>
+        <Col span={6}>
           <Card loading={loading}>
             <Statistic title="累计消息总数" value={stats.totalMessages} prefix={<IconMessage />} groupSeparator />
           </Card>
         </Col>
       </Row>
+
+      <Card title="今日使用量详单 (按模型分列)" loading={loading}>
+        <Table columns={modelColumns} data={modelData} rowKey="model" pagination={false} />
+      </Card>
     </div>
   );
 }

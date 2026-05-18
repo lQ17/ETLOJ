@@ -175,17 +175,37 @@ export class AiService {
   // ─── 统计面板 ───
   async getStats() {
     const today = new Date().toISOString().slice(0, 10);
-    // 粗略统计今日调用量（扫描所有 ai:usage:*:today 键）
-    const keys = await this.redis.keys(`ai:usage:*:${today}`);
+    
+    const callKeys = await this.redis.keys(`ai:stats:${today}:calls:*`);
+    const tokenKeys = await this.redis.keys(`ai:stats:${today}:tokens:*`);
+    
     let todayCalls = 0;
-    for (const k of keys) {
-      todayCalls += Number(await this.redis.get(k) || '0');
+    let todayTokens = 0;
+    const modelStats: Record<string, { calls: number, tokens: number }> = {};
+    
+    for (const k of callKeys) {
+      const model = k.split(':').pop() || 'unknown';
+      const count = Number(await this.redis.get(k) || '0');
+      todayCalls += count;
+      if (!modelStats[model]) modelStats[model] = { calls: 0, tokens: 0 };
+      modelStats[model].calls = count;
     }
+    
+    for (const k of tokenKeys) {
+      const model = k.split(':').pop() || 'unknown';
+      const count = Number(await this.redis.get(k) || '0');
+      todayTokens += count;
+      if (!modelStats[model]) modelStats[model] = { calls: 0, tokens: 0 };
+      modelStats[model].tokens = count;
+    }
+
     const totalConversations = await this.prisma.aiConversation.count();
     const totalMessages = await this.prisma.aiMessage.count();
     
     return {
       todayCalls,
+      todayTokens,
+      modelStats,
       totalConversations,
       totalMessages
     };
@@ -323,6 +343,7 @@ export class AiService {
           model: modelName,
           messages: llmMessages,
           stream: true,
+          stream_options: { include_usage: true },
           temperature: 0.7,
           max_tokens: 4096,
         }),
@@ -344,6 +365,7 @@ export class AiService {
       let buffer = '';
       let totalLength = 0;
       let aiResponseContent = '';
+      let totalTokens = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -360,6 +382,9 @@ export class AiService {
 
           try {
             const json = JSON.parse(trimmed.slice(6));
+            if (json.usage) {
+              totalTokens = json.usage.total_tokens || 0;
+            }
             const delta = json.choices?.[0]?.delta;
             // 提取 content（最终回答）
             if (delta?.content) {
@@ -373,6 +398,23 @@ export class AiService {
 
       res.end();
       
+      // 保存统计数据
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const callKey = `ai:stats:${today}:calls:${modelName}`;
+        const tokenKey = `ai:stats:${today}:tokens:${modelName}`;
+        await this.redis.incr(callKey);
+        
+        // 兼容某些提供商不返回 usage 的情况，估算 tokens (中英文字符大致比例估算)
+        if (!totalTokens) {
+          const promptLength = JSON.stringify(llmMessages).length;
+          totalTokens = Math.ceil((promptLength + aiResponseContent.length) / 1.5);
+        }
+        await this.redis.incrBy(tokenKey, totalTokens);
+      } catch (statErr) {
+        this.logger.warn('Failed to save AI stats: ' + statErr);
+      }
+
       // 保存 AI 回复到数据库
       if (aiResponseContent) {
         await this.prisma.aiMessage.create({
