@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Tabs, Card, Statistic, Grid, Table, Button, Modal, Form, Input, InputNumber, Switch, Message, Space, Typography, Badge, Tag, Select } from "@arco-design/web-react";
+import { Tabs, Card, Statistic, Grid, Table, Button, Modal, Form, Input, InputNumber, Switch, Message, Space, Typography, Badge, Tag, Select, DatePicker } from "@arco-design/web-react";
 import { adminAiApi } from "../../../api/adminAi";
 import { IconCheckCircleFill, IconCloseCircleFill, IconThunderbolt, IconMessage, IconUserGroup } from "@arco-design/web-react/icon";
 
@@ -76,19 +76,24 @@ function StatsPanel() {
   return (
     <div style={{ padding: "24px 0" }}>
       <Row gutter={24} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+        <Col span={6}>
           <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Statistic title="今日总 Tokens 数" value={stats.todayTokens} groupSeparator style={{ fontWeight: 'bold' }} />
+            <Statistic title="今日 Tokens 数" value={stats.todayTokens} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
-        <Col span={8}>
-          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Statistic title="总请求数 (全局)" value={stats.totalMessages} groupSeparator style={{ fontWeight: 'bold' }} />
-          </Card>
-        </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
             <Statistic title="今日请求数" value={stats.todayCalls} groupSeparator style={{ fontWeight: 'bold' }} />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <Statistic title="总 Tokens 数" value={stats.totalTokens} groupSeparator style={{ fontWeight: 'bold' }} />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <Statistic title="总请求数" value={stats.totalMessages} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
       </Row>
@@ -132,6 +137,13 @@ function StatsPanel() {
             const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
             handleDateChange([startOfMonth.toISOString(), endOfMonth.toISOString()]);
           }}>本月</Button>
+
+          <DatePicker.RangePicker 
+            style={{ width: 260 }} 
+            value={filters.startDate && filters.endDate ? [filters.startDate, filters.endDate] : undefined}
+            onChange={(dateString) => handleDateChange(dateString)}
+            allowClear
+          />
 
           <Button type="secondary" onClick={() => {
             setFilters({ provider: '', model: '', startDate: '', endDate: '' });

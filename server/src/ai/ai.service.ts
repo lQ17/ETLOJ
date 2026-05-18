@@ -203,10 +203,10 @@ export class AiService {
     const totalConversations = await this.prisma.aiConversation.count();
     const totalMessages = await this.prisma.aiMessage.count();
 
-    // Cache metrics (Mocked for now as we don't track cache hits explicitly yet)
-    const cachedTokens = 0;
-    const cachedTokensHit = 0;
-    const cost = 0;
+    const usageAgg = await this.prisma.aiUsageLog.aggregate({
+      _sum: { totalTokens: true }
+    });
+    const totalTokens = usageAgg._sum.totalTokens || 0;
     
     return {
       todayCalls,
@@ -214,9 +214,7 @@ export class AiService {
       modelStats,
       totalConversations,
       totalMessages,
-      cachedTokens,
-      cachedTokensHit,
-      cost
+      totalTokens
     };
   }
 
