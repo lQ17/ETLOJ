@@ -28,6 +28,7 @@ interface ChatPanelProps {
   currentCode: string;
   problemTitle: string;
   problemDifficulty: string;
+  currentLanguage: string;
 }
 
 const quickActions = [
@@ -37,7 +38,7 @@ const quickActions = [
   { icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因' },
 ];
 
-export default function ChatPanel({ problemId, currentCode, problemTitle, problemDifficulty }: ChatPanelProps) {
+export default function ChatPanel({ problemId, currentCode, problemTitle, problemDifficulty, currentLanguage }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [remaining, setRemaining] = useState<{ remaining: number; limit: number; unlimited: boolean } | null>(null);
   const [input, setInput] = useState('');
@@ -57,7 +58,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     transport: new TextStreamChatTransport({
       api: '/api/ai/chat',
       headers: { Authorization: `Bearer ${token}` },
-      body: { problemId, currentCode },
+      body: { problemId, currentCode, language: currentLanguage },
     }),
     onError: (err) => {
       Message.error(err.message || 'AI 服务暂时不可用');

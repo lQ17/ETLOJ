@@ -588,6 +588,7 @@ export default function ProblemDetailPage() {
                     currentCode={code}
                     problemTitle={problem.title}
                     problemDifficulty={problem.difficulty}
+                    currentLanguage={language}
                   />
                 )}
               </div>

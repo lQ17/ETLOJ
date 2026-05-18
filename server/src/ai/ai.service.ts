@@ -103,7 +103,7 @@ export class AiService {
 
   async chat(
     user: { id: number; role: string },
-    dto: { messages: any[]; problemId: number; currentCode?: string },
+    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string },
     res: any,
   ) {
     // 1. 频率检查
@@ -141,6 +141,7 @@ export class AiService {
       markdown,
       currentCode: dto.currentCode,
       submissions,
+      language: dto.language,
     });
 
     // 4. 从 UIMessage (v3 parts 格式) 提取为 LLM 消息
@@ -287,6 +288,7 @@ export class AiService {
     markdown: string;
     currentCode?: string;
     submissions: { status: string; score: number | null; createdAt: Date }[];
+    language?: string;
   }): string {
     const waCount = ctx.submissions.filter((s) => s.status === 'WA').length;
     const ceCount = ctx.submissions.filter((s) => s.status === 'CE').length;
@@ -349,6 +351,21 @@ ${trimmedMarkdown}
       prompt += `\n### 学生状态：已通过 ✅\n学生已 AC，可以讨论优化思路、时间/空间复杂度分析、其他解法。\n`;
     } else if (totalAttempts > 0) {
       prompt += `\n### 学生状态：已提交 ${totalAttempts} 次，最近状态为 ${lastStatus}\n`;
+    }
+
+    if (ctx.language) {
+      const langLabelMap: Record<string, string> = {
+        c: 'C',
+        cpp: 'C++',
+        java: 'Java',
+        python: 'Python',
+      };
+      const langName = langLabelMap[ctx.language] || ctx.language;
+      prompt += `\n## 编程语言要求\n- 学生当前使用的编程语言为：**${langName}**，你必须用此语言进行解答与分析。\n`;
+      
+      if (ctx.language === 'cpp') {
+        prompt += `- 对于 C++ 代码，默认使用以下代码结构和头文件：\n\`\`\`cpp\n#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n\`\`\`\n- 默认编译器配置为 **g++14** (C++14)，请在此标准下提供指导和建议。\n`;
+      }
     }
 
     prompt += `
