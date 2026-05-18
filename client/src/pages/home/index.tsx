@@ -69,11 +69,17 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [stats, setStats] = useState({ problemCount: 0, submissionCount: 0, userCount: 0 });
+  const [aiStats, setAiStats] = useState({ todayTokens: 0, todayCalls: 0, totalTokens: 0, totalMessages: 0 });
   const { ref: statsRef, inView: statsInView } = useInViewport<HTMLDivElement>();
 
   const displayProblems = useCountUp(stats.problemCount, statsInView);
   const displaySubmissions = useCountUp(stats.submissionCount, statsInView);
   const displayUsers = useCountUp(stats.userCount, statsInView);
+
+  const displayTodayTokens = useCountUp(aiStats.todayTokens, statsInView);
+  const displayTodayCalls = useCountUp(aiStats.todayCalls, statsInView);
+  const displayTotalTokens = useCountUp(aiStats.totalTokens, statsInView);
+  const displayTotalCalls = useCountUp(aiStats.totalMessages, statsInView);
 
   useEffect(() => {
     announcementApi.list({ pageSize: 5 }).then((res: any) => {
@@ -81,6 +87,9 @@ export default function HomePage() {
     }).catch(() => {});
     statsApi.getPlatform().then((res: any) => {
       setStats(res);
+    }).catch(() => {});
+    statsApi.getAiStats().then((res: any) => {
+      setAiStats(res);
     }).catch(() => {});
   }, []);
 
@@ -239,6 +248,31 @@ export default function HomePage() {
           >
             查看更多 →
           </div>
+        </div>
+      </div>
+
+      {/* 平台 AI 实时交互数据 */}
+      <div style={{
+        background: "var(--color-surface-soft)",
+        borderRadius: "var(--rounded-lg, 12px)",
+        padding: "32px",
+        border: "1px solid var(--color-hairline)",
+        marginBottom: 96
+      }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center" }}>
+          {[
+            { label: "今日 Tokens 数", value: displayTodayTokens },
+            { label: "今日请求数", value: displayTodayCalls },
+            { label: "总 Tokens 数", value: displayTotalTokens },
+            { label: "总请求数", value: displayTotalCalls },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: "var(--color-ink)", fontVariantNumeric: "tabular-nums" }}>
+                {value.toLocaleString()}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>{label}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

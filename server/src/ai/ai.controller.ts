@@ -14,6 +14,12 @@ import { CurrentUser } from '../auth/current-user.decorator';
 export class AiController {
   constructor(private aiService: AiService) {}
 
+  /** 获取公开 AI 统计 */
+  @Get('stats/public')
+  getPublicStats() {
+    return this.aiService.getStats();
+  }
+
   /** 流式聊天 */
   @Post('chat')
   @UseGuards(JwtAuthGuard)
