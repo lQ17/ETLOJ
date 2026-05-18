@@ -27,38 +27,70 @@ export class AiService {
     return redisVal ?? this.config.get(envKey) ?? defaultVal;
   }
 
-  async getAiConfig() {
-    const [apiBase, apiKey, model, dailyLimit] = await Promise.all([
-      this.getConfigValue('apiBase', 'AI_API_BASE', 'https://ai.ssdevops.com/v1'),
-      this.getConfigValue('apiKey', 'AI_API_KEY', ''),
-      this.getConfigValue('model', 'AI_MODEL', 'glm-5-fp8'),
-      this.getConfigValue('dailyLimit', 'AI_DAILY_LIMIT', '100'),
-    ]);
+  // ─── 供应商管理 (Providers) ───
+
+  async getProviders() {
+    return this.prisma.aiProvider.findMany({ orderBy: { id: 'asc' } });
+  }
+
+  async addProvider(dto: { name: string; apiBase: string; apiKey: string; modelName: string; isActive?: boolean }) {
+    if (dto.isActive) {
+      await this.prisma.aiProvider.updateMany({ data: { isActive: false } });
+    }
+    return this.prisma.aiProvider.create({ data: dto });
+  }
+
+  async updateProvider(id: number, dto: { name?: string; apiBase?: string; apiKey?: string; modelName?: string; isActive?: boolean }) {
+    if (dto.isActive) {
+      await this.prisma.aiProvider.updateMany({ data: { isActive: false } });
+    }
+    return this.prisma.aiProvider.update({ where: { id }, data: dto });
+  }
+
+  async deleteProvider(id: number) {
+    return this.prisma.aiProvider.delete({ where: { id } });
+  }
+
+  async activateProvider(id: number) {
+    await this.prisma.aiProvider.updateMany({ data: { isActive: false } });
+    return this.prisma.aiProvider.update({ where: { id }, data: { isActive: true } });
+  }
+
+  // ─── 获取活动 AI 配置 ───
+  async getActiveProvider() {
+    const active = await this.prisma.aiProvider.findFirst({ where: { isActive: true } });
+    if (active) return active;
     return {
-      apiBase,
-      apiKey: apiKey ? `${apiKey.slice(0, 6)}****` : '', // 脱敏
-      model,
-      dailyLimit: Number(dailyLimit),
+      apiBase: await this.getConfigValue('apiBase', 'AI_API_BASE', 'https://ai.ssdevops.com/v1'),
+      apiKey: await this.getConfigValue('apiKey', 'AI_API_KEY', ''),
+      modelName: await this.getConfigValue('model', 'AI_MODEL', 'glm-5-fp8'),
     };
   }
 
-  async updateAiConfig(dto: { apiBase?: string; apiKey?: string; model?: string; dailyLimit?: number }) {
-    const ops: Promise<any>[] = [];
-    if (dto.apiBase !== undefined) ops.push(this.redis.set('ai:config:apiBase', dto.apiBase));
-    if (dto.apiKey !== undefined) ops.push(this.redis.set('ai:config:apiKey', dto.apiKey));
-    if (dto.model !== undefined) ops.push(this.redis.set('ai:config:model', dto.model));
-    if (dto.dailyLimit !== undefined) ops.push(this.redis.set('ai:config:dailyLimit', String(dto.dailyLimit)));
-    await Promise.all(ops);
-    return this.getAiConfig();
+  async getGlobalLimit() {
+    return Number(await this.getConfigValue('dailyLimit', 'AI_DAILY_LIMIT', '100'));
   }
 
-  // ─── 频率限制 ───
+  async setGlobalLimit(dailyLimit: number) {
+    await this.redis.set('ai:config:dailyLimit', String(dailyLimit));
+    return { success: true };
+  }
+
+  private async getUserLimit(userId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { aiDailyLimit: true } });
+    if (user?.aiDailyLimit !== null && user?.aiDailyLimit !== undefined) {
+      return user.aiDailyLimit;
+    }
+    return this.getGlobalLimit();
+  }
+
+  // ─── 频率限制与用户额度 ───
 
   async getRemainingUses(userId: number, role: string): Promise<{ remaining: number; limit: number; unlimited: boolean }> {
     if (role === 'ADMIN' || role === 'TEACHER') {
       return { remaining: -1, limit: -1, unlimited: true };
     }
-    const limit = Number(await this.getConfigValue('dailyLimit', 'AI_DAILY_LIMIT', '100'));
+    const limit = await this.getUserLimit(userId);
     const today = new Date().toISOString().slice(0, 10);
     const key = `ai:usage:${userId}:${today}`;
     const used = Number(await this.redis.get(key) || '0');
@@ -67,7 +99,7 @@ export class AiService {
 
   private async checkAndIncrementUsage(userId: number, role: string) {
     if (role === 'ADMIN' || role === 'TEACHER') return;
-    const limit = Number(await this.getConfigValue('dailyLimit', 'AI_DAILY_LIMIT', '100'));
+    const limit = await this.getUserLimit(userId);
     const today = new Date().toISOString().slice(0, 10);
     const key = `ai:usage:${userId}:${today}`;
     const count = await this.redis.incr(key);
@@ -75,6 +107,58 @@ export class AiService {
     if (count > limit) {
       throw new ForbiddenException(`今日 AI 使用次数已达上限 (${limit} 次)，明天再来吧`);
     }
+  }
+
+  // ─── 后台用户额度管理 ───
+  async getUsersQuotas(page = 1, pageSize = 20, username?: string) {
+    const where = username ? { username: { contains: username } } : {};
+    const total = await this.prisma.user.count({ where });
+    const users = await this.prisma.user.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: { id: true, username: true, aiDailyLimit: true, role: true },
+      orderBy: { id: 'desc' }
+    });
+    
+    const today = new Date().toISOString().slice(0, 10);
+    const globalLimit = await this.getGlobalLimit();
+    const result = await Promise.all(users.map(async (u) => {
+      const used = Number(await this.redis.get(`ai:usage:${u.id}:${today}`) || '0');
+      return {
+        ...u,
+        usedToday: used,
+        effectiveLimit: u.aiDailyLimit !== null ? u.aiDailyLimit : globalLimit
+      };
+    }));
+    
+    return { total, users: result, globalLimit };
+  }
+
+  async updateUserQuota(userId: number, aiDailyLimit: number | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { aiDailyLimit }
+    });
+  }
+
+  // ─── 统计面板 ───
+  async getStats() {
+    const today = new Date().toISOString().slice(0, 10);
+    // 粗略统计今日调用量（扫描所有 ai:usage:*:today 键）
+    const keys = await this.redis.keys(`ai:usage:*:${today}`);
+    let todayCalls = 0;
+    for (const k of keys) {
+      todayCalls += Number(await this.redis.get(k) || '0');
+    }
+    const totalConversations = await this.prisma.aiConversation.count();
+    const totalMessages = await this.prisma.aiMessage.count();
+    
+    return {
+      todayCalls,
+      totalConversations,
+      totalMessages
+    };
   }
 
   // ─── 会话历史管理 ───
@@ -160,11 +244,10 @@ export class AiService {
     const recentMessages = dto.messages.slice(-20);
 
     // 5. 获取模型配置
-    const [apiBase, apiKey, modelName] = await Promise.all([
-      this.getConfigValue('apiBase', 'AI_API_BASE', 'https://ai.ssdevops.com/v1'),
-      this.getConfigValue('apiKey', 'AI_API_KEY', 'vcom-glm5-20260310'),
-      this.getConfigValue('model', 'AI_MODEL', 'glm-5-fp8'),
-    ]);
+    const provider = await this.getActiveProvider();
+    const apiBase = provider.apiBase;
+    const apiKey = provider.apiKey;
+    const modelName = provider.modelName;
 
     // 6. 处理持久化
     let conversation = await this.prisma.aiConversation.findUnique({

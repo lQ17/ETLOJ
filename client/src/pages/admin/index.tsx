@@ -6,6 +6,8 @@ import AdminSolutionsPage from "./solutions";
 import AdminAnnouncementsPage from "./announcements";
 import { useAuthStore } from "../../stores/auth";
 
+import AdminAiPage from "./ai";
+
 export default function AdminPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "ADMIN";
@@ -31,6 +33,11 @@ export default function AdminPage() {
         {isAdmin && (
           <Tabs.TabPane key="users" title="用户管理">
             <AdminUsersPage />
+          </Tabs.TabPane>
+        )}
+        {isAdmin && (
+          <Tabs.TabPane key="ai" title="AI 管理">
+            <AdminAiPage />
           </Tabs.TabPane>
         )}
       </Tabs>

@@ -1,6 +1,6 @@
 import {
   Controller, Post, Get, Patch, Delete,
-  Body, Query, Res, UseGuards, ParseIntPipe,
+  Body, Query, Res, UseGuards, ParseIntPipe, Param
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AiService } from './ai.service';
@@ -60,21 +60,68 @@ export class AiController {
     return this.aiService.getRemainingUses(user.id, user.role);
   }
 
-  /** 获取 AI 配置（管理员） */
-  @Get('config')
+  // ─── ADMIN ROUTES ───
+
+  @Get('admin/providers')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  getConfig() {
-    return this.aiService.getAiConfig();
+  getProviders() {
+    return this.aiService.getProviders();
   }
 
-  /** 更新 AI 配置（管理员） */
-  @Patch('config')
+  @Post('admin/providers')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  updateConfig(
-    @Body() dto: { apiBase?: string; apiKey?: string; model?: string; dailyLimit?: number },
-  ) {
-    return this.aiService.updateAiConfig(dto);
+  addProvider(@Body() dto: any) {
+    return this.aiService.addProvider(dto);
+  }
+
+  @Patch('admin/providers/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  updateProvider(@Body() dto: any, @Param('id', ParseIntPipe) id: number) {
+    return this.aiService.updateProvider(id, dto);
+  }
+
+  @Delete('admin/providers/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  deleteProvider(@Param('id', ParseIntPipe) id: number) {
+    return this.aiService.deleteProvider(id);
+  }
+
+  @Post('admin/providers/:id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  activateProvider(@Param('id', ParseIntPipe) id: number) {
+    return this.aiService.activateProvider(id);
+  }
+
+  @Get('admin/users/quotas')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  getUsersQuotas(@Query('page') page: string, @Query('pageSize') pageSize: string, @Query('username') username: string) {
+    return this.aiService.getUsersQuotas(Number(page) || 1, Number(pageSize) || 20, username);
+  }
+
+  @Patch('admin/users/:id/quota')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  updateUserQuota(@Param('id', ParseIntPipe) id: number, @Body('aiDailyLimit') aiDailyLimit: number | null) {
+    return this.aiService.updateUserQuota(id, aiDailyLimit);
+  }
+
+  @Get('admin/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  getStats() {
+    return this.aiService.getStats();
+  }
+
+  @Patch('admin/config/global-limit')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  setGlobalLimit(@Body('dailyLimit') dailyLimit: number) {
+    return this.aiService.setGlobalLimit(dailyLimit);
   }
 }
