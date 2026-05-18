@@ -3,6 +3,8 @@ import { UserService } from "./user.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { QueryUserDto } from "./dto/query-user.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { UpdateSecurityDto } from "./dto/update-security.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { Roles } from "../auth/roles.decorator";
@@ -26,7 +28,7 @@ export class UserController {
 
   // ---- "me" routes MUST come before ":id" routes ----
   @Patch("me/profile")
-  updateMyProfile(@Req() req: any, @Body() body: any) {
+  updateMyProfile(@Req() req: any, @Body() body: UpdateProfileDto) {
     return this.userService.updateProfile(req.user.id, {
       email: body.email,
       phone: body.phone,
@@ -36,7 +38,7 @@ export class UserController {
   }
 
   @Patch("me/security")
-  updateMySecurity(@Req() req: any, @Body() body: any) {
+  updateMySecurity(@Req() req: any, @Body() body: UpdateSecurityDto) {
     return this.userService.updatePassword(req.user.id, body.oldPassword, body.newPassword);
   }
 

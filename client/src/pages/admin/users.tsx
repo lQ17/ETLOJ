@@ -39,6 +39,11 @@ function BatchCreateTab() {
         continue;
       }
 
+      if (!password) {
+        newFailed.push(`${username}: 密码不能为空`);
+        continue;
+      }
+
       const role = roleMap[roleCode] || "USER";
       const payload: any = { username, role };
       if (email) payload.email = email;
@@ -47,7 +52,7 @@ function BatchCreateTab() {
 
       try {
         const res: any = await userApi.create(payload);
-        newCreated.push({ ...res, _password: password || "123456" });
+        newCreated.push(res);
       } catch (err: any) {
         newFailed.push(`${username}: ${err?.message || "创建失败"}`);
       }
@@ -72,7 +77,7 @@ function BatchCreateTab() {
       title: "角色", dataIndex: "role", width: 90,
       render: (v: string) => <Tag color={roleColors[v]} size="small">{roleLabel[v] || v}</Tag>,
     },
-    { title: "密码", dataIndex: "_password", width: 120 },
+    { title: "密码", dataIndex: "_password", width: 180, render: () => "已创建，请通过安全渠道分发密码" },
   ];
 
   return (
@@ -83,10 +88,10 @@ function BatchCreateTab() {
             每行一个用户，格式：<Typography.Text code>用户名,邮箱,手机号,密码,角色</Typography.Text>
           </Typography.Text>
           <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
-            角色：1=普通用户 2=教师 3=管理员；邮箱、手机号、密码均可留空（默认密码 123456）
+            角色：1=普通用户 2=教师 3=管理员；邮箱、手机号可留空，密码必填
           </Typography.Text>
           <Input.TextArea
-            placeholder={"zhangsan,zs@example.com,,123456,1\nlisi,,,,2\nwangwu,,13800000000,,3"}
+            placeholder={"zhangsan,zs@example.com,,pass123,1\nlisi,,,,2\nwangwu,,13800000000,,"}
             value={text}
             onChange={setText}
             autoSize={{ minRows: 10, maxRows: 24 }}

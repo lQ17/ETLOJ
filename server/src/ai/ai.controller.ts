@@ -33,8 +33,8 @@ export class AiController {
     } catch (err: any) {
       if (!res.headersSent) {
         const status = err.getStatus?.() || err.status || 500;
-        const message = err.response?.message || err.message || 'AI 服务出错';
-        res.status(status).json({ message });
+        // 只返回通用错误消息，不暴露外部服务细节
+        res.status(status).json({ message: 'AI 服务出错，请稍后重试' });
       }
     }
   }

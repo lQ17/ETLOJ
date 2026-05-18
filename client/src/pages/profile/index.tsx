@@ -14,6 +14,13 @@ import "./profile.css";
 const { Row, Col } = Grid;
 const { Title, Text } = Typography;
 
+// 验证头像 URL 是否安全（仅允许 data:image 或 http/https URL）
+function getSafeAvatar(avatar: string | undefined): string | undefined {
+  if (!avatar) return undefined;
+  if (/^data:image\//.test(avatar) || /^https?:\/\//.test(avatar)) return avatar;
+  return undefined;
+}
+
 // ---------- Color palette (cal.com inspired) ----------
 const COLORS = {
   ac: "#00b42a",
@@ -78,8 +85,8 @@ export default function ProfilePage() {
           <Card bordered={false} className="profile-card user-card">
             <div className="user-card-inner">
               <Avatar size={96} className="user-avatar" triggerIcon={null}>
-                {profile.avatar
-                  ? <img src={profile.avatar} alt="avatar" />
+                {getSafeAvatar(profile.avatar)
+                  ? <img src={getSafeAvatar(profile.avatar)} alt="avatar" />
                   : <IconUser style={{ fontSize: 48 }} />
                 }
               </Avatar>

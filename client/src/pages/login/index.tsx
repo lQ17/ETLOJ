@@ -43,10 +43,10 @@ export default function LoginPage() {
         <Card bordered={false} style={{ borderTop: "2px solid var(--color-primary)", boxShadow: "0 8px 32px rgba(0,0,0,0.08)", borderRadius: "var(--rounded-xl)" }}>
           <Form layout="vertical" onSubmit={handleSubmit} style={{ marginTop: 8 }}>
             <Form.Item field="account" label="账号" rules={[{ required: true }]}>
-              <Input prefix={<IconUser />} placeholder="用户名 / 邮箱 / 手机号" size="large" />
+              <Input prefix={<IconUser />} placeholder="用户名 / 邮箱 / 手机号" size="large" maxLength={100} minLength={1} />
             </Form.Item>
             <Form.Item field="password" label="密码" rules={[{ required: true }]}>
-              <Input.Password prefix={<IconLock />} placeholder="请输入密码" size="large" />
+              <Input.Password prefix={<IconLock />} placeholder="请输入密码" size="large" maxLength={100} minLength={1} />
             </Form.Item>
             <Form.Item style={{ marginTop: 24, marginBottom: 8 }}>
               <Button type="primary" htmlType="submit" long loading={loading} size="large">

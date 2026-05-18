@@ -717,8 +717,14 @@ export default function ProblemDetailPage() {
                       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
                       () => {
                         if (!problem) return;
+                        const codeValue = editor.getValue();
+                        // 代码超过 1MB 则不存储，防止 localStorage 溢出
+                        if (codeValue.length > 1024 * 1024) {
+                          Message.warning("代码过大，无法保存到浏览器本地");
+                          return;
+                        }
                         const uid = user?.id || "anon";
-                        localStorage.setItem(`oj_code_${problem.id}_${uid}`, editor.getValue());
+                        localStorage.setItem(`oj_code_${problem.id}_${uid}`, codeValue);
                         Message.success("代码已保存到浏览器本地");
                       },
                     );

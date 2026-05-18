@@ -177,13 +177,28 @@ export class AiService {
   async getStats() {
     const today = new Date().toISOString().slice(0, 10);
     
-    const callKeys = await this.redis.keys(`ai:stats:${today}:calls:*`);
-    const tokenKeys = await this.redis.keys(`ai:stats:${today}:tokens:*`);
-    
+    const callPrefix = `ai:stats:${today}:calls:`;
+    const tokenPrefix = `ai:stats:${today}:tokens:`;
+
     let todayCalls = 0;
     let todayTokens = 0;
     const modelStats: Record<string, { calls: number, tokens: number }> = {};
-    
+
+    // 使用 SCAN 替代 KEYS，避免阻塞 Redis
+    const collectByPattern = async (pattern: string): Promise<string[]> => {
+      const keys: string[] = [];
+      let cursor: string = '0';
+      do {
+        const result = await this.redis.scan(cursor, { MATCH: pattern, COUNT: 100 });
+        cursor = result.cursor;
+        keys.push(...result.keys);
+      } while (cursor !== '0');
+      return keys;
+    };
+
+    const callKeys = await collectByPattern(`${callPrefix}*`);
+    const tokenKeys = await collectByPattern(`${tokenPrefix}*`);
+
     for (const k of callKeys) {
       const model = k.split(':').pop() || 'unknown';
       const count = Number(await this.redis.get(k) || '0');
@@ -191,7 +206,7 @@ export class AiService {
       if (!modelStats[model]) modelStats[model] = { calls: 0, tokens: 0 };
       modelStats[model].calls = count;
     }
-    
+
     for (const k of tokenKeys) {
       const model = k.split(':').pop() || 'unknown';
       const count = Number(await this.redis.get(k) || '0');

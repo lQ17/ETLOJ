@@ -6,6 +6,13 @@ import { useAuthStore } from "../stores/auth";
 
 const { Header } = Layout;
 
+// 验证头像 URL 是否安全（仅允许 data:image 或 http/https URL）
+function getSafeAvatar(avatar: string | undefined): string | undefined {
+  if (!avatar) return undefined;
+  if (/^data:image\//.test(avatar) || /^https?:\/\//.test(avatar)) return avatar;
+  return undefined;
+}
+
 export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -130,8 +137,8 @@ export default function AppHeader() {
             }
           >
             <Space style={{ cursor: "pointer" }}>
-              {user.avatar ? (
-                <img src={user.avatar} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} alt="avatar" />
+              {getSafeAvatar(user.avatar) ? (
+                <img src={getSafeAvatar(user.avatar)} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} alt="avatar" />
               ) : (
                 <IconUser />
               )}

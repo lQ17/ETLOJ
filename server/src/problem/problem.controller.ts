@@ -68,7 +68,17 @@ export class ProblemController {
   @Post("import")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("ADMIN", "TEACHER")
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 100 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new ConflictException('仅支持 zip 文件上传'), false);
+      }
+    },
+  }))
   async importProblems(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new ConflictException("请上传 zip 文件");
     return this.problemService.importProblems(file.buffer);

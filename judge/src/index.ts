@@ -31,6 +31,46 @@ type RunTask = {
   memoryLimit: number;
 };
 
+// ============================================================
+//  输入校验 & 输出消毒
+// ============================================================
+
+const SUPPORTED_LANGUAGES = ["c", "cpp", "java", "python"];
+const MAX_CODE_LENGTH = 50000;
+const MAX_RUN_INPUT_LENGTH = 10000;
+
+/** 过滤 ANSI 转义序列和控制字符，防止终端注入 */
+function sanitizeStderr(output: string): string {
+  // 移除 ANSI 转义序列
+  // 移除控制字符（保留换行 \n 和制表 \t）
+  return output.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+}
+
+/** 校验判题任务输入，返回错误信息或 null */
+function validateJudgeTask(task: JudgeTask): string | null {
+  if (task.code.length > MAX_CODE_LENGTH) {
+    return `代码长度超过限制（最大 ${MAX_CODE_LENGTH} 字符）`;
+  }
+  if (!SUPPORTED_LANGUAGES.includes(task.language)) {
+    return `不支持的语言: ${task.language}`;
+  }
+  return null;
+}
+
+/** 校验自测运行任务输入，返回错误信息或 null */
+function validateRunTask(task: RunTask): string | null {
+  if (task.code.length > MAX_CODE_LENGTH) {
+    return `代码长度超过限制（最大 ${MAX_CODE_LENGTH} 字符）`;
+  }
+  if (!SUPPORTED_LANGUAGES.includes(task.language)) {
+    return `不支持的语言: ${task.language}`;
+  }
+  if (task.input.length > MAX_RUN_INPUT_LENGTH) {
+    return `输入长度超过限制（最大 ${MAX_RUN_INPUT_LENGTH} 字符）`;
+  }
+  return null;
+}
+
 type RunResult = {
   status: string;
   stdout: string;
@@ -123,7 +163,7 @@ async function goJudgeCompile(code: string, lang: string): Promise<{ ok: boolean
 
   const exitCode = result[0]?.exitStatus;
   if (exitCode !== 0) {
-    const stderr = result[0]?.files?.stderr ?? "";
+    const stderr = sanitizeStderr(result[0]?.files?.stderr ?? "");
     return { ok: false, error: stderr };
   }
 
@@ -173,7 +213,7 @@ async function goJudgeRunOneTest(
     time: result[0]?.time ?? 0,
     memory: result[0]?.memory ?? 0,
     stdout: (result[0]?.files?.stdout ?? "") as string,
-    stderr: (result[0]?.files?.stderr ?? "") as string,
+    stderr: sanitizeStderr(result[0]?.files?.stderr ?? ""),
   };
 }
 
@@ -222,7 +262,7 @@ function localCompile(code: string, lang: string, workDir: string): { ok: boolea
     });
     return { ok: true, exePath: join(workDir, outExe) };
   } catch (err: any) {
-    return { ok: false, error: err.stderr ?? err.message };
+    return { ok: false, error: sanitizeStderr(err.stderr ?? err.message) };
   }
 }
 
@@ -277,7 +317,7 @@ function localRunOneTest(
       time: elapsed * 1_000_000,
       memory: 0,
       stdout,
-      stderr,
+      stderr: sanitizeStderr(stderr),
     };
   } catch (err: any) {
     return {
@@ -286,7 +326,7 @@ function localRunOneTest(
       time: (Date.now() - start) * 1_000_000,
       memory: 0,
       stdout: "",
-      stderr: err.message,
+      stderr: sanitizeStderr(err.message),
     };
   }
 }
@@ -296,7 +336,14 @@ function localRunOneTest(
 // ============================================================
 
 async function judge(task: JudgeTask): Promise<JudgeResult> {
-  const { submissionId, code, language, testcases, timeLimit, memoryLimit } = task;
+  const { submissionId } = task;
+
+  // 输入校验
+  const validationError = validateJudgeTask(task);
+  if (validationError) {
+    console.warn(`[#${submissionId}] 任务校验失败: ${validationError}`);
+    return { submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+  }
 
   if (JUDGE_MODE === "local") {
     return judgeLocal(task);
@@ -425,6 +472,13 @@ async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
 async function runSingle(task: RunTask): Promise<RunResult> {
   const { code, language, input, timeLimit } = task;
 
+  // 输入校验
+  const validationError = validateRunTask(task);
+  if (validationError) {
+    console.warn(`[RUN:${task.runId}] 任务校验失败: ${validationError}`);
+    return { status: "SE", stdout: "", stderr: validationError, timeUsed: 0 };
+  }
+
   if (JUDGE_MODE === "local") {
     const workDir = mkdtempSync(join(tmpdir(), "etloj-run-"));
     try {
@@ -462,7 +516,7 @@ async function runSingle(task: RunTask): Promise<RunResult> {
   return {
     status: statusStr === "Accepted" ? "OK" : (statusStr === "Time Limit Exceeded" ? "TLE" : (statusStr === "Memory Limit Exceeded" ? "MLE" : "RE")),
     stdout: r0?.files?.stdout || "",
-    stderr: r0?.files?.stderr || "",
+    stderr: sanitizeStderr(r0?.files?.stderr || ""),
     timeUsed: Math.round((r0?.time || 0) / 1e6),
   };
 }
@@ -481,9 +535,9 @@ async function reportResult(result: JudgeResult) {
       },
       body: JSON.stringify(result),
     });
-    console.log(`  → Reported: ${result.status}`);
+    console.log(`  -> Reported: ${result.status}`);
   } catch (err) {
-    console.error(`  → Report failed:`, err);
+    console.error(`  -> Report failed:`, err);
   }
 }
 
@@ -496,6 +550,7 @@ async function main() {
     console.log(`Go-Judge: ${GO_JUDGE_URL}`);
   } else {
     console.log(`Local compilers: gcc, g++, python`);
+    console.warn(`[!] 警告: Local 模式仅限开发环境使用，无沙箱隔离，不追踪内存用量！`);
   }
   console.log(`Callback: ${SERVER_URL}/api/submissions/callback`);
   console.log("Waiting for tasks...\n");
@@ -519,17 +574,17 @@ async function main() {
         console.log(`[RUN:${runTask.runId}] ${runTask.language}`);
         try {
           const runResult = await runSingle(runTask);
-          console.log(`  → ${runResult.status} (${runResult.timeUsed}ms)`);
+          console.log(`  -> ${runResult.status} (${runResult.timeUsed}ms)`);
           // 写入 Redis 供后端轮询
-          await client.set(`judge:run:result:${runTask.runId}`, JSON.stringify(runResult), { EX: 60 });
+          await client.set(`judge:run:result:${runTask.runId}`, JSON.stringify(runResult), { EX: 300 });
         } catch (err: any) {
           console.error("Run execution error:", err);
           await client.set(`judge:run:result:${runTask.runId}`, JSON.stringify({
             status: "SE",
             stdout: "",
-            stderr: err.message || "System error",
+            stderr: sanitizeStderr(err.message || "System error"),
             timeUsed: 0,
-          }), { EX: 60 });
+          }), { EX: 300 });
         }
       } else {
         // 正常判题任务
@@ -545,7 +600,7 @@ async function main() {
 
         try {
           const judgeResult = await judge(task);
-          console.log(`  → ${judgeResult.status} (${judgeResult.timeUsed}ms, ${judgeResult.memoryUsed}KB)`);
+          console.log(`  -> ${judgeResult.status} (${judgeResult.timeUsed}ms, ${judgeResult.memoryUsed}KB)`);
           await reportResult(judgeResult);
         } catch (err: any) {
           console.error("Judge execution error:", err);

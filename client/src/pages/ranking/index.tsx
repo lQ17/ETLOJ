@@ -10,6 +10,16 @@ import { useAuthStore } from "../../stores/auth";
 
 const { RangePicker } = DatePicker;
 
+// HTML 实体转义，防止 XSS
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const MODE_OPTIONS = [
   { label: "按AC数量", value: "ac" },
   { label: "按累计分数", value: "score" },
@@ -105,7 +115,7 @@ export default function RankingPage() {
         const user = top10[p.dataIndex];
         if (!user) return "";
         const suffix = mode === "ac" ? " 题" : " 分";
-        return `<b>${user.username}</b><br/>${mode === "ac" ? "AC数" : "累计分数"}: ${user.value}${suffix}`;
+        return `<b>${escapeHtml(user.username)}</b><br/>${mode === "ac" ? "AC数" : "累计分数"}: ${user.value}${suffix}`;
       },
     },
     grid: { left: 60, right: 30, top: 30, bottom: 30 },
