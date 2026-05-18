@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Tabs, Card, Statistic, Grid, Table, Button, Modal, Form, Input, InputNumber, Switch, Message, Space, Typography, Badge, Tag } from "@arco-design/web-react";
+import { Tabs, Card, Statistic, Grid, Table, Button, Modal, Form, Input, InputNumber, Switch, Message, Space, Typography, Badge, Tag, Select } from "@arco-design/web-react";
 import { adminAiApi } from "../../../api/adminAi";
 import { IconCheckCircleFill, IconCloseCircleFill, IconThunderbolt, IconMessage, IconUserGroup } from "@arco-design/web-react/icon";
 
@@ -200,6 +200,9 @@ function ProvidersPanel() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form] = Form.useForm();
 
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+
   const fetchData = () => {
     setLoading(true);
     adminAiApi.getProviders().then((res: any) => {
@@ -213,15 +216,39 @@ function ProvidersPanel() {
   }, []);
 
   const handleEdit = (record?: any) => {
+    setFetchedModels([]);
     if (record) {
       setEditingId(record.id);
       form.setFieldsValue(record);
+      if (record.modelName) {
+        setFetchedModels([record.modelName]);
+      }
     } else {
       setEditingId(null);
       form.resetFields();
       form.setFieldsValue({ apiBase: 'https://api.openai.com/v1', modelName: 'gpt-4o' });
+      setFetchedModels(['gpt-4o']);
     }
     setModalVisible(true);
+  };
+
+  const handleFetchModels = async () => {
+    const apiBase = form.getFieldValue('apiBase');
+    const apiKey = form.getFieldValue('apiKey');
+    if (!apiBase || !apiKey) {
+      Message.warning('请先填写 API Base URL 和 API Key');
+      return;
+    }
+    setFetchingModels(true);
+    try {
+      const list: any = await adminAiApi.fetchAvailableModels(apiBase, apiKey);
+      setFetchedModels(list);
+      Message.success(`成功获取 ${list.length} 个模型`);
+    } catch (err: any) {
+      Message.error(err.response?.data?.message || '获取模型列表失败，请检查配置和网络');
+    } finally {
+      setFetchingModels(false);
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -307,8 +334,20 @@ function ProvidersPanel() {
           <Form.Item label="API Key" field="apiKey" rules={[{ required: true }]}>
             <Input.Password />
           </Form.Item>
-          <Form.Item label="模型名称 (Model)" field="modelName" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item label="模型名称 (Model)" required>
+            <Input.Group compact style={{ display: 'flex' }}>
+              <Form.Item field="modelName" rules={[{ required: true }]} noStyle>
+                <Select
+                  allowCreate
+                  placeholder="选择或输入模型名称..."
+                  style={{ flex: 1 }}
+                  options={fetchedModels.map(m => ({ label: m, value: m }))}
+                />
+              </Form.Item>
+              <Button type="primary" onClick={handleFetchModels} loading={fetchingModels} style={{ marginLeft: 8 }}>
+                获取模型列表
+              </Button>
+            </Input.Group>
           </Form.Item>
           <Form.Item label="设为当前使用" field="isActive" triggerPropName="checked">
             <Switch />

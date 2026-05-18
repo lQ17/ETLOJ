@@ -97,6 +97,13 @@ export class AiController {
     return this.aiService.activateProvider(id);
   }
 
+  @Post('admin/providers/fetch-models')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  fetchAvailableModels(@Body() dto: { apiBase: string; apiKey: string }) {
+    return this.aiService.fetchAvailableModels(dto.apiBase, dto.apiKey);
+  }
+
   @Get('admin/users/quotas')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

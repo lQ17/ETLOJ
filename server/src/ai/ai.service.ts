@@ -56,6 +56,36 @@ export class AiService {
     return this.prisma.aiProvider.update({ where: { id }, data: { isActive: true } });
   }
 
+  async fetchAvailableModels(apiBase: string, apiKey: string) {
+    let baseUrl = apiBase.trim();
+    if (baseUrl.endsWith('/chat/completions')) {
+      baseUrl = baseUrl.slice(0, -'/chat/completions'.length);
+    }
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    const url = `${baseUrl}/models`;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `HTTP error ${response.status}`);
+      }
+      const data: any = await response.json();
+      if (data && Array.isArray(data.data)) {
+        return data.data.map((m: any) => m.id);
+      }
+      return [];
+    } catch (err: any) {
+      throw new ForbiddenException('获取模型列表失败: ' + err.message);
+    }
+  }
+
   // ─── 获取活动 AI 配置 ───
   async getActiveProvider() {
     const active = await this.prisma.aiProvider.findFirst({ where: { isActive: true } });
