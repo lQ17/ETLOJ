@@ -46,6 +46,9 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   // 获取 token
   const token = localStorage.getItem('token') || '';
 
+  const latestRef = useRef({ currentCode, currentLanguage });
+  latestRef.current = { currentCode, currentLanguage };
+
   // v3 API: 使用 TextStreamChatTransport 匹配后端的 pipeTextStreamToResponse
   const {
     messages,
@@ -58,7 +61,13 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     transport: new TextStreamChatTransport({
       api: '/api/ai/chat',
       headers: { Authorization: `Bearer ${token}` },
-      body: { problemId, currentCode, language: currentLanguage },
+      get body() {
+        return {
+          problemId,
+          currentCode: latestRef.current.currentCode,
+          language: latestRef.current.currentLanguage,
+        };
+      },
     }),
     onError: (err) => {
       Message.error(err.message || 'AI 服务暂时不可用');
