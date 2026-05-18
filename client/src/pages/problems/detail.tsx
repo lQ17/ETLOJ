@@ -19,6 +19,7 @@ import { solutionApi } from "../../api/solution";
 import { useAuthStore } from "../../stores/auth";
 import confetti from "canvas-confetti";
 import DifficultyTag from "../../components/DifficultyTag";
+import ChatPanel from "../../components/ChatPanel";
 
 const langMap: Record<string, string> = {
   c: "c",
@@ -979,22 +980,31 @@ export default function ProblemDetailPage() {
           </div>
         </Modal>
 
-        {/* 问问AI */}
-        {activeTab === "ai" && (
+        {/* 问问AI — 使用 display 控制以保留对话状态 */}
+        {!user && activeTab === "ai" && (
           <div style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            gap: 16,
+            flex: 1, display: "flex", alignItems: "center",
+            justifyContent: "center", flexDirection: "column", gap: 16,
             color: "var(--color-text-3)",
           }}>
             <IconRobot style={{ fontSize: 48 }} />
-            <Typography.Title heading={4} style={{ margin: 0, color: "var(--color-text-3)" }}>
-              AI 助手即将上线
-            </Typography.Title>
-            <span>该功能正在开发中，敬请期待</span>
+            <Typography.Title heading={5} style={{ margin: 0 }}>AI 助手</Typography.Title>
+            <Typography.Paragraph style={{ color: "var(--color-text-3)" }}>
+              登录后即可使用 AI 助手
+            </Typography.Paragraph>
+            <Button type="primary" onClick={() => navigate("/login")}>去登录</Button>
+          </div>
+        )}
+        {user && (
+          <div style={{
+            flex: 1, overflow: "hidden",
+            display: activeTab === "ai" ? "flex" : "none",
+          }}>
+            <ChatPanel
+              problemId={problem.id}
+              currentCode={code}
+              problemTitle={problem.title}
+            />
           </div>
         )}
       </div>

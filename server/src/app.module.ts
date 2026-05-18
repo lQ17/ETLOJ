@@ -11,6 +11,7 @@ import { TagModule } from "./tag/tag.module";
 import { SolutionModule } from "./solution/solution.module";
 import { AnnouncementModule } from "./announcement/announcement.module";
 import { StatsModule } from "./stats/stats.module";
+import { AiModule } from "./ai/ai.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { StatsModule } from "./stats/stats.module";
     SolutionModule,
     AnnouncementModule,
     StatsModule,
+    AiModule,
   ],
 })
 export class AppModule {}

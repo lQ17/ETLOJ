@@ -53,7 +53,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 
 ### Backend Patterns (NestJS)
 
-- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule, ProblemListModule, TagModule, SolutionModule, AnnouncementModule — each with controller, service, dto/
+- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule, ProblemListModule, TagModule, SolutionModule, AnnouncementModule, AiModule — each with controller, service, dto/
 - **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only；导入时自动匹配数据库已有标签创建 `ProblemTag` 关联，未匹配的标签忽略
 - **PrismaModule** is `@Global()` — inject `PrismaService` anywhere without importing
 - **Auth**: JWT + Passport (`jwt.strategy.ts`), `JwtAuthGuard`, `RolesGuard` + `@Roles()` decorator, `@CurrentUser()` param decorator
@@ -74,6 +74,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Announcement module**: `GET /announcements`（公开，PUBLISHED，置顶优先）、`GET /announcements/:id`（公开详情）、`GET /announcements/admin/all`（ADMIN，含草稿分页）、`GET /announcements/admin/:id`（ADMIN，任意状态详情）、`POST /announcements`（ADMIN）、`PATCH/DELETE /announcements/:id`（ADMIN）— 公告系统：首页公告栏显示 2 条 + "查看更多"跳转列表页；列表页左侧列表 + 右侧 Markdown/LaTeX 详情，默认选中置顶公告；后台"公告管理"Tab 仅 ADMIN 可见，使用 MDEditor 编辑（与题目创建页相同），支持置顶 + 草稿/已发布状态
 - **Admin page**: Unified `/admin` route with Tabs (problems / lists / solutions / announcements / users); users + announcements tabs visible to ADMIN only; teachers see problems + lists + solutions; solutions tab has sub-tabs: 待审核 + 题解列表
 - **Raw SQL pitfalls**: MySQL `COUNT(*)`/`SUM()` via `$queryRawUnsafe` returns BigInt (must `Number()`); LongText fields return Buffer (must `.toString()`). Avatar in DB already contains `data:image/...;base64,` prefix — frontend should use `src={avatar}` directly, not re-prepend
+- **AI Module**: `/api/ai/chat` (POST) handles LLM chat context building (title, desc, recent codes, wa count). We bypass `@ai-sdk/openai` due to GLM-5/SGLang reasoning models placing thought process in `reasoning_content` instead of `content`. We fetch directly and parse the SSE stream, skipping reasoning content and returning only the final answer via Node `res.write()`. Configuration is stored in Redis (`ai:config:apiBase`, `ai:config:apiKey`, `ai:config:model`, `ai:config:dailyLimit`) and falls back to environment variables. Rate limiting uses Redis key `ai:usage:{userId}:{today}`.
 
 ### Frontend Patterns
 

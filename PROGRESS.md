@@ -120,8 +120,14 @@
 
 ### AI 功能
 - [x] 问问AI 占位符页面（题目详情页左侧导航第三项）
-- [ ] AI 助手辅助解题
-- [ ] AI 代码审查与提示
+- [x] AI 助手辅助解题（上下文感知：题目描述、错误代码、WA次数）
+- [x] AI 服务接入（对接 SGLang GLM-5 API，手写 SSE 流式解析以支持推理模型）
+- [x] 前端 ChatPanel 与 Vercel AI SDK (v3) 集成
+- [x] AI 聊天气泡样式优化与代码块 VS Code 风格白底语法高亮 (`react-syntax-highlighter`)
+- [x] AI Token 用量限制与 Redis 限流策略
+- [ ] AI 会话与消息的数据库持久化（Phase 2）
+- [ ] 管理员后台查看 AI 使用报告（Phase 3）
+- [ ] AI 代码高亮 diff 标注（Phase 3）
 
 ### 可视化
 - [ ] 算法可视化演示（排序、搜索、图论等）
