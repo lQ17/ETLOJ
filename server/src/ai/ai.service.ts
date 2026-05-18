@@ -192,8 +192,6 @@ export class AiService {
 
     // 7. 直接调用 OpenAI 兼容 API（绕过 AI SDK provider，手动解析 SSE）
     try {
-      this.logger.log(`Calling LLM: ${apiBase}/chat/completions model=${modelName}`);
-
       const llmMessages = [
         { role: 'system', content: systemPrompt },
         ...recentMessages
@@ -271,8 +269,6 @@ export class AiService {
           },
         });
       }
-
-      this.logger.log(`LLM stream done: ${totalLength} chars`);
     } catch (err: any) {
       this.logger.error('AI chat error', err?.message || err);
       if (!res.headersSent) {

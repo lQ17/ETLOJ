@@ -27,6 +27,7 @@ interface ChatPanelProps {
   problemId: number;
   currentCode: string;
   problemTitle: string;
+  problemDifficulty: string;
 }
 
 const quickActions = [
@@ -36,7 +37,7 @@ const quickActions = [
   { icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因' },
 ];
 
-export default function ChatPanel({ problemId, currentCode, problemTitle }: ChatPanelProps) {
+export default function ChatPanel({ problemId, currentCode, problemTitle, problemDifficulty }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [remaining, setRemaining] = useState<{ remaining: number; limit: number; unlimited: boolean } | null>(null);
   const [input, setInput] = useState('');
@@ -261,17 +262,34 @@ export default function ChatPanel({ problemId, currentCode, problemTitle }: Chat
                       components={{
                         code({ node, inline, className, children, ...props }: any) {
                           const match = /language-(\w+)/.exec(className || '');
+                          const isLowDifficulty = ['IRON', 'BRONZE', 'SILVER'].includes(problemDifficulty);
+                          
                           return !inline && match ? (
-                            <SyntaxHighlighter
-                              style={vs}
-                              language={match[1]}
-                              PreTag="div"
-                              customStyle={{ margin: 0, background: '#ffffff', borderRadius: 0, padding: '12px 16px', fontSize: '14px' }}
-                              codeTagProps={{ style: { fontSize: '14px', fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace' } }}
-                              {...props}
+                            <div
+                              onCopy={(e) => {
+                                if (isLowDifficulty) {
+                                  e.preventDefault();
+                                  Message.warning('当前难度不允许复制 AI 提供的代码哦，请自己手敲～');
+                                }
+                              }}
+                              onClick={() => {
+                                if (isLowDifficulty) {
+                                  Message.warning('当前难度不允许复制 AI 提供的代码哦，请自己手敲～');
+                                }
+                              }}
+                              style={isLowDifficulty ? { userSelect: 'none', WebkitUserSelect: 'none', cursor: 'not-allowed' } : {}}
                             >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
+                              <SyntaxHighlighter
+                                style={vs}
+                                language={match[1]}
+                                PreTag="div"
+                                customStyle={{ margin: 0, background: '#ffffff', borderRadius: 0, padding: '12px 16px', fontSize: '14px' }}
+                                codeTagProps={{ style: { fontSize: '14px', fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace' } }}
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            </div>
                           ) : (
                             <code className={className} {...props}>
                               {children}

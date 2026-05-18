@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Layout, Spin } from "@arco-design/web-react";
 import AppHeader from "./components/AppHeader";
 import AppFooter from "./components/AppFooter";
@@ -19,6 +19,20 @@ import SettingsPage from "./pages/settings";
 import { useAuthStore } from "./stores/auth";
 
 const { Content } = Layout;
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user || (user.role !== "ADMIN" && user.role !== "TEACHER")) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
 
 function App() {
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
@@ -61,9 +75,9 @@ function App() {
             <Route path="/records" element={<RecordsPage />} />
             <Route path="/ranking" element={<RankingPage />} />
             <Route path="/announcements" element={<AnnouncementsPage />} />
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
             <Route path="/profile/:username" element={<ProfilePage />} />
-            <Route path="/settings/*" element={<SettingsPage />} />
+            <Route path="/settings/*" element={<AuthGuard><SettingsPage /></AuthGuard>} />
           </Routes>
         </div>
       </Content>

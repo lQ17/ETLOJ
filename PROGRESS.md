@@ -127,6 +127,7 @@
 - [x] AI Token 用量限制与 Redis 限流策略
 - [x] AI 会话与消息的数据库持久化（`AiConversation` / `AiMessage` 表）
 - [x] 题目详情页 AI 助手双栏布局优化（左侧 AI 对话，右侧保留代码编辑器，无缝切换）
+- [x] 新手友好机制：黑铁、青铜、白银难度题目 AI 回复代码块禁用选择与复制，增加拦截预警
 - [ ] 管理员后台查看 AI 使用报告（Phase 3）
 - [ ] AI 代码高亮 diff 标注（Phase 3）
 
@@ -138,3 +139,4 @@
 - [ ] WebSocket 实时推送判题结果（替代轮询）
 - [x] Docker 全容器化部署（server/client/judge 三个 Dockerfile + docker-compose 编排 6 服务 + Nginx 反向代理 + deploy.sh 一键部署脚本）
 - [ ] CI/CD 流水线
+- [x] 安全加固：引入前端路由守卫（`AuthGuard`、`AdminGuard`）拦截未授权访问后台管理与设置路由
