@@ -81,7 +81,7 @@ function App() {
           </Routes>
         </div>
       </Content>
-      <AppFooter />
+      {!isDetailPage && <AppFooter />}
     </Layout>
   );
 }
