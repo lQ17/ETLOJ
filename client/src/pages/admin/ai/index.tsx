@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Tabs, Card, Statistic, Grid, Table, Button, Modal, Form, Input, InputNumber, Switch, Message, Space, Typography, Badge, Tag, Select, DatePicker } from "@arco-design/web-react";
 import { adminAiApi } from "../../../api/adminAi";
-import { IconCheckCircleFill, IconCloseCircleFill, IconThunderbolt, IconMessage, IconUserGroup } from "@arco-design/web-react/icon";
+import { IconCheckCircleFill, IconCloseCircleFill } from "@arco-design/web-react/icon";
 
 const { Row, Col } = Grid;
 
@@ -239,7 +239,7 @@ function QuotasPanel() {
       dataIndex: 'usedToday',
       render: (val: number, record: any) => {
         const isLimit = val >= record.effectiveLimit;
-        return <Typography.Text type={isLimit ? 'error' : 'default'}>{val} / {record.effectiveLimit}</Typography.Text>;
+        return <Typography.Text type={isLimit ? 'error' : undefined}>{val} / {record.effectiveLimit}</Typography.Text>;
       }
     },
     { 
@@ -249,7 +249,7 @@ function QuotasPanel() {
     },
     {
       title: '操作',
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         <Button type="text" size="small" onClick={() => handleEditUser(record)}>修改额度</Button>
       )
     }
@@ -407,7 +407,7 @@ function ProvidersPanel() {
     { title: 'API Base', dataIndex: 'apiBase', render: (v: string) => <Typography.Text ellipsis={{ showTooltip: true }} style={{ width: 200 }}>{v}</Typography.Text> },
     { 
       title: '状态', 
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         record.isActive ? 
           <Tag color="green" icon={<IconCheckCircleFill />}>当前使用</Tag> : 
           <Tag color="gray" icon={<IconCloseCircleFill />}>未激活</Tag>
@@ -415,7 +415,7 @@ function ProvidersPanel() {
     },
     {
       title: '操作',
-      render: (_, record: any) => (
+      render: (_: any, record: any) => (
         <Space>
           {!record.isActive && <Button size="small" type="primary" onClick={() => handleActivate(record.id)}>设为当前</Button>}
           <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>

@@ -92,7 +92,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
           data.map((msg: any, index: number) => ({
             id: `hist-${index}`,
             role: msg.role,
-            content: msg.content,
+            parts: [{ type: 'text' as const, text: msg.content }],
           }))
         );
       }
@@ -145,7 +145,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     }
   };
 
-  // 提取消息文本内容（v3 的 message 使用 parts 结构，兼容 content）
+  // 提取消息文本内容（v3 的 message 使用 parts 结构）
   const getMessageText = (m: typeof messages[number]): string => {
     if (m.parts && m.parts.length > 0) {
       return m.parts
@@ -153,7 +153,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         .map((p) => p.text)
         .join('');
     }
-    return m.content || '';
+    return '';
   };
 
   return (
