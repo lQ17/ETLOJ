@@ -10,5 +10,6 @@ export const adminAiApi = {
   updateUserQuota: (id: number, aiDailyLimit: number | null) => client.patch(`/ai/admin/users/${id}/quota`, { aiDailyLimit }),
   setGlobalLimit: (dailyLimit: number) => client.patch('/ai/admin/config/global-limit', { dailyLimit }),
   getStats: () => client.get('/ai/admin/stats'),
+  getUsageLogs: (params: any) => client.get('/ai/admin/logs', { params }),
   fetchAvailableModels: (apiBase: string, apiKey: string) => client.post('/ai/admin/providers/fetch-models', { apiBase, apiKey }),
 };

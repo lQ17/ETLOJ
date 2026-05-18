@@ -23,61 +23,109 @@ export default function AdminAiPage() {
 
 // ─── 统计面板 ───
 function StatsPanel() {
-  const [stats, setStats] = useState({ 
-    todayCalls: 0, 
-    todayTokens: 0,
-    totalConversations: 0, 
-    totalMessages: 0,
-    modelStats: {} as Record<string, { calls: number, tokens: number }>
-  });
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>({ todayCalls: 0, todayTokens: 0, totalConversations: 0, totalMessages: 0, cachedTokens: 0, cachedTokensHit: 0, cost: 0 });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  const [logs, setLogs] = useState<any[]>([]);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
+  
+  const [filters, setFilters] = useState({ provider: '', model: '' });
 
   useEffect(() => {
     adminAiApi.getStats().then((res: any) => {
       setStats(res);
-      setLoading(false);
+      setLoadingStats(false);
     });
   }, []);
 
-  const modelColumns = [
-    { title: '模型名称', dataIndex: 'model' },
-    { title: '今日调用次数', dataIndex: 'calls', render: (v: number) => <Typography.Text>{v.toLocaleString()}</Typography.Text> },
-    { title: '今日 Token 消耗 (Tokens)', dataIndex: 'tokens', render: (v: number) => <Typography.Text>{v.toLocaleString()}</Typography.Text> }
+  const fetchLogs = (page = pagination.current, pageSize = pagination.pageSize, f = filters) => {
+    setLoadingLogs(true);
+    adminAiApi.getUsageLogs({ page, pageSize, ...f }).then((res: any) => {
+      setLogs(res.logs);
+      setTotalLogs(res.total);
+      setPagination({ current: page, pageSize });
+      setLoadingLogs(false);
+    });
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const logColumns = [
+    { title: '时间', dataIndex: 'createdAt', render: (v: string) => new Date(v).toLocaleString() },
+    { title: '供应商', dataIndex: 'providerName' },
+    { title: '计费模型', dataIndex: 'modelName', render: (v: string) => <Tag color="gray">{v}</Tag> },
+    { title: '输入', dataIndex: 'inputTokens', render: (v: number) => v.toLocaleString() },
+    { title: '输出', dataIndex: 'outputTokens', render: (v: number) => v.toLocaleString() },
+    { title: '总成本', dataIndex: 'cost', render: (v: number) => `$${v.toFixed(4)}` },
+    { title: '用时', dataIndex: 'timeUsedMs', render: (v: number) => `${(v / 1000).toFixed(1)}s` },
+    { title: '状态', dataIndex: 'status', render: (v: number) => <span style={{ color: v === 200 ? 'var(--color-success-light-4)' : 'var(--color-danger-light-4)' }}>{v}</span> },
+    { title: '来源', dataIndex: 'source' }
   ];
-  
-  const modelData = Object.entries(stats.modelStats || {}).map(([model, data]) => ({
-    model,
-    calls: data.calls,
-    tokens: data.tokens,
-  }));
 
   return (
     <div style={{ padding: "24px 0" }}>
       <Row gutter={24} style={{ marginBottom: 24 }}>
         <Col span={6}>
-          <Card loading={loading}>
-            <Statistic title="今日总调用次数" value={stats.todayCalls} prefix={<IconThunderbolt />} groupSeparator />
+          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <Statistic title="总请求数" value={stats.todayCalls + stats.totalMessages} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card loading={loading}>
-            <Statistic title="今日 Token 总消耗" value={stats.todayTokens} prefix={<IconThunderbolt />} groupSeparator />
+          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <Statistic title="总成本" value={stats.cost} prefix="$" precision={4} groupSeparator style={{ fontWeight: 'bold' }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card loading={loading}>
-            <Statistic title="累计开启会话数" value={stats.totalConversations} prefix={<IconUserGroup />} groupSeparator />
+          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <Statistic title="总 Token 数" value={stats.todayTokens} groupSeparator style={{ fontWeight: 'bold' }} />
+            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-text-3)', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Input</span><span>—</span>
+              <span>Output</span><span>—</span>
+            </div>
           </Card>
         </Col>
         <Col span={6}>
-          <Card loading={loading}>
-            <Statistic title="累计消息总数" value={stats.totalMessages} prefix={<IconMessage />} groupSeparator />
+          <Card loading={loadingStats} bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+            <Statistic title="缓存 Token" value={stats.cachedTokens} groupSeparator style={{ fontWeight: 'bold' }} />
+            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-text-3)', display: 'flex', justifyContent: 'space-between' }}>
+              <span>创建: 0.0k</span>
+              <span>命中: {stats.cachedTokensHit}k</span>
+            </div>
           </Card>
         </Col>
       </Row>
 
-      <Card title="今日使用量详单 (按模型分列)" loading={loading}>
-        <Table columns={modelColumns} data={modelData} rowKey="model" pagination={false} />
+      <Card title="调用明细日志" bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+        <Space style={{ marginBottom: 16 }}>
+          <Input.Search 
+            placeholder="搜索供应商..." 
+            allowClear 
+            onSearch={(v) => { setFilters(prev => ({ ...prev, provider: v })); fetchLogs(1, pagination.pageSize, { ...filters, provider: v }); }} 
+          />
+          <Input.Search 
+            placeholder="搜索模型..." 
+            allowClear 
+            onSearch={(v) => { setFilters(prev => ({ ...prev, model: v })); fetchLogs(1, pagination.pageSize, { ...filters, model: v }); }} 
+          />
+          <Button type="primary" onClick={() => fetchLogs()}>刷新记录</Button>
+        </Space>
+        
+        <Table 
+          columns={logColumns} 
+          data={logs} 
+          rowKey="id" 
+          loading={loadingLogs}
+          pagination={{
+            total: totalLogs,
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            onChange: (page, pageSize) => fetchLogs(page, pageSize)
+          }}
+        />
       </Card>
     </div>
   );

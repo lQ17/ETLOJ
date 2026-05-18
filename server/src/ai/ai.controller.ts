@@ -125,6 +125,18 @@ export class AiController {
     return this.aiService.getStats();
   }
 
+  @Get('admin/logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  getUsageLogs(
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+    @Query('provider') provider?: string,
+    @Query('model') model?: string,
+  ) {
+    return this.aiService.getUsageLogs(Number(page) || 1, Number(pageSize) || 20, { provider, model });
+  }
+
   @Patch('admin/config/global-limit')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

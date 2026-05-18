@@ -91,6 +91,7 @@ export class AiService {
     const active = await this.prisma.aiProvider.findFirst({ where: { isActive: true } });
     if (active) return active;
     return {
+      name: 'Default',
       apiBase: await this.getConfigValue('apiBase', 'AI_API_BASE', 'https://ai.ssdevops.com/v1'),
       apiKey: await this.getConfigValue('apiKey', 'AI_API_KEY', ''),
       modelName: await this.getConfigValue('model', 'AI_MODEL', 'glm-5-fp8'),
@@ -201,14 +202,40 @@ export class AiService {
 
     const totalConversations = await this.prisma.aiConversation.count();
     const totalMessages = await this.prisma.aiMessage.count();
+
+    // Cache metrics (Mocked for now as we don't track cache hits explicitly yet)
+    const cachedTokens = 0;
+    const cachedTokensHit = 0;
+    const cost = 0;
     
     return {
       todayCalls,
       todayTokens,
       modelStats,
       totalConversations,
-      totalMessages
+      totalMessages,
+      cachedTokens,
+      cachedTokensHit,
+      cost
     };
+  }
+
+  async getUsageLogs(page: number, pageSize: number, filters?: { provider?: string, model?: string }) {
+    const where: any = {};
+    if (filters?.provider) where.providerName = { contains: filters.provider };
+    if (filters?.model) where.modelName = { contains: filters.model };
+
+    const [total, logs] = await Promise.all([
+      this.prisma.aiUsageLog.count({ where }),
+      this.prisma.aiUsageLog.findMany({
+        where,
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+
+    return { total, logs };
   }
 
   // ─── 会话历史管理 ───
@@ -366,6 +393,9 @@ export class AiService {
       let totalLength = 0;
       let aiResponseContent = '';
       let totalTokens = 0;
+      let inputTokens = 0;
+      let outputTokens = 0;
+      const startTime = Date.now();
 
       while (true) {
         const { done, value } = await reader.read();
@@ -384,6 +414,8 @@ export class AiService {
             const json = JSON.parse(trimmed.slice(6));
             if (json.usage) {
               totalTokens = json.usage.total_tokens || 0;
+              inputTokens = json.usage.prompt_tokens || 0;
+              outputTokens = json.usage.completion_tokens || 0;
             }
             const delta = json.choices?.[0]?.delta;
             // 提取 content（最终回答）
@@ -408,9 +440,28 @@ export class AiService {
         // 兼容某些提供商不返回 usage 的情况，估算 tokens (中英文字符大致比例估算)
         if (!totalTokens) {
           const promptLength = JSON.stringify(llmMessages).length;
-          totalTokens = Math.ceil((promptLength + aiResponseContent.length) / 1.5);
+          inputTokens = Math.ceil(promptLength / 1.5);
+          outputTokens = Math.ceil(aiResponseContent.length / 1.5);
+          totalTokens = inputTokens + outputTokens;
         }
         await this.redis.incrBy(tokenKey, totalTokens);
+
+        // 插入详细日志到数据库
+        await this.prisma.aiUsageLog.create({
+          data: {
+            userId: user.id,
+            providerName: (provider as any).name || 'Unknown',
+            modelName: modelName,
+            inputTokens,
+            outputTokens,
+            totalTokens,
+            cost: 0,
+            timeUsedMs: Date.now() - startTime,
+            status: fetchResp.status,
+            source: 'chat'
+          }
+        });
+
       } catch (statErr) {
         this.logger.warn('Failed to save AI stats: ' + statErr);
       }
