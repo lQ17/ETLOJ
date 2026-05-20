@@ -28,6 +28,26 @@ export class AiController {
     @CurrentUser() user: { id: number; role: string },
     @Res() res: Response,
   ) {
+    // 兼容 AI SDK v3 的 parts 格式
+    for (const msg of dto.messages) {
+      if (!msg.content && msg.parts) {
+        msg.content = msg.parts
+          .filter(p => p.type === 'text' && p.text)
+          .map(p => p.text)
+          .join('');
+      }
+    }
+    // 验证 content 不为空且不超长
+    for (const msg of dto.messages) {
+      if (!msg.content) {
+        res.status(400).json({ message: '消息内容不能为空' });
+        return;
+      }
+      if (msg.content.length > 5000) {
+        res.status(400).json({ message: '单条消息内容不能超过 5000 个字符' });
+        return;
+      }
+    }
     try {
       await this.aiService.chat(user, dto, res);
     } catch (err: any) {

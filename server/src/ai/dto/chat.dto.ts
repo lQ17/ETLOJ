@@ -7,9 +7,15 @@ class ChatMessageDto {
   @IsNotEmpty()
   role: string;
 
+  @IsOptional()
   @IsString()
   @MaxLength(5000, { message: '单条消息内容不能超过 5000 个字符' })
-  content: string;
+  content?: string;
+
+  /** AI SDK v3 使用 parts 格式 */
+  @IsOptional()
+  @IsArray()
+  parts?: Array<{ type: string; text?: string }>;
 }
 
 export class ChatDto {
