@@ -6,7 +6,7 @@ import AppFooter from "./components/AppFooter";
 import ScrollToTop from "./components/ScrollToTop";
 import HomePage from "./pages/home";
 import ProblemListPage from "./pages/problems";
-import ProblemDetailPage from "./pages/problems/detail";
+import ProblemDetailPage from "./pages/problems/detail/index";
 import ProblemListsPage from "./pages/lists";
 import ProblemListDetailPage from "./pages/lists/detail";
 import AnnouncementsPage from "./pages/announcements";
