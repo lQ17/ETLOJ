@@ -7,7 +7,7 @@ import { tmpdir } from "os";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 const GO_JUDGE_URL = process.env.GO_JUDGE_URL ?? "http://127.0.0.1:5050";
 const SERVER_URL = process.env.SERVER_URL ?? "http://127.0.0.1:3000";
-const JUDGE_SECRET = process.env.JUDGE_SECRET ?? "judge-callback-secret";
+const JUDGE_SECRET = process.env.JUDGE_SECRET ?? (() => { throw new Error("JUDGE_SECRET environment variable is required"); })();
 const JUDGE_MODE = process.env.JUDGE_MODE ?? "local"; // "local" | "go-judge"
 const QUEUE_KEY = "judge:queue";
 const RUN_QUEUE_KEY = "judge:run";

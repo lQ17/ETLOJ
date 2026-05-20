@@ -12,6 +12,7 @@ build/
 .env
 .env.local
 .env.*.local
+.env.production
 
 # IDE
 .vscode/
@@ -36,3 +37,5 @@ server/prisma/migrations/
 
 # Local manual (contains credentials)
 manual.md
+云服务器部署手册.md
+deploy_remote.py

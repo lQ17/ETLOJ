@@ -126,7 +126,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
                                          ↑ judge(Node.js) ← Redis 队列 → :5050 go-judge 沙箱
 ```
 
-- **服务器**：150.158.39.151（root，SSH 免密已配）
+- **服务器**：your-server-ip（root，SSH 免密已配）
 - **系统依赖**：mariadb-server, redis-server, nginx, nodejs 20, gcc, g++, python3, go-judge
 - **systemd 服务**：
   - `etloj-server.service` — NestJS 后端，WorkingDirectory=/opt/etloj/server，ExecStart=node dist/src/main.js

@@ -92,7 +92,7 @@ export class AiProviderService {
     if (active) return active;
     return {
       name: 'Default',
-      apiBase: await this.getConfigValue('apiBase', 'AI_API_BASE', 'https://ai.ssdevops.com/v1'),
+      apiBase: await this.getConfigValue('apiBase', 'AI_API_BASE', 'http://localhost:8000/v1'),
       apiKey: await this.getConfigValue('apiKey', 'AI_API_KEY', ''),
       modelName: await this.getConfigValue('model', 'AI_MODEL', 'glm-5-fp8'),
     };

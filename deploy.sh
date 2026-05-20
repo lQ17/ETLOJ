@@ -23,21 +23,23 @@ if [ ! -f server/.env ]; then
   echo ""
   echo "[INFO] 创建 server/.env..."
   cat > server/.env << 'ENVEOF'
-DATABASE_URL=mysql://root:zhhaqTNjjQqwFnQ4j@127.0.0.1:3306/etloj
+DATABASE_URL=mysql://root:${MYSQL_ROOT_PASSWORD:-CHANGE_ME}@127.0.0.1:3306/etloj
 REDIS_URL=redis://127.0.0.1:6379
-JWT_SECRET=9szdoPFyhEgzrQrVKrTFtT3xmzAnd
-JUDGE_SECRET=dLHxafmrNmwgdyBwpKtDO0qx7ZDbcSN
+JWT_SECRET=${JWT_SECRET:-CHANGE_ME}
+JUDGE_SECRET=${JUDGE_SECRET:-CHANGE_ME}
 GO_JUDGE_URL=http://127.0.0.1:5050
 PROBLEMS_DIR=/opt/etloj/data/problems
 PORT=3000
 ENVEOF
+  echo ""
+  echo "[WARN] 请编辑 server/.env 填入真实密码和密钥！"
 fi
 
 if [ ! -f judge/.env ]; then
   echo ""
   echo "[INFO] 创建 judge/.env..."
   cat > judge/.env << 'ENVEOF'
-JUDGE_SECRET=dLHxafmrNmwgdyBwpKtDO0qx7ZDbcSN
+JUDGE_SECRET=${JUDGE_SECRET:-CHANGE_ME}
 ENVEOF
 fi
 
@@ -65,7 +67,7 @@ echo "[3/8] 配置 MySQL..."
 if ! mysql -u root -e "USE etloj;" &>/dev/null; then
   # MariaDB: root 用 socket 认证，先创建数据库，再设置密码
   mysql -u root -e "CREATE DATABASE IF NOT EXISTS etloj CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-  mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'zhhaqTNjjQqwFnQ4j'; FLUSH PRIVILEGES;" 2>/dev/null || true
+  mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD:-CHANGE_ME}'; FLUSH PRIVILEGES;" 2>/dev/null || true
 fi
 echo "  MySQL OK"
 
