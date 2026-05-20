@@ -5,12 +5,26 @@ import { IconCopy, IconCheck } from "@arco-design/web-react/icon";
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text).then(() => {
+  const handleCopy = async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
       setCopied(true);
       Message.success("复制成功");
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch {
+      Message.error("复制失败，请手动复制");
+    }
   };
 
   return (
