@@ -135,9 +135,9 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **Nginx**：`/etc/nginx/sites-available/etloj` — 前端 `root /var/www/etloj` + `/api/` 反向代理 `127.0.0.1:3000`
 - **前端部署**：`client/dist/` 复制到 `/var/www/etloj/`
 - **数据目录**：`/opt/etloj/data/problems`（题目测试数据）
-- **环境变量**：`server/.env`（DATABASE_URL, REDIS_URL, JWT_SECRET, JUDGE_SECRET 等）
+- **密钥管理**：`secrets.env`（不入 Git）存放 MYSQL_ROOT_PASSWORD、JWT_SECRET、JUDGE_SECRET；首次部署时 `cp secrets.env.example secrets.env` 并填入真实值；`deploy.sh` 和 `docker-compose.yml` 均从此文件读取
 - **题目不入 Git**：`/problems/` 和 `/data/` 均在 `.gitignore`，题目通过管理后台导入
-- **部署脚本**：`deploy.sh` — 首次安装 + 后续更新（详见 `manual.md`）
+- **部署脚本**：`deploy.sh` — 首次安装 + 后续更新（需先配置 `secrets.env`）
 - **服务文件**：`deploy/etloj-*.service` — 部署时复制到 `/etc/systemd/system/`
 - **注意**：服务器无法直连 GitHub，git pull 需代理或手动 scp；go-judge 二进制需从本机下载后 scp 上传
 
