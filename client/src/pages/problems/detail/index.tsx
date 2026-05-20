@@ -156,6 +156,44 @@ export default function ProblemDetailPage() {
     }
   };
 
+  const handleTestSample = (input: string, output: string) => {
+    setTestInput(input);
+    setTestOutput(output);
+    setActualOutput("");
+    // 需要等状态更新后再运行测试
+    setTimeout(() => {
+      if (!code.trim()) {
+        Message.warning("请先编写代码");
+        return;
+      }
+      setTesting(true);
+      setActualOutput("");
+      submissionApi.run({ problemId: problem.id, code, language, input }).then((res: any) => {
+        if (res.status === "CE") {
+          setActualOutput(`[编译错误]\n${res.stderr}`);
+        } else if (res.status === "RE") {
+          setActualOutput(`[运行错误]\n${res.stderr || res.stdout}`);
+        } else if (res.status === "TLE") {
+          setActualOutput("[超时]");
+        } else if (res.status === "SE") {
+          setActualOutput(`[系统错误]\n${res.stderr}`);
+        } else {
+          setActualOutput(res.stdout || "");
+        }
+      }).catch((err: any) => {
+        setActualOutput(`[请求失败] ${err?.message || "未知错误"}`);
+      }).finally(() => {
+        setTesting(false);
+      });
+    }, 0);
+  };
+
+  const handleClear = () => {
+    setTestInput("");
+    setTestOutput("");
+    setActualOutput("");
+  };
+
   const pollResult = (submissionId: number) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -290,6 +328,7 @@ export default function ProblemDetailPage() {
                   problem={problem}
                   codeCollapsed={codeCollapsed}
                   onExpandIDE={() => setCodeCollapsed(false)}
+                  onTestSample={handleTestSample}
                 />
               </div>
 
@@ -344,6 +383,7 @@ export default function ProblemDetailPage() {
               actualOutput={actualOutput}
               setActualOutput={setActualOutput}
               onTest={handleTest}
+              onClear={handleClear}
               isModalVisible={isModalVisible}
               setIsModalVisible={setIsModalVisible}
               codeCollapsed={codeCollapsed}

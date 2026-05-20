@@ -1,6 +1,6 @@
 
 import { Button, Input, Modal } from "@arco-design/web-react";
-import { IconPlayArrow, IconExpand, IconShrink } from "@arco-design/web-react/icon";
+import { IconPlayArrow, IconExpand, IconShrink, IconDelete } from "@arco-design/web-react/icon";
 
 interface TestAreaProps {
   testInput: string;
@@ -10,8 +10,22 @@ interface TestAreaProps {
   actualOutput: string;
   testing: boolean;
   onTest: () => void;
+  onClear: () => void;
   isModalVisible: boolean;
   setIsModalVisible: (v: boolean) => void;
+}
+
+function normalizeOutput(s: string) {
+  return s.trim().replace(/\r\n/g, "\n");
+}
+
+function getActualOutputBg(testOutput: string, actualOutput: string) {
+  if (!actualOutput) return "var(--color-fill-2)";
+  if (actualOutput.startsWith("[")) return "var(--color-fill-2)";
+  if (!testOutput) return "var(--color-fill-2)";
+  return normalizeOutput(actualOutput) === normalizeOutput(testOutput)
+    ? "rgba(0,180,80,0.12)"
+    : "rgba(220,50,50,0.12)";
 }
 
 function TestColumns({
@@ -22,6 +36,7 @@ function TestColumns({
   actualOutput,
   testing,
   onTest,
+  onClear,
   gap,
   labelMargin,
   buttonMargin,
@@ -33,6 +48,7 @@ function TestColumns({
   actualOutput: string;
   testing: boolean;
   onTest: () => void;
+  onClear: () => void;
   gap: number;
   labelMargin: number;
   buttonMargin: number;
@@ -49,17 +65,26 @@ function TestColumns({
           placeholder="输入测试数据..."
           style={{ flex: 1, resize: "none", fontFamily: "Consolas, monospace", fontSize: 14 }}
         />
-        <Button
-          type="primary"
-          status="success"
-          icon={<IconPlayArrow />}
-          onClick={onTest}
-          loading={testing}
-          style={{ marginTop: buttonMargin }}
-          long
-        >
-          测试运行
-        </Button>
+        <div style={{ display: "flex", gap: 8, marginTop: buttonMargin }}>
+          <Button
+            type="primary"
+            status="success"
+            icon={<IconPlayArrow />}
+            onClick={onTest}
+            loading={testing}
+            style={{ flex: 1 }}
+          >
+            测试运行
+          </Button>
+          <Button
+            type="outline"
+            status="danger"
+            icon={<IconDelete />}
+            onClick={onClear}
+          >
+            清除
+          </Button>
+        </div>
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin }}>
@@ -85,7 +110,7 @@ function TestColumns({
             resize: "none",
             fontFamily: "Consolas, monospace",
             fontSize: 14,
-            background: "var(--color-fill-2)",
+            background: getActualOutputBg(testOutput, actualOutput),
             color: actualOutput.startsWith("[") ? "var(--color-error)" : undefined,
           }}
         />
@@ -102,6 +127,7 @@ export default function TestArea({
   actualOutput,
   testing,
   onTest,
+  onClear,
   isModalVisible,
   setIsModalVisible,
 }: TestAreaProps) {
@@ -126,6 +152,7 @@ export default function TestArea({
         actualOutput={actualOutput}
         testing={testing}
         onTest={onTest}
+        onClear={onClear}
         gap={12}
         labelMargin={4}
         buttonMargin={8}
@@ -148,6 +175,7 @@ export default function TestArea({
             actualOutput={actualOutput}
             testing={testing}
             onTest={onTest}
+            onClear={onClear}
             gap={32}
             labelMargin={8}
             buttonMargin={12}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Message } from "@arco-design/web-react";
-import { IconCopy, IconCheck } from "@arco-design/web-react/icon";
+import { IconCopy, IconCheck, IconPlayArrow } from "@arco-design/web-react/icon";
 
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -41,6 +41,25 @@ export function CopyButton({ text }: { text: string }) {
       }}
     >
       {copied ? "已复制" : "复制"}
+    </Button>
+  );
+}
+
+export function TestButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      type="primary"
+      size="mini"
+      icon={<IconPlayArrow />}
+      onClick={onClick}
+      style={{
+        fontSize: 12,
+        height: 24,
+        padding: "0 8px",
+        borderRadius: 4,
+      }}
+    >
+      测试
     </Button>
   );
 }

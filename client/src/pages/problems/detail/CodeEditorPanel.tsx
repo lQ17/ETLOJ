@@ -23,6 +23,7 @@ interface CodeEditorPanelProps {
   actualOutput: string;
   setActualOutput: (v: string) => void;
   onTest: () => void;
+  onClear: () => void;
   isModalVisible: boolean;
   setIsModalVisible: (v: boolean) => void;
   codeCollapsed: boolean;
@@ -54,6 +55,7 @@ export default function CodeEditorPanel({
   setTestOutput,
   actualOutput,
   onTest,
+  onClear,
   isModalVisible,
   setIsModalVisible,
   codeCollapsed,
@@ -226,6 +228,7 @@ export default function CodeEditorPanel({
         actualOutput={actualOutput}
         testing={testing}
         onTest={onTest}
+        onClear={onClear}
         isModalVisible={isModalVisible}
         setIsModalVisible={setIsModalVisible}
       />

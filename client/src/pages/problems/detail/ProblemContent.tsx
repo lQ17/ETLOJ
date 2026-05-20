@@ -3,7 +3,7 @@ import { Typography, Button, Tag, Space, Divider } from "@arco-design/web-react"
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import { CopyButton, parseSamples } from "./utils";
+import { CopyButton, TestButton, parseSamples } from "./utils";
 import DifficultyTag from "../../../components/DifficultyTag";
 
 interface ProblemContentProps {
@@ -11,9 +11,10 @@ interface ProblemContentProps {
   problem: any;
   codeCollapsed: boolean;
   onExpandIDE: () => void;
+  onTestSample?: (input: string, output: string) => void;
 }
 
-export default function ProblemContent({ markdown, problem, codeCollapsed, onExpandIDE }: ProblemContentProps) {
+export default function ProblemContent({ markdown, problem, codeCollapsed, onExpandIDE, onTestSample }: ProblemContentProps) {
   const samples = parseSamples(markdown);
 
   const sampleRegex = /(?:^|\n)(?:##\s*输入输出样例|###\s*输入\s*#1)[\s\S]*?(?=\n##\s+(?!输入输出样例)|$)/;
@@ -82,7 +83,10 @@ export default function ProblemContent({ markdown, problem, codeCollapsed, onExp
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <span style={{ fontWeight: 600, color: "var(--color-text-2)", fontSize: 14 }}>输入 #{i + 1}</span>
-                  <CopyButton text={s.input} />
+                  <span style={{ display: "flex", gap: 4 }}>
+                    {onTestSample && <TestButton onClick={() => onTestSample(s.input, s.output)} />}
+                    <CopyButton text={s.input} />
+                  </span>
                 </div>
                 <pre style={{
                   background: "var(--color-bg-2)",
