@@ -53,7 +53,6 @@ export default function CodeEditorPanel({
   testOutput,
   setTestOutput,
   actualOutput,
-  setActualOutput,
   onTest,
   isModalVisible,
   setIsModalVisible,

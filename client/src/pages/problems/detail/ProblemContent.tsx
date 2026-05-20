@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Typography, Button, Tag, Space, Divider } from "@arco-design/web-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
