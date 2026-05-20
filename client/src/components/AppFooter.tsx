@@ -51,10 +51,6 @@ export default function AppFooter() {
             </div>
             <div className="footer-bottom">
                 <div>© 2026 ETLOJ. All rights reserved.</div>
-                <div style={{ display: "flex", gap: 24 }}>
-                    <a href="#" style={{ color: "inherit", textDecoration: "none" }}>GitHub</a>
-                    <a href="#" style={{ color: "inherit", textDecoration: "none" }}>Twitter</a>
-                </div>
             </div>
         </div>
     </footer>
