@@ -407,7 +407,7 @@ h1, h2, h3, h4, h5, h6,
   overflow: hidden;
 }
 .ai-chat-message pre code {
-  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace !important;
+  font-family: "Consolas", monospace !important;
   font-size: 14px !important;
 }
 .ai-chat-message p > code,
@@ -415,7 +415,7 @@ h1, h2, h3, h4, h5, h6,
   background: rgba(0,0,0,0.08);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-family: "Consolas", monospace;
   font-size: 14px;
   color: #e64553;
 }

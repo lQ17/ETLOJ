@@ -292,7 +292,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
                                 language={match[1]}
                                 PreTag="div"
                                 customStyle={{ margin: 0, background: '#ffffff', borderRadius: 0, padding: '12px 16px', fontSize: '14px' }}
-                                codeTagProps={{ style: { fontSize: '14px', fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace' } }}
+                                codeTagProps={{ style: { fontSize: '14px', fontFamily: '"Consolas", monospace' } }}
                                 {...props}
                               >
                                 {String(children).replace(/\n$/, '')}
