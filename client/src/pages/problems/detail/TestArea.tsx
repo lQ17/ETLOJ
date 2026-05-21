@@ -166,7 +166,7 @@ export default function TestArea({
         style={{ width: '80%', top: '20px' }}
         closeIcon={<IconShrink />}
       >
-        <div style={{ padding: "10px 0" }}>
+        <div style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', padding: "10px 0" }}>
           <TestColumns
             testInput={testInput}
             setTestInput={setTestInput}
