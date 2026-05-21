@@ -12,4 +12,9 @@ export const adminAiApi = {
   getStats: () => client.get('/ai/admin/stats'),
   getUsageLogs: (params: any) => client.get('/ai/admin/logs', { params }),
   fetchAvailableModels: (apiBase: string, apiKey: string) => client.post('/ai/admin/providers/fetch-models', { apiBase, apiKey }),
+  getPromptConfigs: () => client.get('/ai/admin/prompt-configs'),
+  addPromptConfig: (data: any) => client.post('/ai/admin/prompt-configs', data),
+  updatePromptConfig: (id: number, data: any) => client.patch(`/ai/admin/prompt-configs/${id}`, data),
+  deletePromptConfig: (id: number) => client.delete(`/ai/admin/prompt-configs/${id}`),
+  activatePromptConfig: (id: number) => client.post(`/ai/admin/prompt-configs/${id}/activate`),
 };

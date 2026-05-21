@@ -65,7 +65,7 @@ export class AiService {
 
   chat(
     user: { id: number; role: string },
-    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string },
+    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string; promptConfigId?: number },
     res: any,
   ) {
     return this.conversationService.chat(user, dto, res);
@@ -87,5 +87,27 @@ export class AiService {
 
   updateUserQuota(userId: number, aiDailyLimit: number | null) {
     return this.statsService.updateUserQuota(userId, aiDailyLimit);
+  }
+
+  // ─── Prompt Config ───
+
+  getPromptConfigs() {
+    return this.providerService.getPromptConfigs();
+  }
+
+  addPromptConfig(dto: { name: string; role: string; codeRules: string; replyRules: string; isActive?: boolean }) {
+    return this.providerService.addPromptConfig(dto);
+  }
+
+  updatePromptConfig(id: number, dto: { name?: string; role?: string; codeRules?: string; replyRules?: string; isActive?: boolean }) {
+    return this.providerService.updatePromptConfig(id, dto);
+  }
+
+  deletePromptConfig(id: number) {
+    return this.providerService.deletePromptConfig(id);
+  }
+
+  activatePromptConfig(id: number) {
+    return this.providerService.activatePromptConfig(id);
   }
 }

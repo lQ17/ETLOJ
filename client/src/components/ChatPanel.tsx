@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { TextStreamChatTransport } from 'ai';
-import { Button, Input, Tag, Tooltip, Message } from '@arco-design/web-react';
+import { Button, Input, Tag, Tooltip, Message, Select } from '@arco-design/web-react';
 import { IconSend, IconDelete, IconBulb, IconThunderbolt, IconClockCircle, IconRefresh } from '@arco-design/web-react/icon';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -42,12 +42,14 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   const scrollRef = useRef<HTMLDivElement>(null);
   const [remaining, setRemaining] = useState<{ remaining: number; limit: number; unlimited: boolean } | null>(null);
   const [input, setInput] = useState('');
+  const [promptConfigs, setPromptConfigs] = useState<{ id: number; name: string; isActive: boolean }[]>([]);
+  const [selectedPromptId, setSelectedPromptId] = useState<number | undefined>(undefined);
 
   // 获取 token
   const token = localStorage.getItem('token') || '';
 
-  const latestRef = useRef({ currentCode, currentLanguage });
-  latestRef.current = { currentCode, currentLanguage };
+  const latestRef = useRef({ currentCode, currentLanguage, selectedPromptId } as any);
+  latestRef.current = { currentCode, currentLanguage, selectedPromptId };
 
   // v3 API: 使用 TextStreamChatTransport 匹配后端的 pipeTextStreamToResponse
   const {
@@ -65,6 +67,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         problemId,
         currentCode: latestRef.current.currentCode,
         language: latestRef.current.currentLanguage,
+        promptConfigId: latestRef.current.selectedPromptId,
       }),
     }),
     onError: (err) => {
@@ -104,6 +107,11 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   useEffect(() => {
     loadRemaining();
     loadHistory();
+    aiApi.getPromptConfigs().then((res: any) => {
+      setPromptConfigs(res);
+      const active = res.find((c: any) => c.isActive);
+      if (active) setSelectedPromptId(active.id);
+    }).catch(() => {});
   }, [problemId]);
 
   // 自动滚动到底部
@@ -172,6 +180,19 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
           <Tag size="small" color="arcoblue">{problemTitle}</Tag>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {promptConfigs.length > 1 && (
+            <Select
+              size="small"
+              value={selectedPromptId}
+              onChange={(v) => setSelectedPromptId(v)}
+              style={{ width: 130 }}
+              placeholder="选择提示词"
+            >
+              {promptConfigs.map(c => (
+                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
+              ))}
+            </Select>
+          )}
           {remaining && !remaining.unlimited && (
             <Tooltip content={`每日限额 ${remaining.limit} 次`}>
               <Tag

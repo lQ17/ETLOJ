@@ -17,6 +17,9 @@ export default function AdminAiPage() {
       <Tabs.TabPane key="providers" title="API 提供商配置">
         <ProvidersPanel />
       </Tabs.TabPane>
+      <Tabs.TabPane key="prompt" title="提示词配置">
+        <PromptConfigPanel />
+      </Tabs.TabPane>
     </Tabs>
   );
 }
@@ -465,6 +468,128 @@ function ProvidersPanel() {
           </Form.Item>
           <Form.Item label="设为当前使用" field="isActive" triggerPropName="checked">
             <Switch />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+}
+
+// ─── 提示词配置 ───
+function PromptConfigPanel() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form] = Form.useForm();
+
+  const fetchData = () => {
+    setLoading(true);
+    adminAiApi.getPromptConfigs().then((res: any) => {
+      setData(res);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleEdit = (record?: any) => {
+    if (record) {
+      setEditingId(record.id);
+      form.setFieldsValue(record);
+    } else {
+      setEditingId(null);
+      form.resetFields();
+    }
+    setModalVisible(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await adminAiApi.deletePromptConfig(id);
+      Message.success('删除成功');
+      fetchData();
+    } catch {
+      Message.error('删除失败');
+    }
+  };
+
+  const handleActivate = async (id: number) => {
+    try {
+      await adminAiApi.activatePromptConfig(id);
+      Message.success('已设为默认配置');
+      fetchData();
+    } catch {
+      Message.error('切换失败');
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validate();
+      if (editingId) {
+        await adminAiApi.updatePromptConfig(editingId, values);
+      } else {
+        await adminAiApi.addPromptConfig(values);
+      }
+      Message.success('保存成功');
+      setModalVisible(false);
+      fetchData();
+    } catch {
+      Message.error('保存失败');
+    }
+  };
+
+  const columns = [
+    { title: '配置名称', dataIndex: 'name' },
+    {
+      title: '状态',
+      render: (_: any, record: any) => (
+        record.isActive ?
+          <Tag color="green" icon={<IconCheckCircleFill />}>默认</Tag> :
+          <Tag color="gray" icon={<IconCloseCircleFill />}>普通</Tag>
+      )
+    },
+    {
+      title: '操作',
+      render: (_: any, record: any) => (
+        <Space>
+          {!record.isActive && <Button size="small" type="primary" onClick={() => handleActivate(record.id)}>设为默认</Button>}
+          <Button size="small" onClick={() => handleEdit(record)}>编辑</Button>
+          <Button size="small" status="danger" onClick={() => handleDelete(record.id)}>删除</Button>
+        </Space>
+      )
+    }
+  ];
+
+  return (
+    <div style={{ padding: "24px 0" }}>
+      <div style={{ marginBottom: 16 }}>
+        <Button type="primary" onClick={() => handleEdit()}>添加配置</Button>
+      </div>
+      <Table loading={loading} columns={columns} data={data} rowKey="id" pagination={false} />
+
+      <Modal
+        title={editingId ? '编辑提示词配置' : '添加提示词配置'}
+        visible={modalVisible}
+        onOk={handleSubmit}
+        onCancel={() => setModalVisible(false)}
+        style={{ width: 720 }}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item label="配置名称" field="name" rules={[{ required: true }]}>
+            <Input placeholder="如：严格教练、温和助手、竞赛模式..." />
+          </Form.Item>
+          <Form.Item label="角色定义" field="role" rules={[{ required: true }]} extra="定义 AI 助手的身份、性格和教学风格">
+            <Input.TextArea rows={6} placeholder="你是 ETLOJ 在线评测平台的 AI 算法辅导助手..." />
+          </Form.Item>
+          <Form.Item label="代码规则" field="codeRules" rules={[{ required: true }]} extra="控制 AI 给出代码的范围和方式（防作弊相关）">
+            <Input.TextArea rows={8} placeholder="绝对禁止给出完整的、可直接提交通过的代码..." />
+          </Form.Item>
+          <Form.Item label="回复规则" field="replyRules" rules={[{ required: true }]} extra="格式、语言、字数等回复约束">
+            <Input.TextArea rows={6} placeholder="使用中文回复，语气友好、简明扼要..." />
           </Form.Item>
         </Form>
       </Modal>

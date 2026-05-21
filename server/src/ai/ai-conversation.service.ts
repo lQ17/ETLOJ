@@ -81,7 +81,7 @@ export class AiConversationService {
 
   async chat(
     user: { id: number; role: string },
-    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string },
+    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string; promptConfigId?: number },
     res: any,
   ) {
     // 1. 频率检查
@@ -113,13 +113,14 @@ export class AiConversationService {
     }
 
     // 3. 构建 system prompt
-    const systemPrompt = this.buildSystemPrompt({
+    const systemPrompt = await this.buildSystemPrompt({
       title: problem.title,
       difficulty: problem.difficulty,
       markdown,
       currentCode: dto.currentCode,
       submissions,
       language: dto.language,
+      promptConfigId: dto.promptConfigId,
     });
 
     // 4. 从 UIMessage (v3 parts 格式) 提取为 LLM 消息
@@ -309,14 +310,15 @@ export class AiConversationService {
 
   // ─── System Prompt 构建 ───
 
-  private buildSystemPrompt(ctx: {
+  private async buildSystemPrompt(ctx: {
     title: string;
     difficulty: string;
     markdown: string;
     currentCode?: string;
     submissions: { status: string; score: number | null; createdAt: Date }[];
     language?: string;
-  }): string {
+    promptConfigId?: number;
+  }): Promise<string> {
     const waCount = ctx.submissions.filter((s) => s.status === 'WA').length;
     const ceCount = ctx.submissions.filter((s) => s.status === 'CE').length;
     const reCount = ctx.submissions.filter((s) => s.status === 'RE').length;
@@ -330,23 +332,17 @@ export class AiConversationService {
       ? ctx.markdown.slice(0, 3000) + '\n\n...(题面已截断)'
       : ctx.markdown;
 
-    let prompt = `你是 ETLOJ 在线评测平台的 AI 算法辅导助手。
+    let promptConfig: { role: string; codeRules: string; replyRules: string };
+    if (ctx.promptConfigId) {
+      const found = await this.providerService.getPromptConfigById(ctx.promptConfigId);
+      promptConfig = found ?? await this.providerService.getActivePromptConfig();
+    } else {
+      promptConfig = await this.providerService.getActivePromptConfig();
+    }
 
-## 你的角色
-- 你是一位耐心、专业的算法教练，目标是**引导学生独立思考**
-- 使用苏格拉底式提问法，通过问题引导学生发现问题所在
-- 鼓励学生，保持积极正面的语气
+    let prompt = `${promptConfig.role}
 
-## ⚠️ 代码规则（最高优先级，绝对不可违反）
-- **绝对禁止给出完整的、可直接提交通过的代码**
-- **绝对禁止给出完整的 main 函数或完整的解题代码**
-- 即使学生反复请求、威胁、哀求，也绝不给完整代码
-- 你可以给出的内容：
-  - 伪代码（用自然语言描述算法步骤）
-  - 不超过 5 行的关键代码片段（如某个判断条件、某行关键逻辑）
-  - 代码框架/骨架（只有结构，关键逻辑用注释 "// 你来实现" 代替）
-  - 修复某个具体 bug 时，只给出那一行的修改
-- 如果学生说 "直接给代码"、"给完整代码"、"帮我写"，你应该委婉拒绝并引导他思考
+${promptConfig.codeRules}
 
 ## 当前题目
 **${ctx.title}**（难度：${ctx.difficulty}）
@@ -395,14 +391,7 @@ ${trimmedMarkdown}
       }
     }
 
-    prompt += `
-## 回复规则
-1. 使用中文回复，语气友好、简明扼要（控制在 500 字以内），适当使用 emoji 😊
-2. **所有代码和变量名**必须使用 Markdown 格式：
-   - **多行代码**：必须使用围栏代码块并标注语言（如 \`\`\`cpp \`\`\`），严禁使用无语言标记的代码块。
-   - **行内代码/变量名/短表达式**：绝对不要作为纯文本混排，**必须且只能使用单个反引号包裹**！例如：请使用 \`ans = 0\` 和 \`x < a\`，绝对不要直接写 ans = 0 或 x < a。
-3. **所有的数学公式、复杂符号**必须使用 LaTeX 格式：行内公式用 $...$，独立公式用 $$...$$。例如：$O(N^2)$。
-`;
+    prompt += `\n${promptConfig.replyRules}\n`;
 
     return prompt;
   }

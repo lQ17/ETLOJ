@@ -33,4 +33,9 @@ export class ChatDto {
   @IsString()
   @MaxLength(5000, { message: '当前代码不能超过 5000 个字符' })
   currentCode?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  promptConfigId?: number;
 }

@@ -171,4 +171,45 @@ export class AiController {
   setGlobalLimit(@Body('dailyLimit') dailyLimit: number) {
     return this.aiService.setGlobalLimit(dailyLimit);
   }
+
+  @Get('admin/prompt-configs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  getPromptConfigs() {
+    return this.aiService.getPromptConfigs();
+  }
+
+  @Post('admin/prompt-configs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  addPromptConfig(@Body() dto: { name: string; role: string; codeRules: string; replyRules: string; isActive?: boolean }) {
+    return this.aiService.addPromptConfig(dto);
+  }
+
+  @Patch('admin/prompt-configs/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  updatePromptConfig(@Body() dto: any, @Param('id', ParseIntPipe) id: number) {
+    return this.aiService.updatePromptConfig(id, dto);
+  }
+
+  @Delete('admin/prompt-configs/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  deletePromptConfig(@Param('id', ParseIntPipe) id: number) {
+    return this.aiService.deletePromptConfig(id);
+  }
+
+  @Post('admin/prompt-configs/:id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  activatePromptConfig(@Param('id', ParseIntPipe) id: number) {
+    return this.aiService.activatePromptConfig(id);
+  }
+
+  @Get('prompt-configs')
+  @UseGuards(JwtAuthGuard)
+  getPublicPromptConfigs() {
+    return this.aiService.getPromptConfigs();
+  }
 }

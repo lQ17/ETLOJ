@@ -307,6 +307,19 @@ model AiProvider {
   @@map("ai_providers")
 }
 
+model AiPromptConfig {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(100)
+  role       String   @db.LongText
+  codeRules  String   @map("code_rules") @db.LongText
+  replyRules String   @map("reply_rules") @db.LongText
+  isActive   Boolean  @default(false) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_prompt_configs")
+}
+
 model AiUsageLog {
   id           Int      @id @default(autoincrement())
   userId       Int      @map("user_id")
