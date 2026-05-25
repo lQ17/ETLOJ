@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { createClient } from "redis";
 import { ConfigService } from "@nestjs/config";
@@ -41,6 +41,9 @@ export class SubmissionService {
     });
 
     const testcases = await this.problemService.getTestcases(problem.slug);
+    if (testcases.length === 0) {
+      throw new BadRequestException("该题目暂无测试数据，无法提交判题");
+    }
     const task = {
       submissionId: submission.id,
       problemId: problem.id,
