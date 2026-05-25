@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ProblemService } from "../problem/problem.service";
 import { CreateSubmissionDto } from "./dto/create-submission.dto";
 import { QuerySubmissionDto } from "./dto/query-submission.dto";
+import { SubmissionGateway } from "./submission.gateway";
 
 @Injectable()
 export class SubmissionService {
@@ -15,6 +16,7 @@ export class SubmissionService {
     private prisma: PrismaService,
     private problemService: ProblemService,
     private config: ConfigService,
+    private submissionGateway: SubmissionGateway,
   ) {
     this.initRedis();
   }
@@ -191,6 +193,9 @@ export class SubmissionService {
         }
       }
     }
+
+    // 推送实时判题结果到订阅的客户端
+    this.submissionGateway.notifySubmissionUpdate(submissionId, updated);
 
     return updated;
   }

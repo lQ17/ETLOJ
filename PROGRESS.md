@@ -139,7 +139,7 @@
 - [ ] 技能树系统（知识点点亮）
 
 ### 工程优化
-- [ ] WebSocket 实时推送判题结果（替代轮询）
+- [x] WebSocket 实时推送判题结果（替代轮询）
 - [x] Docker 全容器化部署（server/client/judge 三个 Dockerfile + docker-compose 编排 6 服务 + Nginx 反向代理 + deploy.sh 一键部署脚本）
 - [ ] CI/CD 流水线
 - [x] 安全加固：引入前端路由守卫（`AuthGuard`、`AdminGuard`）拦截未授权访问后台管理与设置路由

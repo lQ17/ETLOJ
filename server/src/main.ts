@@ -1,9 +1,12 @@
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
+import { WsAdapter } from "@nestjs/platform-ws";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.useWebSocketAdapter(new WsAdapter(app) as any);
 
   app.setGlobalPrefix("api");
   // 限制 CORS 来源，仅允许开发环境和服务器域名

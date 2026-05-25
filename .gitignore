@@ -40,3 +40,7 @@ server/prisma/migrations/
 manual.md
 云服务器部署手册.md
 deploy_remote.py
+
+# Claude Code
+.claude/
+.traces/
