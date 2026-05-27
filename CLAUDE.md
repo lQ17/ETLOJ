@@ -92,6 +92,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 - **API layer**: `client/src/api/*.ts` — plain objects with async methods using shared Axios instance (auto-attaches JWT, unwraps response, 30s timeout); custom `paramsSerializer` for proper array query parameter serialization (`tags=a&tags=b` format, not `tags[]=a`)
 - **Pages**: default-exported function components, each in own directory under `pages/`
 - **Table pages**: server-side pagination, local filter state, explicit API calls on search (not useEffect-watching filters) — see `pages/admin/users.tsx` or `pages/records/index.tsx` as reference
+- **Algorithm Visualization**: `/visualization` 路由，自建 step-based 可视化引擎。架构分三层：`algorithms/`（算法注册层，每个算法导出 `AlgorithmDef` 接口 + `registerAlgorithm()` 自注册）、`components/visual-engine/`（引擎层，BarChart + PlaybackController + StepInfo）、`pages/visualization/`（页面层）。新增算法只需：1) 创建 `algorithms/sorting/xxx.ts`，2) 在 `registry.ts` 注册一行。排序算法用柱状图（`motion.div` + `layout` 动画），颜色：默认 `#165DFF`、比较 `#FF7D00`、交换 `#F53F3F`、已排序 `#00B42A`、pivot `#722ED1`。播放引擎用 `setInterval` + `BASE_INTERVAL(800ms)/speed` 控制步进。依赖 `framer-motion`（唯一新增依赖）
 
 ### Data Storage
 

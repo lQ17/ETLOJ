@@ -162,13 +162,16 @@ export default function HomePage() {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "32px",
-        marginBottom: 96
+        marginBottom: 96,
+        overflow: "hidden",
       }}>
         <div style={{
           background: "var(--color-surface-soft)",
           borderRadius: "var(--rounded-lg, 12px)",
           padding: "48px 32px",
-          border: "1px solid var(--color-hairline)"
+          border: "1px solid var(--color-hairline)",
+          minWidth: 0,
+          overflow: "hidden",
         }}>
           <Title heading={3} style={{ fontSize: 24, marginBottom: 8, marginTop: 0 }}>平台实时数据</Title>
           <Paragraph style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 32 }}>
@@ -197,6 +200,8 @@ export default function HomePage() {
           border: "1px solid var(--color-hairline)",
           display: "flex",
           flexDirection: "column",
+          minWidth: 0,
+          overflow: "hidden",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
             <IconNotification style={{ fontSize: 22, color: "var(--color-primary-6)" }} />
@@ -219,8 +224,8 @@ export default function HomePage() {
                     transition: "border-color 0.2s",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: "var(--color-ink)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: "var(--color-ink)", display: "flex", alignItems: "center", gap: 6, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.isPinned && <span style={{ color: "var(--color-warning-6)" }}>📌</span>}
                       {item.title}
                     </div>
@@ -228,7 +233,7 @@ export default function HomePage() {
                       {new Date(item.createdAt).toLocaleDateString("zh-CN")}
                     </span>
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 13, color: "var(--color-muted)", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                     {item.summary}
                   </div>
                 </div>
