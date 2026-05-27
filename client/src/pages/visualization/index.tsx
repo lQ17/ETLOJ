@@ -1,0 +1,274 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Radio, Input, Button, Space, Typography, Card, Message } from "@arco-design/web-react";
+import { IconLoop } from "@arco-design/web-react/icon";
+import BarChart from "../../components/visual-engine/BarChart";
+import PlaybackController from "../../components/visual-engine/PlaybackController";
+import StepInfo from "../../components/visual-engine/StepInfo";
+import type { VisualStep, AlgorithmDef, AlgorithmCategory } from "../../algorithms/types";
+import { getAllAlgorithms, getAlgorithmsByCategory } from "../../algorithms/registry";
+
+// Import all algorithms to trigger registration
+import "../../algorithms/sorting/bubble";
+import "../../algorithms/sorting/selection";
+import "../../algorithms/sorting/insertion";
+import "../../algorithms/sorting/merge";
+import "../../algorithms/sorting/quick";
+
+const CATEGORY_LABELS: Record<AlgorithmCategory, string> = {
+  sorting: "排序",
+  graph: "图论",
+  string: "字符串",
+  "data-structure": "数据结构",
+};
+
+const BASE_INTERVAL = 800;
+
+function randomArray(): number[] {
+  const len = 10 + Math.floor(Math.random() * 21); // 10~30
+  return Array.from({ length: len }, () => 5 + Math.floor(Math.random() * 96));
+}
+
+export default function VisualizationPage() {
+  const allAlgos = getAllAlgorithms();
+  const categories = [...new Set(allAlgos.map((a) => a.category))] as AlgorithmCategory[];
+
+  const [category, setCategory] = useState<AlgorithmCategory>(categories[0] || "sorting");
+  const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmDef>(allAlgos[0]);
+  const [inputText, setInputText] = useState(selectedAlgo.defaultInput.join(", "));
+  const [steps, setSteps] = useState<VisualStep[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [status, setStatus] = useState<"idle" | "playing" | "paused">("idle");
+  const [speed, setSpeed] = useState(1);
+  const timerRef = useRef<number | null>(null);
+
+  const categoryAlgos = getAlgorithmsByCategory(category);
+
+  // Reset when algorithm changes
+  useEffect(() => {
+    handleReset();
+    setInputText(selectedAlgo.defaultInput.join(", "));
+  }, [selectedAlgo]);
+
+  // Auto-play timer
+  useEffect(() => {
+    if (status === "playing") {
+      timerRef.current = window.setInterval(() => {
+        setCurrentStep((prev) => {
+          if (prev >= steps.length - 1) {
+            setStatus("paused");
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, BASE_INTERVAL / speed);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [status, speed, steps.length]);
+
+  // Stop at last step
+  useEffect(() => {
+    if (currentStep >= steps.length - 1 && status === "playing") {
+      setStatus("paused");
+    }
+  }, [currentStep, steps.length, status]);
+
+  const handleApply = useCallback(() => {
+    const parts = inputText.split(",").map((s) => s.trim());
+    const nums: number[] = [];
+    for (const p of parts) {
+      if (p === "") continue;
+      const n = Number(p);
+      if (isNaN(n)) {
+        Message.warning("输入包含非数字字符，请用逗号分隔数字");
+        return;
+      }
+      nums.push(n);
+    }
+    if (nums.length === 0) {
+      Message.warning("请输入至少一个数字");
+      return;
+    }
+    if (nums.length > 50) {
+      Message.warning("最多支持 50 个元素");
+      return;
+    }
+
+    const newSteps = selectedAlgo.generateSteps(nums);
+    setSteps(newSteps);
+    setCurrentStep(0);
+    setStatus("idle");
+  }, [inputText, selectedAlgo]);
+
+  const handleRandom = useCallback(() => {
+    const arr = randomArray();
+    setInputText(arr.join(", "));
+    const newSteps = selectedAlgo.generateSteps(arr);
+    setSteps(newSteps);
+    setCurrentStep(0);
+    setStatus("idle");
+  }, [selectedAlgo]);
+
+  const handleReset = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setSteps([]);
+    setCurrentStep(0);
+    setStatus("idle");
+  }, []);
+
+  const handlePlay = useCallback(() => {
+    if (steps.length === 0) {
+      handleApply();
+      return;
+    }
+    if (currentStep >= steps.length - 1) {
+      setCurrentStep(0);
+    }
+    setStatus("playing");
+  }, [steps, currentStep, handleApply]);
+
+  const handlePause = useCallback(() => {
+    setStatus("paused");
+  }, []);
+
+  const handlePrev = useCallback(() => {
+    setCurrentStep((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handleNext = useCallback(() => {
+    setCurrentStep((prev) => Math.min(steps.length - 1, prev + 1));
+  }, [steps.length]);
+
+  const handleSeek = useCallback((step: number) => {
+    setCurrentStep(step);
+  }, []);
+
+  const currentVisual = steps[currentStep];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Category + Algorithm Selection */}
+      <Card size="small">
+        <Space direction="vertical" style={{ width: "100%" }} size={12}>
+          <Radio.Group
+            type="button"
+            value={category}
+            onChange={(val) => {
+              setCategory(val as AlgorithmCategory);
+              const algos = getAlgorithmsByCategory(val as AlgorithmCategory);
+              if (algos.length > 0) setSelectedAlgo(algos[0]);
+            }}
+          >
+            {categories.map((cat) => (
+              <Radio key={cat} value={cat}>
+                {CATEGORY_LABELS[cat] || cat}
+              </Radio>
+            ))}
+          </Radio.Group>
+
+          <Radio.Group
+            type="button"
+            value={selectedAlgo.id}
+            onChange={(val) => {
+              const algo = categoryAlgos.find((a) => a.id === val);
+              if (algo) setSelectedAlgo(algo);
+            }}
+          >
+            {categoryAlgos.map((algo) => (
+              <Radio key={algo.id} value={algo.id}>
+                {algo.name}
+              </Radio>
+            ))}
+          </Radio.Group>
+        </Space>
+      </Card>
+
+      {/* Main area: sidebar + chart */}
+      <div style={{ display: "flex", gap: 20, minHeight: 400 }}>
+        {/* Left panel */}
+        <Card
+          size="small"
+          style={{ width: 280, flexShrink: 0 }}
+          title="输入数据"
+        >
+          <Space direction="vertical" style={{ width: "100%" }} size={12}>
+            <Input.TextArea
+              value={inputText}
+              onChange={setInputText}
+              placeholder="输入逗号分隔的数字，如: 5, 3, 8, 1, 9"
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              style={{ fontFamily: "monospace" }}
+            />
+            <Space>
+              <Button type="primary" size="small" onClick={handleApply}>
+                应用
+              </Button>
+              <Button size="small" icon={<IconLoop />} onClick={handleRandom}>
+                随机生成
+              </Button>
+            </Space>
+
+            <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 12 }}>
+              <Typography.Title heading={6} style={{ margin: "0 0 8px" }}>
+                {selectedAlgo.name}
+              </Typography.Title>
+              <Typography.Paragraph
+                style={{ margin: 0, fontSize: 13, color: "var(--color-text-3)" }}
+              >
+                {selectedAlgo.description}
+              </Typography.Paragraph>
+              <div style={{ marginTop: 8, fontSize: 13, color: "var(--color-text-3)" }}>
+                <div>时间复杂度：{selectedAlgo.timeComplexity}</div>
+                <div>空间复杂度：{selectedAlgo.spaceComplexity}</div>
+              </div>
+            </div>
+          </Space>
+        </Card>
+
+        {/* Chart area */}
+        <Card
+          size="small"
+          style={{ flex: 1 }}
+          bodyStyle={{ padding: 0, height: "100%", display: "flex", flexDirection: "column" }}
+        >
+          <div style={{ flex: 1, minHeight: 300 }}>
+            {currentVisual ? (
+              <BarChart step={currentVisual} />
+            ) : (
+              <div
+                style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--color-text-3)",
+                  fontSize: 14,
+                }}
+              >
+                点击"应用"或"随机生成"加载数据，然后点击播放
+              </div>
+            )}
+          </div>
+          {currentVisual && <StepInfo message={currentVisual.message} />}
+        </Card>
+      </div>
+
+      {/* Playback controls */}
+      <PlaybackController
+        status={status}
+        currentStep={currentStep}
+        totalSteps={steps.length}
+        speed={speed}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onReset={handleReset}
+        onSpeedChange={setSpeed}
+        onSeek={handleSeek}
+        disabled={steps.length === 0 && status === "idle"}
+      />
+    </div>
+  );
+}
