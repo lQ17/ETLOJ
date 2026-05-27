@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Typography, Button, Spin, Message } from "@arco-design/web-react";
 import {
   IconFile, IconEdit, IconRobot, IconLeft,
@@ -17,9 +17,8 @@ import SolutionsTab from "./SolutionsTab";
 export default function ProblemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const backToListParams = (location.state as any)?.listParams as string | undefined;
+  const backToListParams = searchParams.get("back") || undefined;
   const { user } = useAuthStore();
   const authLoading = useAuthStore((s) => s.loading);
   const [problem, setProblem] = useState<any>(null);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Table, Tag, Input, Select, Space, Typography, Button, Switch, Modal, Checkbox, Tooltip,
 } from "@arco-design/web-react";
@@ -12,7 +12,6 @@ import DifficultyTag from "../../components/DifficultyTag";
 import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../constants/difficulty";
 
 export default function ProblemListPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<any[]>([]);
@@ -128,24 +127,18 @@ export default function ProblemListPage() {
     {
       title: "标题",
       dataIndex: "title",
-      render: (title: string, record: any) => (
-        <Typography.Text
-          style={{ cursor: "pointer", color: "#3b82f6" }}
-          onClick={() => {
-            const params = new URLSearchParams();
-            if (keyword) params.set("keyword", keyword);
-            if (difficulty) params.set("difficulty", difficulty);
-            if (selectedTags.length > 0) {
-              params.set("tags", selectedTags.join(","));
-              params.set("tagMode", tagMode);
-            }
-            const qs = params.toString();
-            navigate(`/problems/${record.slug}`, { state: { listParams: qs || undefined } });
-          }}
-        >
-          {title}
-        </Typography.Text>
-      ),
+      render: (title: string, record: any) => {
+        const params = new URLSearchParams();
+        if (keyword) params.set("keyword", keyword);
+        if (difficulty) params.set("difficulty", difficulty);
+        if (selectedTags.length > 0) {
+          params.set("tags", selectedTags.join(","));
+          params.set("tagMode", tagMode);
+        }
+        const qs = params.toString();
+        const to = `/problems/${record.slug}${qs ? `?back=${encodeURIComponent(qs)}` : ""}`;
+        return <Link to={to} style={{ color: "#3b82f6", textDecoration: "none" }}>{title}</Link>;
+      },
     },
     {
       title: "难度",
