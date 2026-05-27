@@ -1,0 +1,90 @@
+import { motion } from "framer-motion";
+import type { VisualStep } from "../../algorithms/types";
+
+interface BarChartProps {
+  step: VisualStep;
+}
+
+const COLORS = {
+  default: "#165DFF",
+  comparing: "#FF7D00",
+  swapping: "#F53F3F",
+  sorted: "#00B42A",
+  pivot: "#722ED1",
+  active: "#86909C",
+};
+
+function getBarColor(index: number, highlights: VisualStep["highlights"]): string {
+  if (highlights.sorted?.includes(index)) return COLORS.sorted;
+  if (highlights.swapping?.includes(index)) return COLORS.swapping;
+  if (highlights.comparing?.includes(index)) return COLORS.comparing;
+  if (highlights.pivot === index) return COLORS.pivot;
+  if (highlights.active?.includes(index)) return COLORS.active;
+  return COLORS.default;
+}
+
+export default function BarChart({ step }: BarChartProps) {
+  const { array, highlights } = step;
+  const maxVal = Math.max(...array, 1);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        gap: 2,
+        height: "100%",
+        padding: "20px 10px 0",
+      }}
+    >
+      {array.map((value, index) => {
+        const heightPct = (value / maxVal) * 100;
+        const color = getBarColor(index, highlights);
+
+        return (
+          <motion.div
+            key={index}
+            layout
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            style={{
+              width: `${Math.max(100 / array.length - 1, 2)}%`,
+              maxWidth: 60,
+              minWidth: 8,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            {array.length <= 30 && (
+              <motion.span
+                animate={{ color }}
+                transition={{ duration: 0.2 }}
+                style={{
+                  fontSize: array.length <= 15 ? 12 : 10,
+                  marginBottom: 4,
+                  fontWeight: 500,
+                  color: "var(--color-text-2)",
+                }}
+              >
+                {value}
+              </motion.span>
+            )}
+            <motion.div
+              animate={{
+                height: `${heightPct}%`,
+                backgroundColor: color,
+              }}
+              transition={{ duration: 0.2 }}
+              style={{
+                width: "100%",
+                borderRadius: "3px 3px 0 0",
+                minHeight: 4,
+              }}
+            />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
