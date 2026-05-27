@@ -4,6 +4,7 @@ import { IconLoop } from "@arco-design/web-react/icon";
 import BarChart from "../../components/visual-engine/BarChart";
 import PlaybackController from "../../components/visual-engine/PlaybackController";
 import StepInfo from "../../components/visual-engine/StepInfo";
+import CodeViewer from "../../components/visual-engine/CodeViewer";
 import type { VisualStep, AlgorithmDef, AlgorithmCategory } from "../../algorithms/types";
 import { getAllAlgorithms, getAlgorithmsByCategory } from "../../algorithms/registry";
 
@@ -189,7 +190,7 @@ export default function VisualizationPage() {
         {/* Left panel */}
         <Card
           size="small"
-          style={{ width: 280, flexShrink: 0 }}
+          style={{ width: 320, flexShrink: 0 }}
           title="输入数据"
         >
           <Space direction="vertical" style={{ width: "100%" }} size={12}>
@@ -222,6 +223,17 @@ export default function VisualizationPage() {
                 <div>时间复杂度：{selectedAlgo.timeComplexity}</div>
                 <div>空间复杂度：{selectedAlgo.spaceComplexity}</div>
               </div>
+
+              {selectedAlgo.sourceCode && (
+                <div style={{ marginTop: 12, borderTop: "1px solid var(--color-border)", paddingTop: 12 }}>
+                  <CodeViewer
+                    sourceCode={selectedAlgo.sourceCode}
+                    activeLine={currentVisual?.line}
+                    variables={currentVisual?.variables}
+                    array={currentVisual?.array}
+                  />
+                </div>
+              )}
             </div>
           </Space>
         </Card>
@@ -234,7 +246,7 @@ export default function VisualizationPage() {
         >
           <div style={{ flex: 1 }}>
             {currentVisual ? (
-              <BarChart step={currentVisual} />
+              <BarChart step={currentVisual} bars={currentVisual.bars} />
             ) : (
               <div
                 style={{

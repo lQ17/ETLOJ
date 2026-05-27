@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
-import type { VisualStep } from "../../algorithms/types";
+import type { VisualStep, BarItem } from "../../algorithms/types";
 
 interface BarChartProps {
   step: VisualStep;
+  bars?: BarItem[];
 }
 
 const COLORS = {
@@ -25,9 +27,15 @@ function getBarColor(index: number, highlights: VisualStep["highlights"]): strin
 
 const CHART_HEIGHT = 360;
 
-export default function BarChart({ step }: BarChartProps) {
+export default function BarChart({ step, bars: barsProp }: BarChartProps) {
   const { array, highlights } = step;
   const maxVal = Math.max(...array, 1);
+
+  // bars: stable-id items ordered by current position
+  const bars = useMemo(() => {
+    if (barsProp) return barsProp;
+    return array.map((value, index) => ({ id: index, value }));
+  }, [barsProp, array]);
 
   return (
     <div
@@ -40,17 +48,17 @@ export default function BarChart({ step }: BarChartProps) {
         padding: "20px 10px 0",
       }}
     >
-      {array.map((value, index) => {
-        const barHeight = (value / maxVal) * (CHART_HEIGHT - 24);
+      {bars.map((bar, index) => {
+        const barHeight = (bar.value / maxVal) * (CHART_HEIGHT - 24);
         const color = getBarColor(index, highlights);
 
         return (
           <motion.div
-            key={index}
+            key={bar.id}
             layout
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             style={{
-              width: `${Math.max(100 / array.length - 1, 2)}%`,
+              width: `${Math.max(100 / bars.length - 1, 2)}%`,
               maxWidth: 60,
               minWidth: 8,
               display: "flex",
@@ -58,18 +66,18 @@ export default function BarChart({ step }: BarChartProps) {
               alignItems: "center",
             }}
           >
-            {array.length <= 30 && (
+            {bars.length <= 30 && (
               <motion.span
                 animate={{ color }}
                 transition={{ duration: 0.2 }}
                 style={{
-                  fontSize: array.length <= 15 ? 12 : 10,
+                  fontSize: bars.length <= 15 ? 12 : 10,
                   marginBottom: 4,
                   fontWeight: 500,
                   color: "var(--color-text-2)",
                 }}
               >
-                {value}
+                {bar.value}
               </motion.span>
             )}
             <motion.div
