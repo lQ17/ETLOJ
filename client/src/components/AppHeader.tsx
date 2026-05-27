@@ -26,6 +26,7 @@ export default function AppHeader() {
     { key: "/lists", label: "题单" },
     { key: "/records", label: "评测记录" },
     { key: "/ranking", label: "排名" },
+    { key: "/visualization", label: "可视化" },
   ];
 
   const selectedKey = menuItems.find(
