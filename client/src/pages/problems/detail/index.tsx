@@ -38,7 +38,8 @@ export default function ProblemDetailPage() {
 
   const [editorFontSize, setEditorFontSize] = useState(() => {
     const saved = localStorage.getItem("oj_editor_fontSize");
-    return saved ? Number(saved) : 16;
+    const v = saved ? Number(saved) : 16;
+    return Math.min(48, Math.max(12, v));
   });
   const [editorTabSize, setEditorTabSize] = useState(() => {
     const saved = localStorage.getItem("oj_editor_tabSize");

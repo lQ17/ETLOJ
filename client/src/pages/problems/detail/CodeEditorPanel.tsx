@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Select, Button, Space, Tag, Card, Popover, Radio, Message } from "@arco-design/web-react";
+import { Select, Button, Space, Tag, Card, Popover, Radio, InputNumber, Message } from "@arco-design/web-react";
 import { IconSettings } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
 import { langMap, statusLabel, statusColor } from "./constants";
@@ -70,6 +70,10 @@ export default function CodeEditorPanel({
   setCodeCompletion,
 }: CodeEditorPanelProps) {
   const editorRef = useRef<any>(null);
+  const fontSizeRef = useRef(editorFontSize);
+  fontSizeRef.current = editorFontSize;
+
+  const clampFontSize = (v: number) => Math.min(48, Math.max(12, Math.round(v)));
 
   return (
     <div style={{
@@ -123,16 +127,16 @@ export default function CodeEditorPanel({
                 <div style={{ width: 200 }}>
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>字体大小</div>
-                    <Select
+                    <InputNumber
                       value={editorFontSize}
-                      onChange={(v) => { setEditorFontSize(v); localStorage.setItem("oj_editor_fontSize", String(v)); }}
-                      style={{ width: "100%" }}
+                      min={12}
+                      max={48}
+                      step={1}
                       size="small"
-                    >
-                      {[12, 13, 14, 15, 16, 17, 18, 20, 22, 24].map((s) => (
-                        <Select.Option key={s} value={s}>{s}px</Select.Option>
-                      ))}
-                    </Select>
+                      style={{ width: "100%" }}
+                      onChange={(v) => { const n = clampFontSize(v ?? 16); setEditorFontSize(n); localStorage.setItem("oj_editor_fontSize", String(n)); }}
+                      suffix="px"
+                    />
                   </div>
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>Tab 大小</div>
@@ -195,7 +199,6 @@ export default function CodeEditorPanel({
               () => {
                 if (!problem) return;
                 const codeValue = editor.getValue();
-                // 代码超过 1MB 则不存储，防止 localStorage 溢出
                 if (codeValue.length > 1024 * 1024) {
                   Message.warning("代码过大，无法保存到浏览器本地");
                   return;
@@ -205,6 +208,20 @@ export default function CodeEditorPanel({
                 Message.success("代码已保存到浏览器本地");
               },
             );
+            // Ctrl+滚轮缩放字体
+            const domNode = editor.getDomNode();
+            if (domNode) {
+              const handler = (e: WheelEvent) => {
+                if (!e.ctrlKey && !e.metaKey) return;
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -1 : 1;
+                const next = clampFontSize(fontSizeRef.current + delta);
+                setEditorFontSize(next);
+                localStorage.setItem("oj_editor_fontSize", String(next));
+              };
+              domNode.addEventListener("wheel", handler, { passive: false });
+              editor.onDidDispose(() => domNode.removeEventListener("wheel", handler));
+            }
           }}
           options={{
             fontSize: editorFontSize,
