@@ -23,6 +23,8 @@ function getBarColor(index: number, highlights: VisualStep["highlights"]): strin
   return COLORS.default;
 }
 
+const CHART_HEIGHT = 360;
+
 export default function BarChart({ step }: BarChartProps) {
   const { array, highlights } = step;
   const maxVal = Math.max(...array, 1);
@@ -34,12 +36,12 @@ export default function BarChart({ step }: BarChartProps) {
         alignItems: "flex-end",
         justifyContent: "center",
         gap: 2,
-        height: "100%",
+        height: CHART_HEIGHT,
         padding: "20px 10px 0",
       }}
     >
       {array.map((value, index) => {
-        const heightPct = (value / maxVal) * 100;
+        const barHeight = (value / maxVal) * (CHART_HEIGHT - 24);
         const color = getBarColor(index, highlights);
 
         return (
@@ -72,7 +74,7 @@ export default function BarChart({ step }: BarChartProps) {
             )}
             <motion.div
               animate={{
-                height: `${heightPct}%`,
+                height: barHeight,
                 backgroundColor: color,
               }}
               transition={{ duration: 0.2 }}

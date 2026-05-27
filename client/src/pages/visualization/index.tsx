@@ -185,7 +185,7 @@ export default function VisualizationPage() {
       </Card>
 
       {/* Main area: sidebar + chart */}
-      <div style={{ display: "flex", gap: 20, minHeight: 400 }}>
+      <div style={{ display: "flex", gap: 20 }}>
         {/* Left panel */}
         <Card
           size="small"
@@ -232,7 +232,7 @@ export default function VisualizationPage() {
           style={{ flex: 1 }}
           bodyStyle={{ padding: 0, height: "100%", display: "flex", flexDirection: "column" }}
         >
-          <div style={{ flex: 1, minHeight: 300 }}>
+          <div style={{ flex: 1 }}>
             {currentVisual ? (
               <BarChart step={currentVisual} />
             ) : (
