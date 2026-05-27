@@ -4,7 +4,7 @@ import {
   Typography, Empty, Tag, Space, Popconfirm,
 } from "@arco-design/web-react";
 import { IconPlus, IconEdit, IconDelete } from "@arco-design/web-react/icon";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { problemListApi } from "../../api/problem-list";
 import { useAuthStore } from "../../stores/auth";
 
@@ -123,10 +123,11 @@ export default function ProblemListsPage() {
           <Col key={item.id} span={8}>
             <Card
               hoverable
-              style={{ cursor: "pointer", height: "100%" }}
-              onClick={() => navigate(`/lists/${item.id}`)}
+              style={{ height: "100%" }}
             >
-              <Title heading={6} style={{ marginBottom: 8 }}>{item.title}</Title>
+              <Link to={`/lists/${item.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                <Title heading={6} style={{ marginBottom: 8 }}>{item.title}</Title>
+              </Link>
               <Paragraph type="secondary" ellipsis={{ rows: 2 }}>
                 {item.description || "暂无简介"}
               </Paragraph>

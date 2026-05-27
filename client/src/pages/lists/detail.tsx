@@ -3,7 +3,7 @@ import {
   Table, Tag, Button, Breadcrumb, Modal, Input, Message, Typography, Space, Popconfirm,
 } from "@arco-design/web-react";
 import { IconPlus, IconDelete } from "@arco-design/web-react/icon";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { problemListApi } from "../../api/problem-list";
 import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
@@ -12,7 +12,6 @@ import DifficultyTag from "../../components/DifficultyTag";
 const { Title, Text, Paragraph } = Typography;
 
 export default function ProblemListDetailPage() {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
 
@@ -124,12 +123,9 @@ export default function ProblemListDetailPage() {
       title: "标题",
       dataIndex: ["problem", "title"],
       render: (title: string, record: any) => (
-        <Text
-          style={{ cursor: "pointer", color: "#3b82f6" }}
-          onClick={() => navigate(`/problems/${record.problem?.slug}`)}
-        >
+        <Link to={`/problems/${record.problem?.slug}`} style={{ color: "#3b82f6", textDecoration: "none" }}>
           {title}
-        </Text>
+        </Link>
       ),
     },
     {

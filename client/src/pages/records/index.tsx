@@ -3,7 +3,7 @@ import {
   Table, Tag, Space, Button, Input, Select, Modal, Message, Typography, Popconfirm,
 } from "@arco-design/web-react";
 import { IconSearch, IconRefresh, IconDelete } from "@arco-design/web-react/icon";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
@@ -148,12 +148,9 @@ export default function RecordsPage() {
     {
       title: "题号/题目", width: 220,
       render: (_: any, record: any) => (
-        <Typography.Text
-          style={{ cursor: "pointer", color: "#3b82f6" }}
-          onClick={() => navigate(`/problems/${record.problem?.slug}`)}
-        >
+        <Link to={`/problems/${record.problem?.slug}`} style={{ color: "#3b82f6", textDecoration: "none" }}>
           {record.problem?.slug} {record.problem?.title}
-        </Typography.Text>
+        </Link>
       ),
     },
     {
