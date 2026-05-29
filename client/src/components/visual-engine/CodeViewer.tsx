@@ -7,7 +7,7 @@ interface CodeViewerProps {
   array?: number[];
 }
 
-// C/C++ syntax highlighting
+// C/C++ syntax highlighting — VS Code Light+ theme
 const KEYWORDS = new Set([
   "int", "void", "for", "while", "if", "else", "return", "const",
   "char", "float", "double", "long", "short", "unsigned", "signed",
@@ -23,7 +23,7 @@ function highlightLine(text: string): { text: string; color?: string }[] {
   while (i < text.length) {
     // Comment
     if (text[i] === "/" && text[i + 1] === "/") {
-      tokens.push({ text: text.slice(i), color: "#6A9955" });
+      tokens.push({ text: text.slice(i), color: "#008000" });
       return tokens;
     }
 
@@ -31,7 +31,7 @@ function highlightLine(text: string): { text: string; color?: string }[] {
     if (text[i] === '"') {
       let j = i + 1;
       while (j < text.length && text[j] !== '"') j++;
-      tokens.push({ text: text.slice(i, j + 1), color: "#CE9178" });
+      tokens.push({ text: text.slice(i, j + 1), color: "#A31515" });
       i = j + 1;
       continue;
     }
@@ -40,7 +40,7 @@ function highlightLine(text: string): { text: string; color?: string }[] {
     if (/[0-9]/.test(text[i])) {
       let j = i;
       while (j < text.length && /[0-9]/.test(text[j])) j++;
-      tokens.push({ text: text.slice(i, j), color: "#B5CEA8" });
+      tokens.push({ text: text.slice(i, j), color: "#098658" });
       i = j;
       continue;
     }
@@ -51,13 +51,13 @@ function highlightLine(text: string): { text: string; color?: string }[] {
       while (j < text.length && /[a-zA-Z0-9_]/.test(text[j])) j++;
       const word = text.slice(i, j);
       if (KEYWORDS.has(word)) {
-        tokens.push({ text: word, color: "#569CD6" });
+        tokens.push({ text: word, color: "#0000FF" });
       } else if (TYPES.has(word)) {
-        tokens.push({ text: word, color: "#4EC9B0" });
+        tokens.push({ text: word, color: "#267F99" });
       } else if (j < text.length && text[j] === "(") {
-        tokens.push({ text: word, color: "#DCDCAA" }); // function call
+        tokens.push({ text: word, color: "#795E26" });
       } else {
-        tokens.push({ text: word }); // default
+        tokens.push({ text: word });
       }
       i = j;
       continue;
@@ -67,21 +67,21 @@ function highlightLine(text: string): { text: string; color?: string }[] {
     if ("=+-*/<>!&|".includes(text[i])) {
       let j = i + 1;
       if (j < text.length && "=+-<>|&".includes(text[j])) j++;
-      tokens.push({ text: text.slice(i, j), color: "#D4D4D4" });
+      tokens.push({ text: text.slice(i, j), color: "#000000" });
       i = j;
       continue;
     }
 
     // Brackets
     if ("(){}[]".includes(text[i])) {
-      tokens.push({ text: text[i], color: "#FFD700" });
+      tokens.push({ text: text[i], color: "#000000" });
       i++;
       continue;
     }
 
     // Semicolons, commas
     if (";,".includes(text[i])) {
-      tokens.push({ text: text[i], color: "#D4D4D4" });
+      tokens.push({ text: text[i], color: "#000000" });
       i++;
       continue;
     }
@@ -123,13 +123,13 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
         ref={containerRef}
         style={{
           fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-          fontSize: 12,
+          fontSize: 18,
           lineHeight: 1.7,
-          maxHeight: 260,
+          maxHeight: 360,
           overflow: "auto",
           borderRadius: 6,
-          background: "#1e1e1e",
-          border: "1px solid #333",
+          background: "#FFFFFF",
+          border: "1px solid #E5E6EB",
         }}
       >
         {highlightedLines.map((tokens, idx) => {
@@ -141,18 +141,18 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
               ref={isActive ? activeRef : undefined}
               style={{
                 display: "flex",
-                padding: "0 10px",
-                background: isActive ? "rgba(22, 93, 255, 0.2)" : "transparent",
+                padding: "0 12px",
+                background: isActive ? "#E8F3FF" : "transparent",
                 borderLeft: isActive ? "3px solid #165DFF" : "3px solid transparent",
                 transition: "background 0.2s",
               }}
             >
               <span
                 style={{
-                  width: 28,
+                  width: 36,
                   textAlign: "right",
-                  paddingRight: 10,
-                  color: isActive ? "#8AB4F8" : "#5A5A5A",
+                  paddingRight: 12,
+                  color: isActive ? "#165DFF" : "#999",
                   userSelect: "none",
                   flexShrink: 0,
                   fontWeight: isActive ? 600 : 400,
@@ -162,7 +162,7 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
               </span>
               <span style={{ whiteSpace: "pre" }}>
                 {tokens.map((token, ti) => (
-                  <span key={ti} style={{ color: token.color || "#D4D4D4" }}>
+                  <span key={ti} style={{ color: token.color || "#000000" }}>
                     {token.text}
                   </span>
                 ))}
@@ -176,11 +176,11 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
         <div
           style={{
             fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
-            fontSize: 12,
-            padding: "6px 10px",
+            fontSize: 18,
+            padding: "8px 12px",
             borderRadius: 6,
-            background: "#1e1e1e",
-            border: "1px solid #333",
+            background: "#FFFFFF",
+            border: "1px solid #E5E6EB",
             lineHeight: 1.6,
           }}
         >
@@ -188,10 +188,10 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
             <div>
               {varEntries.map(([key, val], idx) => (
                 <span key={key}>
-                  {idx > 0 && <span style={{ color: "#5A5A5A", margin: "0 6px" }}>|</span>}
-                  <span style={{ color: "#9CDCFE", fontWeight: 500 }}>{key}</span>
-                  <span style={{ color: "#D4D4D4" }}>=</span>
-                  <span style={{ color: "#B5CEA8" }}>{val}</span>
+                  {idx > 0 && <span style={{ color: "#CCC", margin: "0 8px" }}>|</span>}
+                  <span style={{ color: "#267F99", fontWeight: 500 }}>{key}</span>
+                  <span style={{ color: "#000" }}>=</span>
+                  <span style={{ color: "#098658" }}>{val}</span>
                 </span>
               ))}
             </div>
