@@ -44,3 +44,7 @@ deploy_remote.py
 # Claude Code
 .claude/
 .traces/
+
+# Brainstorming artifacts
+.superpowers/
+docs/superpowers/
