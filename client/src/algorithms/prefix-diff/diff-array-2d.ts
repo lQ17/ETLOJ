@@ -1,7 +1,8 @@
 import type { AlgorithmDef, VisualStep } from "../types";
 import { registerAlgorithm } from "../registry";
 
-const SOURCE_CODE = `// 二维差分：子矩阵 (r1,c1)-(r2,c2) 加 val
+const SOURCE_CODE = `// 二维差分（下标从1开始）
+// 子矩阵 (r1,c1)-(r2,c2) 加 val
 void rangeAdd(int r1, int c1, int r2, int c2, int val) {
     d[r1][c1]     += val;
     d[r1][c2+1]   -= val;
@@ -16,20 +17,22 @@ void restore() {
                      - d[i-1][j-1];
 }`;
 
-function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
-  const n = input.length;
+function padMatrix(flat: number[]): { a: number[][]; R: number; C: number } {
+  const n = flat.length;
   const cols = Math.ceil(Math.sqrt(n));
   const rows = Math.ceil(n / cols);
-  const a: number[][] = [];
+  const a: number[][] = Array.from({ length: rows + 1 }, () => new Array(cols + 1).fill(0));
   for (let i = 0; i < rows; i++) {
-    a.push(input.slice(i * cols, (i + 1) * cols));
-    while (a[i].length < cols) a[i].push(0);
+    for (let j = 0; j < cols; j++) {
+      a[i + 1][j + 1] = flat[i * cols + j] ?? 0;
+    }
   }
+  return { a, R: rows, C: cols };
+}
 
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
+  const { a, R, C } = padMatrix(input);
   const steps: VisualStep[] = [];
-  const R = rows;
-  const C = cols;
-
   const d: number[][] = a.map((r) => [...r]);
 
   steps.push({
@@ -40,7 +43,7 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
         { grid: d.map((r) => [...r]), label: "差分数组 d" },
       ],
     },
-    message: `原始矩阵 (${R}×${C})，差分矩阵初始化`,
+    message: `初始化: 矩阵 (${R}×${C}), 下标从1开始, d = a 的拷贝`,
     line: 1,
     variables: { n: R, m: C },
   });
@@ -54,10 +57,10 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
 function executeRangeAdd(state: unknown, params: Record<string, number>): VisualStep[] {
   const { original, diff, rows: R, cols: C } = state as { original: number[][]; diff: number[][]; rows: number; cols: number };
   const d = diff;
-  let r1 = Math.max(0, Math.min(Math.floor(params.r1), R - 1));
-  let c1 = Math.max(0, Math.min(Math.floor(params.c1), C - 1));
-  let r2 = Math.max(0, Math.min(Math.floor(params.r2), R - 1));
-  let c2 = Math.max(0, Math.min(Math.floor(params.c2), C - 1));
+  let r1 = Math.max(1, Math.min(Math.floor(params.r1), R));
+  let c1 = Math.max(1, Math.min(Math.floor(params.c1), C));
+  let r2 = Math.max(1, Math.min(Math.floor(params.r2), R));
+  let c2 = Math.max(1, Math.min(Math.floor(params.c2), C));
   if (r1 > r2) [r1, r2] = [r2, r1];
   if (c1 > c2) [c1, c2] = [c2, c1];
   const val = Math.floor(params.val);
@@ -71,7 +74,7 @@ function executeRangeAdd(state: unknown, params: Record<string, number>): Visual
   ];
 
   for (const [cr, cc, delta, desc] of corners) {
-    if (cr < R && cc < C) {
+    if (cr <= R && cc <= C) {
       d[cr][cc] += delta;
       steps.push({
         array: original.flat(),
@@ -94,33 +97,31 @@ function executeRangeAdd(state: unknown, params: Record<string, number>): Visual
 function executeRestore(state: unknown): VisualStep[] {
   const { original, diff, rows: R, cols: C } = state as { original: number[][]; diff: number[][]; rows: number; cols: number };
   const restored = diff.map((r) => [...r]);
-  for (let i = 0; i < R; i++) {
-    for (let j = 0; j < C; j++) {
-      if (i > 0) restored[i][j] += restored[i - 1][j];
-      if (j > 0) restored[i][j] += restored[i][j - 1];
-      if (i > 0 && j > 0) restored[i][j] -= restored[i - 1][j - 1];
+  for (let i = 1; i <= R; i++) {
+    for (let j = 1; j <= C; j++) {
+      restored[i][j] += restored[i - 1][j] + restored[i][j - 1] - restored[i - 1][j - 1];
     }
   }
 
-  // Update state
   (state as { diff: number[][] }).diff = restored;
+
+  const updated: [number, number][] = [];
+  for (let i = 1; i <= R; i++) {
+    for (let j = 1; j <= C; j++) {
+      updated.push([i, j]);
+    }
+  }
 
   return [{
     array: original.flat(),
     highlights: {
       grids: [
         { grid: original.map((r) => [...r]), label: "原始数组 a" },
-        {
-          grid: restored.map((r) => [...r]),
-          label: "还原结果",
-          highlights: {
-            updated: Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => [i, j] as [number, number])).flat(),
-          },
-        },
+        { grid: restored.map((r) => [...r]), label: "还原结果", highlights: { updated } },
       ],
     },
     message: "还原矩阵: 通过二维前缀和还原",
-    line: 9,
+    line: 10,
     variables: {},
   }];
 }
@@ -129,7 +130,7 @@ const diffArray2d: AlgorithmDef = {
   id: "diff-array-2d",
   name: "二维差分",
   category: "prefix-diff",
-  description: "二维差分数组，支持 O(1) 子矩阵区间加操作。",
+  description: "二维差分数组（下标从1开始），支持 O(1) 子矩阵区间加操作。",
   timeComplexity: "O(n×m)",
   spaceComplexity: "O(n×m)",
   defaultInput: [1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -140,10 +141,10 @@ const diffArray2d: AlgorithmDef = {
     {
       name: "子矩阵加",
       inputs: [
-        { name: "r1", label: "左上行 r1", type: "number", default: 0, min: 0 },
-        { name: "c1", label: "左上列 c1", type: "number", default: 0, min: 0 },
-        { name: "r2", label: "右下行 r2", type: "number", default: 1, min: 0 },
-        { name: "c2", label: "右下列 c2", type: "number", default: 1, min: 0 },
+        { name: "r1", label: "左上行 r1", type: "number", default: 1, min: 1 },
+        { name: "c1", label: "左上列 c1", type: "number", default: 1, min: 1 },
+        { name: "r2", label: "右下行 r2", type: "number", default: 2, min: 1 },
+        { name: "c2", label: "右下列 c2", type: "number", default: 2, min: 1 },
         { name: "val", label: "加值 val", type: "number", default: 5 },
       ],
       execute: executeRangeAdd,

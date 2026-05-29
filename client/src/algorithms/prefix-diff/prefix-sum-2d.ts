@@ -1,7 +1,7 @@
 import type { AlgorithmDef, VisualStep } from "../types";
 import { registerAlgorithm } from "../registry";
 
-const SOURCE_CODE = `// 构建二维前缀和
+const SOURCE_CODE = `// 构建二维前缀和（下标从1开始）
 int s[MAXN][MAXN];
 for (int i = 1; i <= n; i++)
     for (int j = 1; j <= m; j++)
@@ -13,22 +13,25 @@ int query(int r1, int c1, int r2, int c2) {
          - s[r2][c1-1] + s[r1-1][c1-1];
 }`;
 
-function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
-  const n = input.length;
+function padMatrix(flat: number[]): { a: number[][]; R: number; C: number } {
+  const n = flat.length;
   const cols = Math.ceil(Math.sqrt(n));
   const rows = Math.ceil(n / cols);
-  const a: number[][] = [];
+  // Build 1-indexed matrix with dummy row 0 and col 0
+  const a: number[][] = Array.from({ length: rows + 1 }, () => new Array(cols + 1).fill(0));
   for (let i = 0; i < rows; i++) {
-    a.push(input.slice(i * cols, (i + 1) * cols));
-    while (a[i].length < cols) a[i].push(0);
+    for (let j = 0; j < cols; j++) {
+      a[i + 1][j + 1] = flat[i * cols + j] ?? 0;
+    }
   }
+  return { a, R: rows, C: cols };
+}
 
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
+  const { a, R, C } = padMatrix(input);
   const steps: VisualStep[] = [];
-  const R = rows;
-  const C = cols;
-  const s: number[][] = Array.from({ length: R }, () => new Array(C).fill(0));
+  const s: number[][] = Array.from({ length: R + 1 }, () => new Array(C + 1).fill(0));
 
-  // Initial: show original only
   steps.push({
     array: [...input],
     highlights: {
@@ -37,22 +40,19 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
         { grid: s.map((r) => [...r]), label: "前缀和 s" },
       ],
     },
-    message: `原始矩阵 (${R}×${C})`,
+    message: `初始化: 矩阵 (${R}×${C}), 下标从1开始, s[0][*] = s[*][0] = 0`,
     line: 1,
     variables: { n: R, m: C },
   });
 
-  for (let i = 0; i < R; i++) {
-    for (let j = 0; j < C; j++) {
-      const top = i > 0 ? s[i - 1][j] : 0;
-      const left = j > 0 ? s[i][j - 1] : 0;
-      const diag = i > 0 && j > 0 ? s[i - 1][j - 1] : 0;
+  for (let i = 1; i <= R; i++) {
+    for (let j = 1; j <= C; j++) {
+      const top = s[i - 1][j];
+      const left = s[i][j - 1];
+      const diag = s[i - 1][j - 1];
       s[i][j] = top + left - diag + a[i][j];
 
-      const related: [number, number][] = [];
-      if (i > 0) related.push([i - 1, j]);
-      if (j > 0) related.push([i, j - 1]);
-      if (i > 0 && j > 0) related.push([i - 1, j - 1]);
+      const related: [number, number][] = [[i - 1, j], [i, j - 1], [i - 1, j - 1]];
 
       steps.push({
         array: [...input],
@@ -90,23 +90,16 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
 
 function executeQuery(state: unknown, params: Record<string, number>): VisualStep[] {
   const { original, prefixSum, rows: R, cols: C } = state as { original: number[][]; prefixSum: number[][]; rows: number; cols: number };
-  let r1 = Math.max(0, Math.min(Math.floor(params.r1), R - 1));
-  let c1 = Math.max(0, Math.min(Math.floor(params.c1), C - 1));
-  let r2 = Math.max(0, Math.min(Math.floor(params.r2), R - 1));
-  let c2 = Math.max(0, Math.min(Math.floor(params.c2), C - 1));
+  let r1 = Math.max(1, Math.min(Math.floor(params.r1), R));
+  let c1 = Math.max(1, Math.min(Math.floor(params.c1), C));
+  let r2 = Math.max(1, Math.min(Math.floor(params.r2), R));
+  let c2 = Math.max(1, Math.min(Math.floor(params.c2), C));
   if (r1 > r2) [r1, r2] = [r2, r1];
   if (c1 > c2) [c1, c2] = [c2, c1];
 
-  const qr2c2 = prefixSum[r2][c2];
-  const qr1m1c2 = r1 > 0 ? prefixSum[r1 - 1][c2] : 0;
-  const qr2c1m1 = c1 > 0 ? prefixSum[r2][c1 - 1] : 0;
-  const qr1m1c1m1 = r1 > 0 && c1 > 0 ? prefixSum[r1 - 1][c1 - 1] : 0;
-  const result = qr2c2 - qr1m1c2 - qr2c1m1 + qr1m1c1m1;
+  const result = prefixSum[r2][c2] - prefixSum[r1 - 1][c2] - prefixSum[r2][c1 - 1] + prefixSum[r1 - 1][c1 - 1];
 
-  const related: [number, number][] = [[r2, c2]];
-  if (r1 > 0) related.push([r1 - 1, c2]);
-  if (c1 > 0) related.push([r2, c1 - 1]);
-  if (r1 > 0 && c1 > 0) related.push([r1 - 1, c1 - 1]);
+  const related: [number, number][] = [[r2, c2], [r1 - 1, c2], [r2, c1 - 1], [r1 - 1, c1 - 1]];
 
   return [{
     array: original.flat(),
@@ -116,8 +109,8 @@ function executeQuery(state: unknown, params: Record<string, number>): VisualSte
         { grid: prefixSum.map((r) => [...r]), label: "前缀和 s", highlights: { related } },
       ],
     },
-    message: `查询子矩阵 (${r1},${c1})-(${r2},${c2}): 矩阵和 = ${result}`,
-    line: 8,
+    message: `查询 (${r1},${c1})-(${r2},${c2}): ${prefixSum[r2][c2]} - ${prefixSum[r1-1][c2]} - ${prefixSum[r2][c1-1]} + ${prefixSum[r1-1][c1-1]} = ${result}`,
+    line: 9,
     variables: { r1, c1, r2, c2, result },
   }];
 }
@@ -126,7 +119,7 @@ const prefixSum2d: AlgorithmDef = {
   id: "prefix-sum-2d",
   name: "二维前缀和",
   category: "prefix-diff",
-  description: "构建二维前缀和矩阵，支持 O(1) 子矩阵和查询。",
+  description: "构建二维前缀和矩阵（下标从1开始），支持 O(1) 子矩阵和查询。",
   timeComplexity: "O(n×m)",
   spaceComplexity: "O(n×m)",
   defaultInput: [1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -137,10 +130,10 @@ const prefixSum2d: AlgorithmDef = {
     {
       name: "子矩阵查询",
       inputs: [
-        { name: "r1", label: "左上行 r1", type: "number", default: 0, min: 0 },
-        { name: "c1", label: "左上列 c1", type: "number", default: 0, min: 0 },
-        { name: "r2", label: "右下行 r2", type: "number", default: 1, min: 0 },
-        { name: "c2", label: "右下列 c2", type: "number", default: 1, min: 0 },
+        { name: "r1", label: "左上行 r1", type: "number", default: 1, min: 1 },
+        { name: "c1", label: "左上列 c1", type: "number", default: 1, min: 1 },
+        { name: "r2", label: "右下行 r2", type: "number", default: 2, min: 1 },
+        { name: "c2", label: "右下列 c2", type: "number", default: 2, min: 1 },
       ],
       execute: executeQuery,
     },

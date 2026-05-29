@@ -57,21 +57,30 @@ function isHighlighted(row: number, col: number, highlights?: GridData["highligh
 function SingleGrid({ data, cols, cellSize, fontSize }: { data: GridData; cols: number; cellSize: number; fontSize: number }) {
   const { grid, label, highlights } = data;
   const maxVal = Math.max(...grid.flat().map(Math.abs), 1);
+  const idxFontSize = Math.max(fontSize - 3, 9);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       {label && (
         <div style={{ fontSize: 12, color: "#86909C", marginBottom: 6, fontWeight: 500 }}>{label}</div>
       )}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
-          gap: 3,
-        }}
-      >
-        {grid.map((row, r) =>
-          row.map((val, c) => {
+
+      {/* Column index labels */}
+      <div style={{ display: "flex", marginLeft: cellSize + 6 }}>
+        {Array.from({ length: cols }, (_, c) => (
+          <div key={c} style={{ width: cellSize, textAlign: "center", fontSize: idxFontSize, color: "#999", marginBottom: 2 }}>
+            {c}
+          </div>
+        ))}
+      </div>
+
+      {/* Grid rows with row index labels */}
+      {grid.map((row, r) => (
+        <div key={r} style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ width: cellSize, textAlign: "center", fontSize: idxFontSize, color: "#999", marginRight: 6, flexShrink: 0 }}>
+            {r}
+          </div>
+          {row.map((val, c) => {
             const highlighted = isHighlighted(r, c, highlights);
             const bgColor = getCellColor(r, c, val, maxVal, highlights);
 
@@ -102,9 +111,9 @@ function SingleGrid({ data, cols, cellSize, fontSize }: { data: GridData; cols: 
                 {val}
               </motion.div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      ))}
     </div>
   );
 }
