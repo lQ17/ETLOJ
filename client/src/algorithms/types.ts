@@ -16,6 +16,10 @@ export interface VisualStep {
     mid?: number;
     eliminated?: number[];
     found?: number;
+    current?: [number, number];
+    related?: [number, number][];
+    updated?: [number, number][];
+    grid?: number[][];
   };
   message?: string;
   bars?: BarItem[];
@@ -23,7 +27,7 @@ export interface VisualStep {
   variables?: Record<string, number | string>;
 }
 
-export type AlgorithmCategory = "sorting" | "graph" | "string" | "data-structure" | "searching";
+export type AlgorithmCategory = "sorting" | "graph" | "string" | "data-structure" | "searching" | "prefix-diff";
 
 export interface AlgorithmDef {
   id: string;
@@ -36,5 +40,6 @@ export interface AlgorithmDef {
   sourceCode?: string;
   needTarget?: boolean;
   defaultTarget?: number;
+  inputDimension?: "1d" | "2d";
   generateSteps(input: number[], target?: number): VisualStep[];
 }
