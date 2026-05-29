@@ -23,14 +23,12 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
   const steps: VisualStep[] = [];
 
   if (n === 0) {
-    steps.push({ array: [], highlights: {}, message: "数组为空" });
-    return { steps };
+    return { steps: [{ array: [], highlights: {}, message: "数组为空" }] };
   }
 
   const d = new Array(n).fill(0);
   d[0] = a[0];
 
-  // Initial step
   steps.push({
     array: [...a],
     highlights: {
@@ -43,7 +41,6 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     variables: { i: 0, "a[0]": a[0], "d[0]": d[0] },
   });
 
-  // Build difference array
   for (let i = 1; i < n; i++) {
     d[i] = a[i] - a[i - 1];
     steps.push({
@@ -59,17 +56,27 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     });
   }
 
-  // Range update demo: add 10 to [2, 5]
-  const l = 2, r = Math.min(5, n - 1), val = 10;
+  return {
+    steps,
+    state: { original: a, diff: [...d], n },
+  };
+}
+
+function executeRangeAdd(state: unknown, params: Record<string, number>): VisualStep[] {
+  const { original, diff, n } = state as { original: number[]; diff: number[]; n: number };
+  const d = [...diff];
+  let l = Math.max(0, Math.min(Math.floor(params.l), n - 1));
+  let r = Math.max(0, Math.min(Math.floor(params.r), n - 1));
+  if (l > r) [l, r] = [r, l];
+  const val = Math.floor(params.val);
+
+  const steps: VisualStep[] = [];
+
   d[l] += val;
   steps.push({
-    array: [...a],
-    highlights: {
-      grid: [a.slice(), d.slice()],
-      current: [1, l],
-      updated: [[1, l]],
-    },
-    message: `区间加操作: d[${l}] += ${val}, d[${l}] = ${d[l]}`,
+    array: [...original],
+    highlights: { grid: [original.slice(), d.slice()], current: [1, l], updated: [[1, l]] },
+    message: `区间 [${l}, ${r}] 加 ${val}: d[${l}] += ${val} → ${d[l]}`,
     line: 8,
     variables: { l, r, val, "d[l]": d[l] },
   });
@@ -77,35 +84,40 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
   if (r + 1 < n) {
     d[r + 1] -= val;
     steps.push({
-      array: [...a],
-      highlights: {
-        grid: [a.slice(), d.slice()],
-        current: [1, r + 1],
-        updated: [[1, l], [1, r + 1]],
-      },
-      message: `区间加操作: d[${r + 1}] -= ${val}, d[${r + 1}] = ${d[r + 1]}`,
+      array: [...original],
+      highlights: { grid: [original.slice(), d.slice()], current: [1, r + 1], updated: [[1, l], [1, r + 1]] },
+      message: `d[${r + 1}] -= ${val} → ${d[r + 1]}`,
       line: 9,
       variables: { l, r, val, "d[r+1]": d[r + 1] },
     });
   }
 
-  // Restore
-  const restored = [...d];
+  // Update state in place for subsequent operations
+  (state as { diff: number[] }).diff = d;
+
+  return steps;
+}
+
+function executeRestore(state: unknown): VisualStep[] {
+  const { original, diff, n } = state as { original: number[]; diff: number[]; n: number };
+  const restored = [...diff];
   for (let i = 1; i < n; i++) {
     restored[i] += restored[i - 1];
   }
-  steps.push({
-    array: [...a],
+
+  // Update state
+  (state as { diff: number[] }).diff = restored;
+
+  return [{
+    array: [...original],
     highlights: {
-      grid: [a.slice(), restored.slice()],
+      grid: [original.slice(), restored.slice()],
       updated: Array.from({ length: n }, (_, i) => [1, i] as [number, number]),
     },
-    message: `还原数组: 通过前缀和还原，区间 [${l}, ${r}] 已加 ${val}`,
+    message: "还原数组: 通过前缀和还原差分数组",
     line: 12,
-    variables: { l, r, val },
-  });
-
-  return { steps };
+    variables: {},
+  }];
 }
 
 const diffArray1d: AlgorithmDef = {
@@ -118,6 +130,22 @@ const diffArray1d: AlgorithmDef = {
   defaultInput: [1, 3, 5, 7, 9, 2, 4, 6, 8, 10],
   sourceCode: SOURCE_CODE,
   generateSteps,
+  interactive: [
+    {
+      name: "区间加",
+      inputs: [
+        { name: "l", label: "左端点 l", type: "number", default: 2, min: 0 },
+        { name: "r", label: "右端点 r", type: "number", default: 5, min: 0 },
+        { name: "val", label: "加值 val", type: "number", default: 10 },
+      ],
+      execute: executeRangeAdd,
+    },
+    {
+      name: "还原数组",
+      inputs: [],
+      execute: executeRestore,
+    },
+  ],
 };
 
 registerAlgorithm(diffArray1d);
