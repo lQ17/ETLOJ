@@ -214,7 +214,7 @@ export default function VisualizationPage() {
         {/* Left panel */}
         <Card
           size="small"
-          style={{ width: 320, flexShrink: 0 }}
+          style={{ width: 500, flexShrink: 0 }}
           title="输入数据"
         >
           <Space direction="vertical" style={{ width: "100%" }} size={12}>

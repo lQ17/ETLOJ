@@ -40,6 +40,8 @@ function App() {
   const loading = useAuthStore((s) => s.loading);
   const location = useLocation();
   const isDetailPage = /^\/problems\/[^/]+/.test(location.pathname);
+  const isVisualizationPage = location.pathname === "/visualization";
+  const contentMaxWidth = isDetailPage ? "100%" : isVisualizationPage ? "90%" : 1200;
 
   useEffect(() => {
     initFromStorage();
@@ -59,7 +61,7 @@ function App() {
       <AppHeader />
       <Content
         style={{
-          maxWidth: isDetailPage ? "100%" : 1200,
+          maxWidth: contentMaxWidth,
           margin: "0 auto",
           padding: isDetailPage ? "24px 32px" : "96px 32px",
           width: "100%",
