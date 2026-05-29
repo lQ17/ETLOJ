@@ -30,7 +30,6 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
   const R = rows;
   const C = cols;
 
-  // Initial: show original matrix
   steps.push({
     array: [...input],
     highlights: { grid: a.map((r) => [...r]) },
@@ -39,10 +38,8 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     variables: { n: R, m: C },
   });
 
-  // Build difference matrix (copy of a initially)
   const d: number[][] = a.map((r) => [...r]);
 
-  // Show initial diff matrix
   steps.push({
     array: [...input],
     highlights: { grid: d.map((r) => [...r]) },
@@ -51,9 +48,24 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     variables: {},
   });
 
-  // Range update demo: add val to sub-matrix
-  const r1 = 0, c1 = 0, r2 = Math.min(1, R - 1), c2 = Math.min(1, C - 1), val = 5;
+  return {
+    steps,
+    state: { original: a, diff: d.map((r) => [...r]), rows: R, cols: C },
+  };
+}
 
+function executeRangeAdd(state: unknown, params: Record<string, number>): VisualStep[] {
+  const { original, diff, rows: R, cols: C } = state as { original: number[][]; diff: number[][]; rows: number; cols: number };
+  const d = diff;
+  let r1 = Math.max(0, Math.min(Math.floor(params.r1), R - 1));
+  let c1 = Math.max(0, Math.min(Math.floor(params.c1), C - 1));
+  let r2 = Math.max(0, Math.min(Math.floor(params.r2), R - 1));
+  let c2 = Math.max(0, Math.min(Math.floor(params.c2), C - 1));
+  if (r1 > r2) [r1, r2] = [r2, r1];
+  if (c1 > c2) [c1, c2] = [c2, c1];
+  const val = Math.floor(params.val);
+
+  const steps: VisualStep[] = [];
   const corners: [number, number, number, string][] = [
     [r1, c1, val, `d[${r1}][${c1}] += ${val}`],
     [r1, c2 + 1, -val, `d[${r1}][${c2 + 1}] -= ${val}`],
@@ -65,12 +77,8 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     if (cr < R && cc < C) {
       d[cr][cc] += delta;
       steps.push({
-        array: [...input],
-        highlights: {
-          grid: d.map((r) => [...r]),
-          current: [cr, cc],
-          updated: [[cr, cc]],
-        },
+        array: original.flat(),
+        highlights: { grid: d.map((r) => [...r]), current: [cr, cc], updated: [[cr, cc]] },
         message: `子矩阵 (${r1},${c1})-(${r2},${c2}) 加 ${val}: ${desc} = ${d[cr][cc]}`,
         line: 3,
         variables: { r1, c1, r2, c2, val, row: cr, col: cc, delta, "d[cr][cc]": d[cr][cc] },
@@ -78,8 +86,12 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     }
   }
 
-  // Restore via 2D prefix sum
-  const restored = d.map((r) => [...r]);
+  return steps;
+}
+
+function executeRestore(state: unknown): VisualStep[] {
+  const { original, diff, rows: R, cols: C } = state as { original: number[][]; diff: number[][]; rows: number; cols: number };
+  const restored = diff.map((r) => [...r]);
   for (let i = 0; i < R; i++) {
     for (let j = 0; j < C; j++) {
       if (i > 0) restored[i][j] += restored[i - 1][j];
@@ -88,20 +100,19 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     }
   }
 
-  steps.push({
-    array: [...input],
+  // Update state
+  (state as { diff: number[][] }).diff = restored;
+
+  return [{
+    array: original.flat(),
     highlights: {
       grid: restored.map((r) => [...r]),
-      updated: Array.from({ length: R }, (_, i) =>
-        Array.from({ length: C }, (_, j) => [i, j] as [number, number])
-      ).flat(),
+      updated: Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => [i, j] as [number, number])).flat(),
     },
-    message: `还原矩阵: 子矩阵 (${r1},${c1})-(${r2},${c2}) 已加 ${val}`,
+    message: "还原矩阵: 通过二维前缀和还原",
     line: 9,
-    variables: { r1, c1, r2, c2, val },
-  });
-
-  return { steps };
+    variables: {},
+  }];
 }
 
 const diffArray2d: AlgorithmDef = {
@@ -115,6 +126,24 @@ const diffArray2d: AlgorithmDef = {
   inputDimension: "2d",
   sourceCode: SOURCE_CODE,
   generateSteps,
+  interactive: [
+    {
+      name: "子矩阵加",
+      inputs: [
+        { name: "r1", label: "左上行 r1", type: "number", default: 0, min: 0 },
+        { name: "c1", label: "左上列 c1", type: "number", default: 0, min: 0 },
+        { name: "r2", label: "右下行 r2", type: "number", default: 1, min: 0 },
+        { name: "c2", label: "右下列 c2", type: "number", default: 1, min: 0 },
+        { name: "val", label: "加值 val", type: "number", default: 5 },
+      ],
+      execute: executeRangeAdd,
+    },
+    {
+      name: "还原矩阵",
+      inputs: [],
+      execute: executeRestore,
+    },
+  ],
 };
 
 registerAlgorithm(diffArray2d);
