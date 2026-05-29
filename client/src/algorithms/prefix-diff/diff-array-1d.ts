@@ -1,0 +1,124 @@
+import type { AlgorithmDef, VisualStep } from "../types";
+import { registerAlgorithm } from "../registry";
+
+const SOURCE_CODE = `// 构建差分数组
+int d[MAXN];
+d[0] = a[0];
+for (int i = 1; i < n; i++)
+    d[i] = a[i] - a[i-1];
+// 区间 [l, r] 加 val
+void rangeAdd(int l, int r, int val) {
+    d[l] += val;
+    if (r + 1 < n) d[r+1] -= val;
+}
+// 还原数组
+void restore() {
+    for (int i = 1; i < n; i++)
+        d[i] += d[i-1];
+}`;
+
+function generateSteps(input: number[]): VisualStep[] {
+  const a = [...input];
+  const n = a.length;
+  const steps: VisualStep[] = [];
+
+  if (n === 0) {
+    steps.push({ array: [], highlights: {}, message: "数组为空" });
+    return steps;
+  }
+
+  const d = new Array(n).fill(0);
+  d[0] = a[0];
+
+  // Initial step
+  steps.push({
+    array: [...a],
+    highlights: {
+      grid: [a.slice(), d.slice()],
+      current: [1, 0],
+      related: [[0, 0]],
+    },
+    message: `初始化: d[0] = a[0] = ${a[0]}`,
+    line: 3,
+    variables: { i: 0, "a[0]": a[0], "d[0]": d[0] },
+  });
+
+  // Build difference array
+  for (let i = 1; i < n; i++) {
+    d[i] = a[i] - a[i - 1];
+    steps.push({
+      array: [...a],
+      highlights: {
+        grid: [a.slice(), d.slice()],
+        current: [1, i],
+        related: [[0, i], [0, i - 1]],
+      },
+      message: `d[${i}] = a[${i}] - a[${i - 1}] = ${a[i]} - ${a[i - 1]} = ${d[i]}`,
+      line: 5,
+      variables: { i, "a[i]": a[i], "a[i-1]": a[i - 1], "d[i]": d[i] },
+    });
+  }
+
+  // Range update demo: add 10 to [2, 5]
+  const l = 2, r = Math.min(5, n - 1), val = 10;
+  d[l] += val;
+  steps.push({
+    array: [...a],
+    highlights: {
+      grid: [a.slice(), d.slice()],
+      current: [1, l],
+      updated: [[1, l]],
+    },
+    message: `区间加操作: d[${l}] += ${val}, d[${l}] = ${d[l]}`,
+    line: 8,
+    variables: { l, r, val, "d[l]": d[l] },
+  });
+
+  if (r + 1 < n) {
+    d[r + 1] -= val;
+    steps.push({
+      array: [...a],
+      highlights: {
+        grid: [a.slice(), d.slice()],
+        current: [1, r + 1],
+        updated: [[1, l], [1, r + 1]],
+      },
+      message: `区间加操作: d[${r + 1}] -= ${val}, d[${r + 1}] = ${d[r + 1]}`,
+      line: 9,
+      variables: { l, r, val, "d[r+1]": d[r + 1] },
+    });
+  }
+
+  // Restore
+  const restored = [...d];
+  for (let i = 1; i < n; i++) {
+    restored[i] += restored[i - 1];
+  }
+  steps.push({
+    array: [...a],
+    highlights: {
+      grid: [a.slice(), restored.slice()],
+      updated: Array.from({ length: n }, (_, i) => [1, i] as [number, number]),
+    },
+    message: `还原数组: 通过前缀和还原，区间 [${l}, ${r}] 已加 ${val}`,
+    line: 12,
+    variables: { l, r, val },
+  });
+
+  return steps;
+}
+
+const diffArray1d: AlgorithmDef = {
+  id: "diff-array-1d",
+  name: "一维差分",
+  category: "prefix-diff",
+  description: "构建一维差分数组，支持 O(1) 区间加操作。",
+  timeComplexity: "O(n)",
+  spaceComplexity: "O(n)",
+  defaultInput: [1, 3, 5, 7, 9, 2, 4, 6, 8, 10],
+  sourceCode: SOURCE_CODE,
+  generateSteps,
+};
+
+registerAlgorithm(diffArray1d);
+export default diffArray1d;
