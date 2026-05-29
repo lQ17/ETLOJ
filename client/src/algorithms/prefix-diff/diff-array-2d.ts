@@ -30,22 +30,19 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
   const R = rows;
   const C = cols;
 
-  steps.push({
-    array: [...input],
-    highlights: { grid: a.map((r) => [...r]) },
-    message: `原始矩阵 (${R}×${C})`,
-    line: 1,
-    variables: { n: R, m: C },
-  });
-
   const d: number[][] = a.map((r) => [...r]);
 
   steps.push({
     array: [...input],
-    highlights: { grid: d.map((r) => [...r]) },
-    message: "差分矩阵初始化（与原矩阵相同）",
+    highlights: {
+      grids: [
+        { grid: a.map((r) => [...r]), label: "原始数组 a" },
+        { grid: d.map((r) => [...r]), label: "差分数组 d" },
+      ],
+    },
+    message: `原始矩阵 (${R}×${C})，差分矩阵初始化`,
     line: 1,
-    variables: {},
+    variables: { n: R, m: C },
   });
 
   return {
@@ -78,7 +75,12 @@ function executeRangeAdd(state: unknown, params: Record<string, number>): Visual
       d[cr][cc] += delta;
       steps.push({
         array: original.flat(),
-        highlights: { grid: d.map((r) => [...r]), current: [cr, cc], updated: [[cr, cc]] },
+        highlights: {
+          grids: [
+            { grid: original.map((r) => [...r]), label: "原始数组 a" },
+            { grid: d.map((r) => [...r]), label: "差分数组 d", highlights: { current: [cr, cc], updated: [[cr, cc]] } },
+          ],
+        },
         message: `子矩阵 (${r1},${c1})-(${r2},${c2}) 加 ${val}: ${desc} = ${d[cr][cc]}`,
         line: 3,
         variables: { r1, c1, r2, c2, val, row: cr, col: cc, delta, "d[cr][cc]": d[cr][cc] },
@@ -106,8 +108,16 @@ function executeRestore(state: unknown): VisualStep[] {
   return [{
     array: original.flat(),
     highlights: {
-      grid: restored.map((r) => [...r]),
-      updated: Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => [i, j] as [number, number])).flat(),
+      grids: [
+        { grid: original.map((r) => [...r]), label: "原始数组 a" },
+        {
+          grid: restored.map((r) => [...r]),
+          label: "还原结果",
+          highlights: {
+            updated: Array.from({ length: R }, (_, i) => Array.from({ length: C }, (_, j) => [i, j] as [number, number])).flat(),
+          },
+        },
+      ],
     },
     message: "还原矩阵: 通过二维前缀和还原",
     line: 9,

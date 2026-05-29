@@ -415,8 +415,10 @@ export default function VisualizationPage() {
         >
           <div style={{ flex: 1 }}>
             {currentVisual ? (
-              currentVisual.highlights.grid ? (
-                <GridChart grid={currentVisual.highlights.grid} highlights={currentVisual.highlights} />
+              currentVisual.highlights.grids ? (
+                <GridChart grids={currentVisual.highlights.grids as import("../../components/visual-engine/GridChart").GridData[]} />
+              ) : currentVisual.highlights.grid ? (
+                <GridChart grids={[{ grid: currentVisual.highlights.grid, highlights: currentVisual.highlights }]} />
               ) : (
                 <BarChart step={currentVisual} bars={currentVisual.bars} />
               )

@@ -1,13 +1,17 @@
 import { motion } from "framer-motion";
 
-interface GridChartProps {
+export interface GridData {
   grid: number[][];
+  label?: string;
   highlights?: {
     current?: [number, number];
     related?: [number, number][];
     updated?: [number, number][];
   };
-  label?: string;
+}
+
+interface GridChartProps {
+  grids: GridData[];
 }
 
 const COLORS = {
@@ -24,7 +28,7 @@ function getCellColor(
   col: number,
   value: number,
   maxVal: number,
-  highlights?: GridChartProps["highlights"]
+  highlights?: GridData["highlights"]
 ): string {
   if (highlights?.current && highlights.current[0] === row && highlights.current[1] === col) {
     return COLORS.current;
@@ -35,15 +39,14 @@ function getCellColor(
   if (highlights?.updated?.some(([r, c]) => r === row && c === col)) {
     return COLORS.updated;
   }
-  // Default: blue intensity based on value
   const ratio = maxVal > 0 ? Math.min(Math.abs(value) / maxVal, 1) : 0;
-  const r = Math.round(232 - ratio * 210); // 232 -> 22
-  const g = Math.round(243 - ratio * 150); // 243 -> 93
-  const b = Math.round(255 - ratio * 10);  // 255 -> 245
+  const r = Math.round(232 - ratio * 210);
+  const g = Math.round(243 - ratio * 150);
+  const b = Math.round(255 - ratio * 10);
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-function isHighlighted(row: number, col: number, highlights?: GridChartProps["highlights"]): boolean {
+function isHighlighted(row: number, col: number, highlights?: GridData["highlights"]): boolean {
   if (!highlights) return false;
   if (highlights.current && highlights.current[0] === row && highlights.current[1] === col) return true;
   if (highlights.related?.some(([r, c]) => r === row && c === col)) return true;
@@ -51,20 +54,14 @@ function isHighlighted(row: number, col: number, highlights?: GridChartProps["hi
   return false;
 }
 
-export default function GridChart({ grid, highlights, label }: GridChartProps) {
-  if (!grid || grid.length === 0) return null;
-
-  const rows = grid.length;
-  const cols = Math.max(...grid.map((r) => r.length));
+function SingleGrid({ data, cols, cellSize, fontSize }: { data: GridData; cols: number; cellSize: number; fontSize: number }) {
+  const { grid, label, highlights } = data;
   const maxVal = Math.max(...grid.flat().map(Math.abs), 1);
 
-  const cellSize = cols <= 5 ? 64 : cols <= 8 ? 52 : cols <= 12 ? 42 : 34;
-  const fontSize = cols <= 5 ? 16 : cols <= 8 ? 14 : cols <= 12 ? 12 : 11;
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "16px 8px" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       {label && (
-        <div style={{ fontSize: 13, color: "#86909C", marginBottom: 8, fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 12, color: "#86909C", marginBottom: 6, fontWeight: 500 }}>{label}</div>
       )}
       <div
         style={{
@@ -108,6 +105,23 @@ export default function GridChart({ grid, highlights, label }: GridChartProps) {
           })
         )}
       </div>
+    </div>
+  );
+}
+
+export default function GridChart({ grids }: GridChartProps) {
+  if (!grids || grids.length === 0) return null;
+
+  const allCols = grids.map((g) => Math.max(...g.grid.map((r) => r.length)));
+  const cols = Math.max(...allCols);
+  const cellSize = cols <= 5 ? 64 : cols <= 8 ? 52 : cols <= 12 ? 42 : 34;
+  const fontSize = cols <= 5 ? 16 : cols <= 8 ? 14 : cols <= 12 ? 12 : 11;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "16px 8px" }}>
+      {grids.map((data, idx) => (
+        <SingleGrid key={idx} data={data} cols={cols} cellSize={cellSize} fontSize={fontSize} />
+      ))}
     </div>
   );
 }

@@ -20,6 +20,7 @@ export interface VisualStep {
     related?: [number, number][];
     updated?: [number, number][];
     grid?: number[][];
+    grids?: { grid: number[][]; label?: string; highlights?: { current?: [number, number]; related?: [number, number][]; updated?: [number, number][] } }[];
   };
   message?: string;
   bars?: BarItem[];

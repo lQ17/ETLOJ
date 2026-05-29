@@ -28,9 +28,15 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
   const C = cols;
   const s: number[][] = Array.from({ length: R }, () => new Array(C).fill(0));
 
+  // Initial: show original only
   steps.push({
     array: [...input],
-    highlights: { grid: a.map((r) => [...r]) },
+    highlights: {
+      grids: [
+        { grid: a.map((r) => [...r]), label: "原始数组 a" },
+        { grid: s.map((r) => [...r]), label: "前缀和 s" },
+      ],
+    },
     message: `原始矩阵 (${R}×${C})`,
     line: 1,
     variables: { n: R, m: C },
@@ -51,9 +57,10 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
       steps.push({
         array: [...input],
         highlights: {
-          grid: s.map((r) => [...r]),
-          current: [i, j],
-          related,
+          grids: [
+            { grid: a.map((r) => [...r]), label: "原始数组 a" },
+            { grid: s.map((r) => [...r]), label: "前缀和 s", highlights: { current: [i, j], related } },
+          ],
         },
         message: `s[${i}][${j}] = ${top} + ${left} - ${diag} + ${a[i][j]} = ${s[i][j]}`,
         line: 5,
@@ -90,7 +97,12 @@ function executeQuery(state: unknown, params: Record<string, number>): VisualSte
 
   return [{
     array: original.flat(),
-    highlights: { grid: prefixSum.map((r) => [...r]), related },
+    highlights: {
+      grids: [
+        { grid: original.map((r) => [...r]), label: "原始数组 a" },
+        { grid: prefixSum.map((r) => [...r]), label: "前缀和 s", highlights: { related } },
+      ],
+    },
     message: `查询子矩阵 (${r1},${c1})-(${r2},${c2}): 矩阵和 = ${result}`,
     line: 8,
     variables: { r1, c1, r2, c2, result },
