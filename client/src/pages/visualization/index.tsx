@@ -6,7 +6,7 @@ import GridChart from "../../components/visual-engine/GridChart";
 import PlaybackController from "../../components/visual-engine/PlaybackController";
 import StepInfo from "../../components/visual-engine/StepInfo";
 import CodeViewer from "../../components/visual-engine/CodeViewer";
-import type { VisualStep, AlgorithmDef, AlgorithmCategory } from "../../algorithms/types";
+import type { VisualStep, AlgorithmDef, AlgorithmCategory, InteractiveOp } from "../../algorithms/types";
 import { getAllAlgorithms, getAlgorithmsByCategory } from "../../algorithms/registry";
 
 // Import all algorithms to trigger registration
@@ -47,6 +47,45 @@ function randomGrid(): number[][] {
   );
 }
 
+function InteractiveOpControl({ op, algoState, onExecute }: { op: InteractiveOp; algoState: unknown; onExecute: (steps: VisualStep[]) => void }) {
+  const [params, setParams] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    for (const inp of op.inputs) {
+      initial[inp.name] = inp.default ?? 0;
+    }
+    return initial;
+  });
+
+  const handleExecute = () => {
+    const newSteps = op.execute(algoState, params);
+    if (newSteps.length > 0) {
+      onExecute(newSteps);
+    }
+  };
+
+  return (
+    <div style={{ background: "var(--color-fill-1)", borderRadius: 6, padding: "8px 10px" }}>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--color-text-2)" }}>{op.name}</div>
+      <Space wrap size={6}>
+        {op.inputs.map((inp) => (
+          <Input
+            key={inp.name}
+            size="mini"
+            value={String(params[inp.name] ?? "")}
+            onChange={(val) => setParams((prev) => ({ ...prev, [inp.name]: Number(val) }))}
+            placeholder={inp.label}
+            style={{ width: 80, fontFamily: "monospace", fontSize: 12 }}
+            addBefore={inp.label}
+          />
+        ))}
+        <Button type="primary" size="mini" onClick={handleExecute}>
+          执行
+        </Button>
+      </Space>
+    </div>
+  );
+}
+
 export default function VisualizationPage() {
   const allAlgos = getAllAlgorithms();
   const categories = [...new Set(allAlgos.map((a) => a.category))] as AlgorithmCategory[];
@@ -59,6 +98,7 @@ export default function VisualizationPage() {
   const [status, setStatus] = useState<"idle" | "playing" | "paused">("idle");
   const [speed, setSpeed] = useState(1);
   const [targetText, setTargetText] = useState(String(selectedAlgo.defaultTarget ?? ""));
+  const [algoState, setAlgoState] = useState<unknown>(null);
   const timerRef = useRef<number | null>(null);
 
   const categoryAlgos = getAlgorithmsByCategory(category);
@@ -155,8 +195,9 @@ export default function VisualizationPage() {
       return;
     }
 
-    const { steps: newSteps } = selectedAlgo.generateSteps(nums, target);
-    setSteps(newSteps);
+    const result = selectedAlgo.generateSteps(nums, target);
+    setSteps(result.steps);
+    setAlgoState(result.state ?? null);
     setCurrentStep(0);
     setStatus("idle");
   }, [inputText, targetText, selectedAlgo]);
@@ -183,8 +224,9 @@ export default function VisualizationPage() {
       setTargetText(String(target));
     }
 
-    const { steps: newSteps } = selectedAlgo.generateSteps(arr, target);
-    setSteps(newSteps);
+    const result = selectedAlgo.generateSteps(arr, target);
+    setSteps(result.steps);
+    setAlgoState(result.state ?? null);
     setCurrentStep(0);
     setStatus("idle");
   }, [selectedAlgo]);
@@ -194,6 +236,7 @@ export default function VisualizationPage() {
     setSteps([]);
     setCurrentStep(0);
     setStatus("idle");
+    setAlgoState(null);
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -312,6 +355,20 @@ export default function VisualizationPage() {
                   >
                     随机
                   </Button>
+                </Space>
+              </div>
+            )}
+
+            {selectedAlgo.interactive && selectedAlgo.interactive.length > 0 && algoState && (
+              <div>
+                <div style={{ marginBottom: 8, fontSize: 13, color: "var(--color-text-3)", fontWeight: 600 }}>交互操作</div>
+                <Space direction="vertical" style={{ width: "100%" }} size={10}>
+                  {selectedAlgo.interactive.map((op) => (
+                    <InteractiveOpControl key={op.name} op={op} algoState={algoState} onExecute={(newSteps) => {
+                      setSteps((prev) => [...prev, ...newSteps]);
+                      setCurrentStep(steps.length + newSteps.length - 1);
+                    }} />
+                  ))}
                 </Space>
               </div>
             )}
