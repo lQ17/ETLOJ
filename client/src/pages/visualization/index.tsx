@@ -214,7 +214,9 @@ export default function VisualizationPage() {
       arr = grid.flat();
     } else {
       arr = randomArray();
-      arr.sort((a, b) => a - b);
+      if (selectedAlgo.category === "searching") {
+        arr.sort((a, b) => a - b);
+      }
       setInputText(arr.join(", "));
     }
 
