@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Radio, Input, Button, Space, Typography, Card, Message } from "@arco-design/web-react";
 import { IconLoop } from "@arco-design/web-react/icon";
 import BarChart from "../../components/visual-engine/BarChart";
+import GridChart from "../../components/visual-engine/GridChart";
 import PlaybackController from "../../components/visual-engine/PlaybackController";
 import StepInfo from "../../components/visual-engine/StepInfo";
 import CodeViewer from "../../components/visual-engine/CodeViewer";
@@ -17,6 +18,10 @@ import "../../algorithms/sorting/quick";
 import "../../algorithms/searching/binary-search";
 import "../../algorithms/searching/lower-bound";
 import "../../algorithms/searching/upper-bound";
+import "../../algorithms/prefix-diff/prefix-sum-1d";
+import "../../algorithms/prefix-diff/diff-array-1d";
+import "../../algorithms/prefix-diff/prefix-sum-2d";
+import "../../algorithms/prefix-diff/diff-array-2d";
 
 const CATEGORY_LABELS: Record<AlgorithmCategory, string> = {
   sorting: "排序",
@@ -24,6 +29,7 @@ const CATEGORY_LABELS: Record<AlgorithmCategory, string> = {
   string: "字符串",
   "data-structure": "数据结构",
   searching: "查找",
+  "prefix-diff": "前缀和与差分",
 };
 
 const BASE_INTERVAL = 800;
@@ -31,6 +37,14 @@ const BASE_INTERVAL = 800;
 function randomArray(): number[] {
   const len = 10 + Math.floor(Math.random() * 21); // 10~30
   return Array.from({ length: len }, () => 5 + Math.floor(Math.random() * 96));
+}
+
+function randomGrid(): number[][] {
+  const rows = 3 + Math.floor(Math.random() * 4); // 3~6
+  const cols = 3 + Math.floor(Math.random() * 4); // 3~6
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => 1 + Math.floor(Math.random() * 50))
+  );
 }
 
 export default function VisualizationPage() {
@@ -52,7 +66,18 @@ export default function VisualizationPage() {
   // Reset when algorithm changes
   useEffect(() => {
     handleReset();
-    setInputText(selectedAlgo.defaultInput.join(", "));
+    if (selectedAlgo.inputDimension === "2d") {
+      const defaultGrid = selectedAlgo.defaultInput;
+      const cols = Math.ceil(Math.sqrt(defaultGrid.length));
+      const rows = Math.ceil(defaultGrid.length / cols);
+      const grid: number[][] = [];
+      for (let i = 0; i < rows; i++) {
+        grid.push(defaultGrid.slice(i * cols, (i + 1) * cols));
+      }
+      setInputText(grid.map((row) => row.join(", ")).join("; "));
+    } else {
+      setInputText(selectedAlgo.defaultInput.join(", "));
+    }
     setTargetText(String(selectedAlgo.defaultTarget ?? ""));
   }, [selectedAlgo]);
 
@@ -82,17 +107,39 @@ export default function VisualizationPage() {
   }, [currentStep, steps.length, status]);
 
   const handleApply = useCallback(() => {
-    const parts = inputText.split(",").map((s) => s.trim());
-    const nums: number[] = [];
-    for (const p of parts) {
-      if (p === "") continue;
-      const n = Number(p);
-      if (isNaN(n)) {
-        Message.warning("输入包含非数字字符，请用逗号分隔数字");
+    let nums: number[] = [];
+
+    if (selectedAlgo.inputDimension === "2d") {
+      const rows = inputText.split(";").map((s) => s.trim()).filter((s) => s !== "");
+      if (rows.length === 0) {
+        Message.warning("请输入矩阵数据，如: 1,2,3;4,5,6;7,8,9");
         return;
       }
-      nums.push(n);
+      for (const row of rows) {
+        const parts = row.split(",").map((s) => s.trim());
+        for (const p of parts) {
+          if (p === "") continue;
+          const n = Number(p);
+          if (isNaN(n)) {
+            Message.warning("输入包含非数字字符");
+            return;
+          }
+          nums.push(n);
+        }
+      }
+    } else {
+      const parts = inputText.split(",").map((s) => s.trim());
+      for (const p of parts) {
+        if (p === "") continue;
+        const n = Number(p);
+        if (isNaN(n)) {
+          Message.warning("输入包含非数字字符，请用逗号分隔数字");
+          return;
+        }
+        nums.push(n);
+      }
     }
+
     if (nums.length === 0) {
       Message.warning("请输入至少一个数字");
       return;
@@ -115,9 +162,16 @@ export default function VisualizationPage() {
   }, [inputText, targetText, selectedAlgo]);
 
   const handleRandom = useCallback(() => {
-    const arr = randomArray();
-    arr.sort((a, b) => a - b);
-    setInputText(arr.join(", "));
+    let arr: number[];
+    if (selectedAlgo.inputDimension === "2d") {
+      const grid = randomGrid();
+      setInputText(grid.map((row) => row.join(", ")).join("; "));
+      arr = grid.flat();
+    } else {
+      arr = randomArray();
+      arr.sort((a, b) => a - b);
+      setInputText(arr.join(", "));
+    }
 
     let target: number | undefined;
     if (selectedAlgo.needTarget) {
@@ -221,7 +275,7 @@ export default function VisualizationPage() {
             <Input.TextArea
               value={inputText}
               onChange={setInputText}
-              placeholder="输入逗号分隔的数字，如: 5, 3, 8, 1, 9"
+              placeholder={selectedAlgo.inputDimension === "2d" ? "输入矩阵，如: 1,2,3;4,5,6;7,8,9" : "输入逗号分隔的数字，如: 5, 3, 8, 1, 9"}
               autoSize={{ minRows: 2, maxRows: 4 }}
               style={{ fontFamily: "monospace" }}
             />
@@ -298,7 +352,11 @@ export default function VisualizationPage() {
         >
           <div style={{ flex: 1 }}>
             {currentVisual ? (
-              <BarChart step={currentVisual} bars={currentVisual.bars} />
+              currentVisual.highlights.grid ? (
+                <GridChart grid={currentVisual.highlights.grid} highlights={currentVisual.highlights} />
+              ) : (
+                <BarChart step={currentVisual} bars={currentVisual.bars} />
+              )
             ) : (
               <div
                 style={{
