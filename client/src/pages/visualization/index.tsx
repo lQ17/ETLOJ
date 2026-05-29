@@ -365,7 +365,7 @@ export default function VisualizationPage() {
               </div>
             )}
 
-            {selectedAlgo.interactive && selectedAlgo.interactive.length > 0 && algoState && (
+            {selectedAlgo.interactive && selectedAlgo.interactive.length > 0 && algoState !== null && (
               <div>
                 <div style={{ marginBottom: 8, fontSize: 13, color: "var(--color-text-3)", fontWeight: 600 }}>交互操作</div>
                 <Space direction="vertical" style={{ width: "100%" }} size={10}>
