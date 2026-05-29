@@ -16,7 +16,7 @@ void restore() {
                      - d[i-1][j-1];
 }`;
 
-function generateSteps(input: number[]): VisualStep[] {
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
   const n = input.length;
   const cols = Math.ceil(Math.sqrt(n));
   const rows = Math.ceil(n / cols);
@@ -101,7 +101,7 @@ function generateSteps(input: number[]): VisualStep[] {
     variables: { r1, c1, r2, c2, val },
   });
 
-  return steps;
+  return { steps };
 }
 
 const diffArray2d: AlgorithmDef = {

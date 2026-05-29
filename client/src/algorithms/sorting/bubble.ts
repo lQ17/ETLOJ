@@ -12,7 +12,7 @@ const SOURCE_CODE = `function bubbleSort(arr) {
   }
 }`;
 
-function generateSteps(input: number[]): VisualStep[] {
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
   const arr = [...input];
   const bars: BarItem[] = input.map((v, i) => ({ id: i, value: v }));
   const steps: VisualStep[] = [];
@@ -59,7 +59,7 @@ function generateSteps(input: number[]): VisualStep[] {
     line: 9,
   });
 
-  return steps;
+  return { steps };
 }
 
 const bubbleSort: AlgorithmDef = {

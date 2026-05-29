@@ -12,14 +12,14 @@ int query(int l, int r) {
     return s[r] - s[l-1];
 }`;
 
-function generateSteps(input: number[]): VisualStep[] {
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
   const a = [...input];
   const n = a.length;
   const steps: VisualStep[] = [];
 
   if (n === 0) {
     steps.push({ array: [], highlights: {}, message: "数组为空" });
-    return steps;
+    return { steps };
   }
 
   const s = new Array(n).fill(0);
@@ -72,7 +72,7 @@ function generateSteps(input: number[]): VisualStep[] {
     variables: { l: queryL, r: queryR, result: queryResult },
   });
 
-  return steps;
+  return { steps };
 }
 
 const prefixSum1d: AlgorithmDef = {

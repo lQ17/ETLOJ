@@ -13,7 +13,7 @@ int query(int r1, int c1, int r2, int c2) {
          - s[r2][c1-1] + s[r1-1][c1-1];
 }`;
 
-function generateSteps(input: number[]): VisualStep[] {
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
   // Parse flat input as 2D: assume square-ish matrix
   const n = input.length;
   const cols = Math.ceil(Math.sqrt(n));
@@ -97,7 +97,7 @@ function generateSteps(input: number[]): VisualStep[] {
     variables: { r1, c1, r2, c2, result: queryResult },
   });
 
-  return steps;
+  return { steps };
 }
 
 const prefixSum2d: AlgorithmDef = {

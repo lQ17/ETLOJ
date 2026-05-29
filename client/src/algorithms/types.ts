@@ -29,6 +29,21 @@ export interface VisualStep {
 
 export type AlgorithmCategory = "sorting" | "graph" | "string" | "data-structure" | "searching" | "prefix-diff";
 
+export interface InteractiveInput {
+  name: string;
+  label: string;
+  type: "number";
+  default?: number;
+  min?: number;
+  max?: number;
+}
+
+export interface InteractiveOp {
+  name: string;
+  inputs: InteractiveInput[];
+  execute: (state: unknown, params: Record<string, number>) => VisualStep[];
+}
+
 export interface AlgorithmDef {
   id: string;
   name: string;
@@ -41,5 +56,6 @@ export interface AlgorithmDef {
   needTarget?: boolean;
   defaultTarget?: number;
   inputDimension?: "1d" | "2d";
-  generateSteps(input: number[], target?: number): VisualStep[];
+  interactive?: InteractiveOp[];
+  generateSteps(input: number[], target?: number): { steps: VisualStep[]; state?: unknown };
 }

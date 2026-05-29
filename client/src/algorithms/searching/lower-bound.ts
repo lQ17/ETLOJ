@@ -21,14 +21,14 @@ function buildEliminated(left: number, right: number, n: number): number[] {
   return result;
 }
 
-function generateSteps(input: number[], target: number = 0): VisualStep[] {
+function generateSteps(input: number[], target: number = 0): { steps: VisualStep[]; state?: unknown } {
   const arr = [...input];
   const n = arr.length;
   const steps: VisualStep[] = [];
 
   if (n === 0) {
     steps.push({ array: [], highlights: {}, message: "数组为空" });
-    return steps;
+    return { steps };
   }
 
   let left = 0;
@@ -95,7 +95,7 @@ function generateSteps(input: number[], target: number = 0): VisualStep[] {
     });
   }
 
-  return steps;
+  return { steps };
 }
 
 const lowerBound: AlgorithmDef = {

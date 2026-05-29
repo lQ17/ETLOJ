@@ -155,7 +155,7 @@ export default function VisualizationPage() {
       return;
     }
 
-    const newSteps = selectedAlgo.generateSteps(nums, target);
+    const { steps: newSteps } = selectedAlgo.generateSteps(nums, target);
     setSteps(newSteps);
     setCurrentStep(0);
     setStatus("idle");
@@ -183,7 +183,7 @@ export default function VisualizationPage() {
       setTargetText(String(target));
     }
 
-    const newSteps = selectedAlgo.generateSteps(arr, target);
+    const { steps: newSteps } = selectedAlgo.generateSteps(arr, target);
     setSteps(newSteps);
     setCurrentStep(0);
     setStatus("idle");

@@ -16,7 +16,7 @@ const SOURCE_CODE = `function quickSort(arr, low, high) {
   quickSort(arr, i + 1, high);
 }`;
 
-function generateSteps(input: number[]): VisualStep[] {
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
   const arr = [...input];
   const bars: BarItem[] = input.map((v, i) => ({ id: i, value: v }));
   const steps: VisualStep[] = [];
@@ -99,7 +99,7 @@ function generateSteps(input: number[]): VisualStep[] {
     line: 1,
   });
 
-  return steps;
+  return { steps };
 }
 
 const quickSort: AlgorithmDef = {

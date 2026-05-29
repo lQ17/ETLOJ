@@ -17,14 +17,14 @@ void restore() {
         d[i] += d[i-1];
 }`;
 
-function generateSteps(input: number[]): VisualStep[] {
+function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown } {
   const a = [...input];
   const n = a.length;
   const steps: VisualStep[] = [];
 
   if (n === 0) {
     steps.push({ array: [], highlights: {}, message: "数组为空" });
-    return steps;
+    return { steps };
   }
 
   const d = new Array(n).fill(0);
@@ -105,7 +105,7 @@ function generateSteps(input: number[]): VisualStep[] {
     variables: { l, r, val },
   });
 
-  return steps;
+  return { steps };
 }
 
 const diffArray1d: AlgorithmDef = {
