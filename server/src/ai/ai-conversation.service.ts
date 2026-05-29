@@ -218,6 +218,8 @@ export class AiConversationService {
       let inputTokens = 0;
       let outputTokens = 0;
       const startTime = Date.now();
+      let reasoningStarted = false;
+      let reasoningEnded = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -240,14 +242,38 @@ export class AiConversationService {
               outputTokens = json.usage.completion_tokens || 0;
             }
             const delta = json.choices?.[0]?.delta;
+
+            // 提取 reasoning_content（思考过程）
+            if (delta?.reasoning_content) {
+              if (!reasoningStarted) {
+                res.write('<think>\n');
+                aiResponseContent += '<think>\n';
+                reasoningStarted = true;
+              }
+              res.write(delta.reasoning_content);
+              aiResponseContent += delta.reasoning_content;
+              totalLength += delta.reasoning_content.length;
+            }
+
             // 提取 content（最终回答）
             if (delta?.content) {
+              if (reasoningStarted && !reasoningEnded) {
+                res.write('\n</think>\n\n');
+                aiResponseContent += '\n</think>\n\n';
+                reasoningEnded = true;
+              }
               res.write(delta.content);
               aiResponseContent += delta.content;
               totalLength += delta.content.length;
             }
           } catch { /* 忽略解析错误 */ }
         }
+      }
+
+      // 流结束时关闭思考标签（如果思考过程中断而没有收到 content）
+      if (reasoningStarted && !reasoningEnded) {
+        res.write('\n</think>\n\n');
+        aiResponseContent += '\n</think>\n\n';
       }
 
       res.end();

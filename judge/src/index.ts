@@ -503,9 +503,16 @@ async function runSingle(task: RunTask): Promise<RunResult> {
   if (!compiled.ok) {
     return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
   }
+  let copyIn: Record<string, any> = {};
+  if (language === "python") {
+    copyIn = { "main.py": { content: code } };
+  } else if (compiled.binary) {
+    copyIn = { main: { fileId: compiled.binary } };
+  }
+
   const runResult = await goJudgeRun({
     cmd: language === "python" ? ["python3", "main.py"] : ["main"],
-    ...(compiled.binary ? { copyIn: { main: { fileId: compiled.binary } } } : {}),
+    copyIn,
     stdin: input,
     cpuLimit: timeLimit * 1_000_000,
     memoryLimit: task.memoryLimit * 1024 * 1024,

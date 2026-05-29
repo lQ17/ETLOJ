@@ -195,26 +195,6 @@ export default function ProblemDetailPage() {
     setActualOutput("");
   };
 
-  const startPollingFallback = (submissionId: number) => {
-    if (pollRef.current) return;
-    console.warn("WebSocket 连接不可用，正在自动降级到 HTTP 短轮询模式...");
-    pollRef.current = setInterval(async () => {
-      try {
-        const sub: any = await submissionApi.getOne(submissionId);
-        setResult(sub);
-        if (sub.status !== "PENDING" && sub.status !== "JUDGING") {
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = undefined;
-          }
-          setSubmitting(false);
-        }
-      } catch {
-        // ignore
-      }
-    }, 1500);
-  };
-
   const watchResult = (submissionId: number) => {
     if (wsRef.current) {
       wsRef.current.close();
@@ -225,35 +205,58 @@ export default function ProblemDetailPage() {
       pollRef.current = undefined;
     }
 
+    let isFinished = false;
+
+    // 立即启动 HTTP 轮询，防止竞态（判题可能在 WebSocket 订阅前就完成）
+    const poll = async () => {
+      try {
+        const sub: any = await submissionApi.getOne(submissionId);
+        if (isFinished) return;
+        setResult(sub);
+        if (sub.status !== "PENDING" && sub.status !== "JUDGING") {
+          isFinished = true;
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = undefined;
+          }
+          if (wsRef.current) {
+            wsRef.current.close();
+            wsRef.current = null;
+          }
+          setSubmitting(false);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    poll();
+    pollRef.current = setInterval(poll, 1500);
+
+    // 同时尝试建立 WebSocket 连接，成功后替代轮询
     try {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws/submissions`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      let isFinished = false;
-
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-          console.warn("WebSocket 连接建立超时，启动短轮询降级...");
-          ws.close();
-          startPollingFallback(submissionId);
-        }
-      }, 3500);
-
       ws.onopen = () => {
-        clearTimeout(connectionTimeout);
+        if (isFinished) { ws.close(); return; }
         ws.send(JSON.stringify({ event: "subscribe", data: { submissionId } }));
       };
 
       ws.onmessage = (event) => {
         try {
           const { event: type, data } = JSON.parse(event.data);
-          if (type === "update" && data.id === submissionId) {
+          if (type === "update" && data.id === submissionId && !isFinished) {
             setResult(data);
             if (data.status !== "PENDING" && data.status !== "JUDGING") {
               isFinished = true;
               ws.close();
+              wsRef.current = null;
+              if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = undefined;
+              }
               setSubmitting(false);
             }
           }
@@ -263,21 +266,14 @@ export default function ProblemDetailPage() {
       };
 
       ws.onerror = () => {
-        clearTimeout(connectionTimeout);
-        if (!isFinished) {
-          startPollingFallback(submissionId);
-        }
+        // WebSocket 失败，轮询已在运行，无需额外操作
       };
 
       ws.onclose = () => {
-        clearTimeout(connectionTimeout);
-        if (!isFinished) {
-          startPollingFallback(submissionId);
-        }
+        if (wsRef.current === ws) wsRef.current = null;
       };
-    } catch (err) {
-      console.error("创建 WebSocket 实例失败，直接降级至短轮询", err);
-      startPollingFallback(submissionId);
+    } catch {
+      // WebSocket 创建失败，轮询已在运行
     }
   };
 

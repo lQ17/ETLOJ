@@ -3,153 +3,67 @@
 ## 已完成
 
 ### 基础设施
-- [x] 项目架构搭建（前后端分离 Monorepo）
-- [x] Docker Compose 配置（MySQL 8 + Redis 7 + go-judge）
-- [x] Prisma Schema 设计（User/Problem/Submission/Contest 等表）
-- [x] UI: Arco Design + ECharts（含 WordCloud 插件）
-- [x] API 层 Axios 封装（自动 JWT、统一响应处理、30s 超时）
+- [x] 前后端分离架构（NestJS + React + Vite）、Docker Compose、Prisma Schema
+- [x] Arco Design + ECharts + Axios 封装（JWT、统一响应、30s 超时）
 
 ### 用户系统
-- [x] JWT 登录认证，管理员创建用户（注册不对外开放）
-- [x] 角色权限控制（ADMIN / TEACHER / USER）
-- [x] 多方式登录（用户名 / 邮箱 / 手机号），默认密码机制
-- [x] 停用/启用用户、用户管理页（分页、搜索、筛选、编辑、删除）
-- [x] 批量创建用户（表格展示结果，含密码回显）
+- [x] JWT 认证、角色权限（ADMIN/TEACHER/USER）、多方式登录
+- [x] 用户管理（分页/搜索/筛选/编辑/删除/批量创建/停用启用）
 
 ### 题目管理
-- [x] 题目 CRUD（元数据存数据库，题面存 Markdown 文件）
-- [x] 题目列表页（分页、难度筛选、关键词搜索、通过率统计）
-- [x] 题目详情页（LaTeX 渲染、样例横排展示、一键复制）
-- [x] 管理员题目管理页（Markdown 编辑器创建题目）
-- [x] 测试数据管理（.in / .out 文件存储）
-- [x] 题目分数系统（按难度默认 1/3/7 分，管理员可自定义，仅首次 AC 计分）
-- [x] 题目批量导入导出（zip 格式：`{slug}/problem.json + problem.md + testcases/`）
-- [x] 标签管理系统（独立 Tag 表 + ProblemTag 多对多关联，后台 CRUD，创建题目弹窗选择标签）
-- [x] 题库标签筛选（弹窗多选 + AND/OR 切换，默认 AND，带问号提示说明）
-- [x] 题目 Markdown 标题强制关联（服务器自动将 `problem.md` 第一行设为 `# {slug} {title}`）
-- [x] 题库列表显示用户做题状态（✓/✗/— 列）
-- [x] 导入格式说明 tooltip（"如何导入"提示）
-- [x] 题目路由支持 slug（如 /problems/P1012，同时兼容数字 ID）
+- [x] 题目 CRUD（元数据 DB + Markdown 文件）、列表/详情页、测试数据管理
+- [x] 分数系统（按难度默认分，仅首次 AC 计分）、批量导入导出（zip）
+- [x] 标签系统（Tag + ProblemTag 多对多，AND/OR 筛选）
+- [x] 路由支持 slug + 数字 ID、标题自动关联、导入格式说明
 
 ### 提交判题
-- [x] 代码提交 API + Redis 队列分发 + go-judge 沙箱执行
-- [x] 判题本地模式（JUDGE_MODE=local，Windows 开发环境用）
-- [x] 评分机制（满分 100 分，按测试点通过率计算，运行全部测试点）
-- [x] 前端 Monaco Editor 代码编辑器 + 判题状态轮询
-- [x] 自测运行功能（后端独立队列跑单例，前端大屏模态框展示输入/输出）
-- [x] 提交按钮异步化（点击后禁用，结果返回后恢复）
-- [x] 判题结果内联显示（提交按钮旁显示状态标签、分数、耗时/内存）
-- [x] 滑动窗口限流（前端 1 分钟内最多 3 次提交）
-- [x] 批量查询做题状态接口 `GET /submissions/status`
-- [x] 移除代码编辑器默认代码模板，编辑器初始为空
-- [x] 禁用代码补全（quickSuggestions / suggestOnTriggerCharacters / wordBasedSuggestions）
-- [x] 编辑器设置齿轮（字体大小、Tab 大小、编辑器主题，localStorage 持久化）
+- [x] 代码提交 + Redis 队列 + go-judge 沙箱，本地模式支持
+- [x] 自测运行、滑动窗口限流、批量查询做题状态
+- [x] Monaco Editor（空模板、禁用补全、设置齿轮持久化）
 
-### 评测记录
-- [x] 评测记录页（时间倒序分页、多条件筛选）
-- [x] 查看代码功能（Monaco Editor 只读弹窗，权限控制）
-
-### 排名系统
-- [x] 排名 API（`GET /api/ranking`，按 AC 数 / 按累计分数，支持时间范围筛选）
-- [x] 排名页面（Top10 柱状图 + 头像用户名展示 + 分页列表）
-- [x] 时间范围选择（全部/半年/一月/一周/昨天/今天/自定义日期）
+### 评测记录 & 排名
+- [x] 评测记录页（分页/筛选/查看代码，权限控制）
+- [x] 排名 API + 页面（Top10 柱状图、时间范围选择）
 
 ### 题单系统
-- [x] 题单数据模型（`problem_lists` + `problem_list_items`，支持排序）
-- [x] 题单 API（公共列表/个人列表/详情/CRUD/题目增删/排序）
-- [x] 题单主页（公共题单 Tab + 我的题单 Tab，卡片网格布局，搜索分页）
-- [x] 题单详情页（题目表格、添加/移除题目，权限控制）
-- [x] 管理员后台公共题单管理（创建/编辑/删除题单、管理题目）
-- [x] OptionalJwtGuard（支持已登录/未登录双模式访问）
-- [x] 题单题目增删改用 slug（题号）替代数字 ID，用户不可见数字 ID
-- [x] 公共题单详情页不显示"添加题目"入口，仅管理员后台可操作
-- [x] 题单详情页显示用户做题状态（✓/✗/—）
+- [x] 题单 CRUD（公共/个人、排序、slug 操作、OptionalJwtGuard）
+- [x] 题单主页/详情页（卡片布局、搜索分页、做题状态）
 
 ### 个人中心
-- [x] 个人资料管理（头像 Base64 上传、昵称、签名、邮箱、手机号）
-- [x] 账号安全中心（旧密码校验 + 新密码修改）
-- [x] 个人主页数据大屏（信息卡片、提交饼图、活跃度热力图、能力词云）
-- [x] 标签统计系统（新增 `UserTagRecord` 表，判题回调自动更新）
-- [x] 热力图性能优化（复合索引，毫秒级查询）
-- [x] 热力图数据就绪后再渲染，避免加载闪烁
-
-### 后台管理
-- [x] 统一后台管理页面（题目管理/题单管理/用户管理 Tab 合并为 `/admin`）
-- [x] 用户管理仅 ADMIN 可见，TEACHER 可管理题目和题单
+- [x] 资料管理（Base64 头像、昵称、签名、邮箱、手机号、密码修改）
+- [x] 个人主页（信息卡片、提交饼图、热力图、标签统计、词云）
 
 ### 题解系统
-- [x] Solution 数据模型（`solutions` 表，关联 Problem + User，LongText 内容）
-- [x] 题解 CRUD API（公开查看，JWT 创建/编辑，仅作者可编辑，Admin 可删除）
-- [x] `GET /solutions/mine` 接口（JWT，返回当前用户题解列表含题目 slug/title）
-- [x] 题目详情页左侧导航栏（题目详情 / 查看题解 / 问问AI）
-- [x] 题解 Tab 重构：右侧改为 markdown 渲染选中题解（作者+时间+内容），列表选中高亮
-- [x] 写题解改为居中 Modal（MDEditor），草稿在组件 state 持久化，切换 tab 不丢失
-- [x] 支持 `?tab=solutions&edit={id}` 深链接，从个人主页跳转编辑
-- [x] 个人主页"我的题解"区块（IntersectionObserver 懒加载，仅自己可见，可编辑/删除）
-- [x] AI 助手占位符页面
-- [x] 题解审核系统（status: PENDING/APPROVED/REJECTED + rejectReason）
-- [x] 管理员审核 API（approve/reject/pending/adminList）
-- [x] 后台"题解管理"Tab（待审核 + 题解列表两个子 Tab）
-- [x] 个人主页题解状态标签（已通过/正在审核/被驳回）+ 驳回原因展示
-- [x] 已通过题解禁止编辑（后端 403 + 前端隐藏编辑按钮）
-
-### UI/UX 优化
-- [x] 未登录访问评测记录/排名页显示居中登录提示卡片（不报 401）
-- [x] 题目详情页提交/测试运行未登录时提示并跳转登录页
-- [x] 题库页题目标题改为 #3b82f6 蓝色可点击链接
-- [x] 题单详情页题目标题改为蓝色链接，题号改为纯文本
-- [x] 全局卡片背景改为白色（canvas），输入框填充色改为 surface-soft，提升对比度
-- [x] 题面区域宽度从 60% 调整为 40%
+- [x] 题解 CRUD + 审核系统（PENDING/APPROVED/REJECTED）
+- [x] 题目详情页 Tab（题解列表/Markdown 渲染/Modal 编辑/深链接）
+- [x] 个人主页题解区块、后台审核管理
 
 ### 公告系统
-- [x] Announcement 数据模型（announcements 表，关联 User，title/summary/content/isPinned/status）
-- [x] 公告 CRUD API（公开列表/详情 + 管理员管理接口）
-- [x] 首页公告栏（替换右侧特征卡，显示 2 条公告 + "查看更多"链接）
-- [x] 公告列表页 `/announcements`（左侧列表 + 右侧 Markdown/LaTeX 详情，默认选中置顶公告）
-- [x] 后台公告管理 Tab（仅 ADMIN 可见，列表/创建/编辑，MDEditor 实时预览）
-- [x] 公告置顶功能 + 草稿/已发布状态管理
+- [x] 公告 CRUD + 置顶/草稿状态、首页公告栏、列表页、后台管理
+
+### AI 助手
+- [x] AI 解题（SGLang GLM-5 + SSE 流式、上下文感知、代码编辑器语言关联）
+- [x] ChatPanel + Vercel AI SDK、VS Code 风格代码高亮、低难度代码禁用复制
+- [x] Token 限流（Redis）、会话持久化、管理员使用报告、首页实时统计卡片
+
+### 算法可视化
+- [x] `/visualization` 页面、step-based 引擎（generator 产出步骤快照）
+- [x] 5 个排序算法（冒泡/选择/插入/归并/快速）、注册机制
+- [x] BarChart 动画 + 播放控制栏 + 可编辑输入 + 算法分类 Tab
+- [x] 算法可视化：交换动画视觉效果（二柱位置互换）
+
+### UI/UX & 工程
+- [x] 未登录提示卡片、蓝色链接、卡片/输入框配色、题面宽度调整
+- [x] WebSocket 实时推送、Docker 全容器化部署
+- [x] 前端路由守卫（AuthGuard / AdminGuard）
 
 ### 示例数据
-- [x] P1012 [NOIP 1998 提高组] 拼数（含 2 组测试数据）
+- [x] P1012 [NOIP 1998 提高组] 拼数
 
 ## 待开发
 
-### 核心功能
 - [ ] 比赛系统（创建比赛、实时排名）
 - [ ] 讨论区（题目讨论）
-
-### AI 功能
-- [x] 问问AI 占位符页面（题目详情页左侧导航第三项）
-- [x] AI 助手辅助解题（上下文感知：题目描述、错误代码、WA次数）
-- [x] AI 服务接入（对接 SGLang GLM-5 API，手写 SSE 流式解析以支持推理模型）
-- [x] 前端 ChatPanel 与 Vercel AI SDK (v3) 集成
-- [x] AI 聊天气泡样式优化与代码块 VS Code 风格白底语法高亮 (`react-syntax-highlighter`)
-- [x] AI Token 用量限制与 Redis 限流策略
-- [x] AI 会话与消息的数据库持久化（`AiConversation` / `AiMessage` 表）
-- [x] 题目详情页 AI 助手双栏布局优化（左侧 AI 对话，右侧保留代码编辑器，无缝切换）
-- [x] 新手友好机制：黑铁、青铜、白银难度题目 AI 回复代码块禁用选择与复制，增加拦截预警
-- [x] 上下文感知增强：系统提示词关联代码编辑器语言（C++ 默认推荐万能头结构与 g++14 编译器假设）
-- [x] 管理员后台查看 AI 使用报告（Prisma 级 `AiUsageLog` 持久化，支持本日/本周/本月/自定义时间过滤与供应商/模型搜索）
-- [x] 平台 AI 实时统计大屏（今日Tokens、今日请求、总Tokens、总请求）
-- [x] 首页平台 AI 实时交互数据卡片（支持 CountUp 数值上滚动效）
-- [ ] AI 代码高亮 diff 标注（Phase 3）
-
-### 算法可视化
-- [x] 算法可视化页面 `/visualization`（导航栏"排名"之后）
-- [x] 自建 step-based 可视化引擎（算法用 generator 产出步骤快照，引擎统一播放控制）
-- [x] 5 个排序算法：冒泡、选择、插入、归并、快速（注册机制，新增算法只需创建文件 + 注册一行）
-- [x] BarChart 柱状图可视化（Framer Motion 动画，颜色区分状态：比较/交换/已排序/pivot）
-- [x] PlaybackController 播放控制栏（播放/暂停/步进/重置/速度调节 0.5x~4x/进度条可点击跳转）
-- [x] 可编辑输入（文本框逗号分隔 + 随机生成 10~30 个数，输入校验 Toast 提示）
-- [x] 步骤说明文字（每步显示当前操作描述）
-- [x] 算法分类 Tab（排序/图论/字符串/数据结构，后续扩展无需改引擎）
-- [ ] 算法可视化待优化：交换动画视觉效果（当前各柱子独立变化高度，需实现二柱位置互换动画）
-
-### 技能树系统
 - [ ] 技能树系统（知识点点亮）
-
-### 工程优化
-- [x] WebSocket 实时推送判题结果（替代轮询）
-- [x] Docker 全容器化部署（server/client/judge 三个 Dockerfile + docker-compose 编排 6 服务 + Nginx 反向代理 + deploy.sh 一键部署脚本）
+- [ ] AI 代码高亮 diff 标注
 - [ ] CI/CD 流水线
-- [x] 安全加固：引入前端路由守卫（`AuthGuard`、`AdminGuard`）拦截未授权访问后台管理与设置路由

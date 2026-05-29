@@ -38,6 +38,87 @@ const quickActions = [
   { icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因' },
 ];
 
+function codeComponent(problemDifficulty: string) {
+  return function CodeBlock({ node, inline, className, children, ...props }: any) {
+    const match = /language-(\w+)/.exec(className || '');
+    const isLowDifficulty = ['IRON', 'BRONZE', 'SILVER'].includes(problemDifficulty);
+
+    return !inline && match ? (
+      <div
+        onCopy={(e) => {
+          if (isLowDifficulty) {
+            e.preventDefault();
+            Message.warning('当前难度不允许复制 AI 提供的代码哦，请自己手敲～');
+          }
+        }}
+        onClick={() => {
+          if (isLowDifficulty) {
+            Message.warning('当前难度不允许复制 AI 提供的代码哦，请自己手敲～');
+          }
+        }}
+        style={isLowDifficulty ? { userSelect: 'none', WebkitUserSelect: 'none', cursor: 'not-allowed' } : {}}
+      >
+        <SyntaxHighlighter
+          style={vs}
+          language={match[1]}
+          PreTag="div"
+          customStyle={{ margin: 0, background: '#ffffff', borderRadius: 0, padding: '12px 16px', fontSize: '14px' }}
+          codeTagProps={{ style: { fontSize: '14px', fontFamily: '"Consolas", monospace' } }}
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      </div>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  };
+}
+
+function renderMessageParts(text: string, problemDifficulty: string, isStreaming: boolean) {
+  const parts = text.split(/(<think>[\s\S]*?<\/think>)/);
+  const hasOpenThink = isStreaming && text.includes('<think>') && !text.includes('</think>');
+
+  return parts.map((part, i) => {
+    // 完整的 think 块
+    const thinkMatch = part.match(/^<think>([\s\S]*?)<\/think>$/);
+    if (thinkMatch) {
+      return (
+        <details key={i} className="ai-think-block">
+          <summary className="ai-think-summary">思考过程</summary>
+          <div className="ai-think-content">{thinkMatch[1].trim()}</div>
+        </details>
+      );
+    }
+
+    // 流式接收中未闭合的 think 块
+    if (hasOpenThink && part.startsWith('<think>') && !part.includes('</think>')) {
+      const thinking = part.replace(/^<think>\n?/, '');
+      return (
+        <details key={i} className="ai-think-block" open>
+          <summary className="ai-think-summary">正在思考...</summary>
+          <div className="ai-think-content">{thinking}</div>
+        </details>
+      );
+    }
+
+    // 普通文本
+    if (!part.trim()) return null;
+    return (
+      <ReactMarkdown
+        key={i}
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{ code: codeComponent(problemDifficulty) }}
+      >
+        {part}
+      </ReactMarkdown>
+    );
+  });
+}
+
 export default function ChatPanel({ problemId, currentCode, problemTitle, problemDifficulty, currentLanguage }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [remaining, setRemaining] = useState<{ remaining: number; limit: number; unlimited: boolean } | null>(null);
@@ -214,6 +295,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
       {/* 消息列表 */}
       <div
         ref={scrollRef}
+        className="ai-chat-scroll"
         style={{
           flex: 1, overflow: 'auto', padding: 16,
           display: 'flex', flexDirection: 'column', gap: 16,
@@ -285,50 +367,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
                   <span>{text}</span>
                 ) : (
                   <div className="problem-markdown ai-chat-message" style={{ fontSize: 14 }}>
-                    <ReactMarkdown
-                      remarkPlugins={[remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
-                      components={{
-                        code({ node, inline, className, children, ...props }: any) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          const isLowDifficulty = ['IRON', 'BRONZE', 'SILVER'].includes(problemDifficulty);
-                          
-                          return !inline && match ? (
-                            <div
-                              onCopy={(e) => {
-                                if (isLowDifficulty) {
-                                  e.preventDefault();
-                                  Message.warning('当前难度不允许复制 AI 提供的代码哦，请自己手敲～');
-                                }
-                              }}
-                              onClick={() => {
-                                if (isLowDifficulty) {
-                                  Message.warning('当前难度不允许复制 AI 提供的代码哦，请自己手敲～');
-                                }
-                              }}
-                              style={isLowDifficulty ? { userSelect: 'none', WebkitUserSelect: 'none', cursor: 'not-allowed' } : {}}
-                            >
-                              <SyntaxHighlighter
-                                style={vs}
-                                language={match[1]}
-                                PreTag="div"
-                                customStyle={{ margin: 0, background: '#ffffff', borderRadius: 0, padding: '12px 16px', fontSize: '14px' }}
-                                codeTagProps={{ style: { fontSize: '14px', fontFamily: '"Consolas", monospace' } }}
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            </div>
-                          ) : (
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          );
-                        }
-                      }}
-                    >
-                      {text}
-                    </ReactMarkdown>
+                    {renderMessageParts(text, problemDifficulty, isLoading && m.id === messages[messages.length - 1].id)}
                   </div>
                 )}
               </div>

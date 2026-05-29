@@ -134,7 +134,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
   - `etloj-judge.service` — 判题服务，WorkingDirectory=/opt/etloj/judge，ExecStart=npx tsx src/index.ts
   - `etloj-go-judge.service` — 沙箱，ExecStart=/usr/local/bin/go-judge
 - **Nginx**：`/etc/nginx/sites-available/etloj` — 前端 `root /var/www/etloj` + `/api/` 反向代理 `127.0.0.1:3000`
-- **前端部署**：`client/dist/` 复制到 `/var/www/etloj/`
+- **前端部署**：先 `rm -rf /var/www/etloj/*` 清空旧文件，再 `cp -r client/dist/* /var/www/etloj/`（旧 hash 文件不会被覆盖，必须先删）
 - **数据目录**：`/opt/etloj/data/problems`（题目测试数据）
 - **密钥管理**：`secrets.env`（不入 Git）存放 MYSQL_ROOT_PASSWORD、JWT_SECRET、JUDGE_SECRET；首次部署时 `cp secrets.env.example secrets.env` 并填入真实值；`deploy.sh` 和 `docker-compose.yml` 均从此文件读取
 - **题目不入 Git**：`/problems/` 和 `/data/` 均在 `.gitignore`，题目通过管理后台导入

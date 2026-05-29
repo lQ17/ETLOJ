@@ -18,4 +18,21 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/@monaco-editor")) return "monaco-editor";
+          if (id.includes("node_modules/monaco-editor")) return "monaco-editor";
+          if (id.includes("node_modules/echarts") || id.includes("node_modules/echarts-for-react") || id.includes("node_modules/echarts-wordcloud"))
+            return "echarts";
+          if (id.includes("node_modules/@arco-design")) return "arco-design";
+          if (id.includes("node_modules/katex") || id.includes("node_modules/rehype-katex") || id.includes("node_modules/remark-math") || id.includes("node_modules/micromark-extension-math"))
+            return "katex";
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router"))
+            return "react-vendor";
+        },
+      },
+    },
+  },
 });
