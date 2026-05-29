@@ -70,22 +70,22 @@ function InteractiveOpControl({ op, algoState, onExecute }: { op: InteractiveOp;
   return (
     <div style={{ background: "var(--color-fill-1)", borderRadius: 6, padding: "8px 10px" }}>
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--color-text-2)" }}>{op.name}</div>
-      <Space wrap size={6}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
         {op.inputs.map((inp) => (
-          <Input
-            key={inp.name}
-            size="mini"
-            value={params[inp.name] ?? ""}
-            onChange={(val) => setParams((prev) => ({ ...prev, [inp.name]: val }))}
-            placeholder={inp.label}
-            style={{ width: 80, fontFamily: "monospace", fontSize: 12 }}
-            addBefore={inp.label}
-          />
+          <label key={inp.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--color-text-3)" }}>
+            {inp.label}
+            <input
+              type="number"
+              value={params[inp.name] ?? ""}
+              onChange={(e) => setParams((prev) => ({ ...prev, [inp.name]: e.target.value }))}
+              style={{ width: 60, fontFamily: "monospace", fontSize: 12, padding: "2px 6px", border: "1px solid var(--color-border)", borderRadius: 4 }}
+            />
+          </label>
         ))}
         <Button type="primary" size="mini" onClick={handleExecute}>
           执行
         </Button>
-      </Space>
+      </div>
     </div>
   );
 }
