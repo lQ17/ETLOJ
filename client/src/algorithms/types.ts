@@ -11,6 +11,11 @@ export interface VisualStep {
     sorted?: number[];
     pivot?: number;
     active?: number[];
+    left?: number;
+    right?: number;
+    mid?: number;
+    eliminated?: number[];
+    found?: number;
   };
   message?: string;
   bars?: BarItem[];
@@ -18,7 +23,7 @@ export interface VisualStep {
   variables?: Record<string, number | string>;
 }
 
-export type AlgorithmCategory = "sorting" | "graph" | "string" | "data-structure";
+export type AlgorithmCategory = "sorting" | "graph" | "string" | "data-structure" | "searching";
 
 export interface AlgorithmDef {
   id: string;
@@ -29,5 +34,7 @@ export interface AlgorithmDef {
   spaceComplexity: string;
   defaultInput: number[];
   sourceCode?: string;
-  generateSteps(input: number[]): VisualStep[];
+  needTarget?: boolean;
+  defaultTarget?: number;
+  generateSteps(input: number[], target?: number): VisualStep[];
 }
