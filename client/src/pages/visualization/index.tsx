@@ -48,16 +48,20 @@ function randomGrid(): number[][] {
 }
 
 function InteractiveOpControl({ op, algoState, onExecute }: { op: InteractiveOp; algoState: unknown; onExecute: (steps: VisualStep[]) => void }) {
-  const [params, setParams] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
+  const [params, setParams] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
     for (const inp of op.inputs) {
-      initial[inp.name] = inp.default ?? 0;
+      initial[inp.name] = String(inp.default ?? 0);
     }
     return initial;
   });
 
   const handleExecute = () => {
-    const newSteps = op.execute(algoState, params);
+    const numericParams: Record<string, number> = {};
+    for (const inp of op.inputs) {
+      numericParams[inp.name] = Number(params[inp.name]) || 0;
+    }
+    const newSteps = op.execute(algoState, numericParams);
     if (newSteps.length > 0) {
       onExecute(newSteps);
     }
@@ -71,8 +75,8 @@ function InteractiveOpControl({ op, algoState, onExecute }: { op: InteractiveOp;
           <Input
             key={inp.name}
             size="mini"
-            value={String(params[inp.name] ?? "")}
-            onChange={(val) => setParams((prev) => ({ ...prev, [inp.name]: Number(val) }))}
+            value={params[inp.name] ?? ""}
+            onChange={(val) => setParams((prev) => ({ ...prev, [inp.name]: val }))}
             placeholder={inp.label}
             style={{ width: 80, fontFamily: "monospace", fontSize: 12 }}
             addBefore={inp.label}
