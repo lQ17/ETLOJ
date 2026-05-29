@@ -14,12 +14,16 @@ import "../../algorithms/sorting/selection";
 import "../../algorithms/sorting/insertion";
 import "../../algorithms/sorting/merge";
 import "../../algorithms/sorting/quick";
+import "../../algorithms/searching/binary-search";
+import "../../algorithms/searching/lower-bound";
+import "../../algorithms/searching/upper-bound";
 
 const CATEGORY_LABELS: Record<AlgorithmCategory, string> = {
   sorting: "排序",
   graph: "图论",
   string: "字符串",
   "data-structure": "数据结构",
+  searching: "查找",
 };
 
 const BASE_INTERVAL = 800;
@@ -40,6 +44,7 @@ export default function VisualizationPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [status, setStatus] = useState<"idle" | "playing" | "paused">("idle");
   const [speed, setSpeed] = useState(1);
+  const [targetText, setTargetText] = useState(String(selectedAlgo.defaultTarget ?? ""));
   const timerRef = useRef<number | null>(null);
 
   const categoryAlgos = getAlgorithmsByCategory(category);
@@ -48,6 +53,7 @@ export default function VisualizationPage() {
   useEffect(() => {
     handleReset();
     setInputText(selectedAlgo.defaultInput.join(", "));
+    setTargetText(String(selectedAlgo.defaultTarget ?? ""));
   }, [selectedAlgo]);
 
   // Auto-play timer
@@ -96,16 +102,34 @@ export default function VisualizationPage() {
       return;
     }
 
-    const newSteps = selectedAlgo.generateSteps(nums);
+    const target = selectedAlgo.needTarget ? Number(targetText) : undefined;
+    if (selectedAlgo.needTarget && isNaN(target as number)) {
+      Message.warning("请输入目标值");
+      return;
+    }
+
+    const newSteps = selectedAlgo.generateSteps(nums, target);
     setSteps(newSteps);
     setCurrentStep(0);
     setStatus("idle");
-  }, [inputText, selectedAlgo]);
+  }, [inputText, targetText, selectedAlgo]);
 
   const handleRandom = useCallback(() => {
     const arr = randomArray();
+    arr.sort((a, b) => a - b);
     setInputText(arr.join(", "));
-    const newSteps = selectedAlgo.generateSteps(arr);
+
+    let target: number | undefined;
+    if (selectedAlgo.needTarget) {
+      if (Math.random() < 0.5) {
+        target = arr[Math.floor(Math.random() * arr.length)];
+      } else {
+        target = 1 + Math.floor(Math.random() * 100);
+      }
+      setTargetText(String(target));
+    }
+
+    const newSteps = selectedAlgo.generateSteps(arr, target);
     setSteps(newSteps);
     setCurrentStep(0);
     setStatus("idle");
@@ -209,6 +233,34 @@ export default function VisualizationPage() {
                 随机生成
               </Button>
             </Space>
+
+            {selectedAlgo.needTarget && (
+              <div>
+                <div style={{ marginBottom: 4, fontSize: 13, color: "var(--color-text-3)" }}>目标值 (target)</div>
+                <Space>
+                  <Input
+                    value={targetText}
+                    onChange={setTargetText}
+                    placeholder="输入目标数字"
+                    style={{ width: 140, fontFamily: "monospace" }}
+                    onPressEnter={handleApply}
+                  />
+                  <Button
+                    size="small"
+                    icon={<IconLoop />}
+                    onClick={() => {
+                      const arr = inputText.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n));
+                      if (arr.length > 0) {
+                        const t = arr[Math.floor(Math.random() * arr.length)];
+                        setTargetText(String(t));
+                      }
+                    }}
+                  >
+                    随机
+                  </Button>
+                </Space>
+              </div>
+            )}
 
             <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 12 }}>
               <Typography.Title heading={6} style={{ margin: "0 0 8px" }}>
