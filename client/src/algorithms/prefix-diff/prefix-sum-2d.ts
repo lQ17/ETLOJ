@@ -69,6 +69,19 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     }
   }
 
+  // Final step: clean result
+  steps.push({
+    array: [...input],
+    highlights: {
+      grids: [
+        { grid: a.map((r) => [...r]), label: "原始数组 a" },
+        { grid: s.map((r) => [...r]), label: "前缀和 s" },
+      ],
+    },
+    message: "构建完成！前缀和矩阵已就绪，可使用下方交互操作查询子矩阵和",
+    line: 6,
+  });
+
   return {
     steps,
     state: { original: a, prefixSum: s, rows: R, cols: C },

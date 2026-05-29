@@ -51,6 +51,14 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     });
   }
 
+  // Final step: clean result
+  steps.push({
+    array: [...a],
+    highlights: { grid: [a.slice(), s.slice()] },
+    message: "构建完成！前缀和数组已就绪，可使用下方交互操作查询区间和",
+    line: 6,
+  });
+
   return {
     steps,
     state: { original: a, prefixSum: s },

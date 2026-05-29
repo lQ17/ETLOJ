@@ -56,6 +56,14 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     });
   }
 
+  // Final step: clean result
+  steps.push({
+    array: [...a],
+    highlights: { grid: [a.slice(), d.slice()] },
+    message: "构建完成！差分数组已就绪，可使用下方交互操作进行区间加或还原",
+    line: 6,
+  });
+
   return {
     steps,
     state: { original: a, diff: [...d], n },
