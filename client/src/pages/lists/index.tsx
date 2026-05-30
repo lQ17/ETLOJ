@@ -4,7 +4,7 @@ import {
   Typography, Empty, Space, Popconfirm, Progress,
 } from "@arco-design/web-react";
 import { IconPlus, IconEdit, IconDelete } from "@arco-design/web-react/icon";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { problemListApi } from "../../api/problem-list";
 import { useAuthStore } from "../../stores/auth";
 
@@ -123,11 +123,10 @@ export default function ProblemListsPage() {
           <Col key={item.id} span={8}>
             <Card
               hoverable
-              style={{ height: "100%" }}
+              style={{ height: "100%", cursor: "pointer" }}
+              onClick={() => navigate(`/lists/${item.id}`)}
             >
-              <Link to={`/lists/${item.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                <Title heading={6} style={{ marginBottom: 8 }}>{item.title}</Title>
-              </Link>
+              <Title heading={6} style={{ marginBottom: 8 }}>{item.title}</Title>
               {(() => {
                 const total = item._count?.items ?? 0;
                 const ac = item.acCount ?? 0;
@@ -146,14 +145,13 @@ export default function ProblemListsPage() {
                       percent={pct}
                       size="small"
                       showText={false}
-                      color={pct === 100 ? "#00B42A" : pct > 0 ? "#FF7D00" : undefined}
+                      color="#165DFF"
                     />
                   </div>
                 );
               })()}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Text type="secondary">{item.creator?.username}</Text>
-                {showActions && (
+              {showActions && (
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <Space>
                     <Button
                       type="text"
@@ -175,8 +173,8 @@ export default function ProblemListsPage() {
                       />
                     </Popconfirm>
                   </Space>
-                )}
-              </div>
+                </div>
+              )}
             </Card>
           </Col>
         ))}
