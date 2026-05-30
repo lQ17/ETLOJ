@@ -7,7 +7,22 @@ import { UpdateProblemListDto } from "./dto/update-problem-list.dto";
 export class ProblemListService {
   constructor(private prisma: PrismaService) {}
 
-  async findAllPublic(page = 1, pageSize = 20, keyword?: string) {
+  private async getAcCounts(userId: number, listIds: number[]): Promise<Record<number, number>> {
+    if (!userId || listIds.length === 0) return {};
+    const rows: { list_id: number; cnt: number }[] = await this.prisma.$queryRawUnsafe(
+      `SELECT pli.list_id, COUNT(DISTINCT pli.problem_id) AS cnt
+       FROM problem_list_items pli
+       JOIN submissions s ON s.problem_id = pli.problem_id AND s.user_id = %d AND s.status = 'AC'
+       WHERE pli.list_id IN (${listIds.join(",")})
+       GROUP BY pli.list_id`,
+      userId,
+    );
+    const map: Record<number, number> = {};
+    for (const r of rows) map[r.list_id] = Number(r.cnt);
+    return map;
+  }
+
+  async findAllPublic(page = 1, pageSize = 20, keyword?: string, userId?: number) {
     const where: any = { isPublic: true };
     if (keyword) {
       where.title = { contains: keyword };
@@ -25,6 +40,10 @@ export class ProblemListService {
       }),
       this.prisma.problemList.count({ where }),
     ]);
+    if (userId && items.length > 0) {
+      const acMap = await this.getAcCounts(userId, items.map((i) => i.id));
+      for (const item of items) (item as any).acCount = acMap[item.id] ?? 0;
+    }
     return { items, total, page, pageSize };
   }
 
@@ -42,6 +61,10 @@ export class ProblemListService {
       }),
       this.prisma.problemList.count({ where }),
     ]);
+    if (items.length > 0) {
+      const acMap = await this.getAcCounts(userId, items.map((i) => i.id));
+      for (const item of items) (item as any).acCount = acMap[item.id] ?? 0;
+    }
     return { items, total, page, pageSize };
   }
 

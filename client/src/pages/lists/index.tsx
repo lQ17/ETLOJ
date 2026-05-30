@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Tabs, Card, Input, Button, Grid, Pagination, Modal, Form, Message,
-  Typography, Empty, Tag, Space, Popconfirm,
+  Typography, Empty, Tag, Space, Popconfirm, Progress,
 } from "@arco-design/web-react";
 import { IconPlus, IconEdit, IconDelete } from "@arco-design/web-react/icon";
 import { Link, useNavigate } from "react-router-dom";
@@ -128,14 +128,31 @@ export default function ProblemListsPage() {
               <Link to={`/lists/${item.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                 <Title heading={6} style={{ marginBottom: 8 }}>{item.title}</Title>
               </Link>
-              <Paragraph type="secondary" ellipsis={{ rows: 2 }}>
-                {item.description || "暂无简介"}
-              </Paragraph>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                <Space>
-                  <Tag color="blue">{item._count?.items ?? 0} 题</Tag>
-                  <Text type="secondary">{item.creator?.username}</Text>
-                </Space>
+              {(() => {
+                const total = item._count?.items ?? 0;
+                const ac = item.acCount ?? 0;
+                const pct = total > 0 ? Math.round((ac / total) * 100) : 0;
+                return (
+                  <div style={{ margin: "8px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {ac}/{total} 已通过
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {total > 0 ? `${pct}%` : "-"}
+                      </Text>
+                    </div>
+                    <Progress
+                      percent={pct}
+                      size="small"
+                      showText={false}
+                      color={pct === 100 ? "#00B42A" : pct > 0 ? "#FF7D00" : undefined}
+                    />
+                  </div>
+                );
+              })()}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Text type="secondary">{item.creator?.username}</Text>
                 {showActions && (
                   <Space>
                     <Button

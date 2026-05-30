@@ -19,15 +19,18 @@ export class ProblemListController {
   ) {}
 
   @Get()
+  @UseGuards(OptionalJwtGuard)
   findAllPublic(
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string,
     @Query("keyword") keyword?: string,
+    @CurrentUser("id") userId?: number,
   ) {
     return this.problemListService.findAllPublic(
       Number(page) || 1,
       Number(pageSize) || 20,
       keyword,
+      userId,
     );
   }
 
