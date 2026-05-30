@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Table, Tag, Button, Breadcrumb, Modal, Input, Message, Typography, Space, Popconfirm,
+  Tag, Button, Breadcrumb, Modal, Input, Message, Typography, Space, Popconfirm,
 } from "@arco-design/web-react";
 import { IconPlus, IconDelete, IconDragArrow } from "@arco-design/web-react/icon";
 import { useParams, Link } from "react-router-dom";
