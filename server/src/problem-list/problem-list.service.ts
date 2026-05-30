@@ -9,13 +9,15 @@ export class ProblemListService {
 
   private async getAcCounts(userId: number, listIds: number[]): Promise<Record<number, number>> {
     if (!userId || listIds.length === 0) return {};
+    const placeholders = listIds.map(() => "?").join(",");
     const rows: { list_id: number; cnt: number }[] = await this.prisma.$queryRawUnsafe(
       `SELECT pli.list_id, COUNT(DISTINCT pli.problem_id) AS cnt
        FROM problem_list_items pli
-       JOIN submissions s ON s.problem_id = pli.problem_id AND s.user_id = %d AND s.status = 'AC'
-       WHERE pli.list_id IN (${listIds.join(",")})
+       JOIN submissions s ON s.problem_id = pli.problem_id AND s.user_id = ? AND s.status = 'AC'
+       WHERE pli.list_id IN (${placeholders})
        GROUP BY pli.list_id`,
       userId,
+      ...listIds,
     );
     const map: Record<number, number> = {};
     for (const r of rows) map[r.list_id] = Number(r.cnt);
