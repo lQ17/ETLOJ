@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Tabs, Card, Input, Button, Grid, Pagination, Modal, Form, Message,
-  Typography, Empty, Tag, Space, Popconfirm, Progress,
+  Typography, Empty, Space, Popconfirm, Progress,
 } from "@arco-design/web-react";
 import { IconPlus, IconEdit, IconDelete } from "@arco-design/web-react/icon";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,7 +9,7 @@ import { problemListApi } from "../../api/problem-list";
 import { useAuthStore } from "../../stores/auth";
 
 const { Row, Col } = Grid;
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 export default function ProblemListsPage() {
   const navigate = useNavigate();
