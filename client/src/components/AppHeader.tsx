@@ -14,6 +14,16 @@ function getSafeAvatar(avatar: string | undefined): string | undefined {
   return undefined;
 }
 
+// 普通左键点击走 SPA 导航，Ctrl/Meta/中键点击让浏览器原生处理（打开新页签）
+function handleNavClick(href: string, navigate: (to: string) => void) {
+  return (e: React.MouseEvent) => {
+    if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      navigate(href);
+    }
+  };
+}
+
 export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +45,7 @@ export default function AppHeader() {
 
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
   const navContainerRef = useRef<HTMLDivElement>(null);
-  const navRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const navRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
   useEffect(() => {
     const index = menuItems.findIndex(item => item.key === selectedKey);
@@ -69,18 +79,23 @@ export default function AppHeader() {
         zIndex: 100,
       }}
     >
-      <div style={{ cursor: "pointer", marginRight: 48 }} onClick={() => navigate("/")}>
+      <a
+        href="/"
+        onClick={handleNavClick("/", navigate)}
+        style={{ cursor: "pointer", marginRight: 48, color: "inherit", textDecoration: "none" }}
+      >
         <img src={logoWithText} alt="ETLOJ" style={{ height: 32, objectFit: "contain" }} />
-      </div>
+      </a>
       <div style={{ flex: 1, display: "flex", justifyContent: "center", height: "100%" }}>
         <div ref={navContainerRef} style={{ position: "relative", display: "flex", height: "100%", gap: 40 }}>
           {menuItems.map((item, index) => {
             const isActive = item.key === selectedKey;
             return (
-              <div
+              <a
                 key={item.key}
                 ref={(el) => (navRefs.current[index] = el)}
-                onClick={() => navigate(item.key)}
+                href={item.key}
+                onClick={handleNavClick(item.key, navigate)}
                 style={{
                   cursor: "pointer",
                   height: "100%",
@@ -89,11 +104,12 @@ export default function AppHeader() {
                   fontSize: 15,
                   fontWeight: isActive ? 600 : 400,
                   color: isActive ? "var(--color-primary)" : "var(--color-muted)",
+                  textDecoration: "none",
                   transition: "color 0.2s"
                 }}
               >
                 {item.label}
-              </div>
+              </a>
             );
           })}
           <div
@@ -116,15 +132,33 @@ export default function AppHeader() {
           <Dropdown
             droplist={
               <Menu>
-                <Menu.Item key="profile" onClick={() => navigate(`/profile/${user.username}`)}>
-                  个人主页
+                <Menu.Item key="profile">
+                  <a
+                    href={`/profile/${user.username}`}
+                    onClick={handleNavClick(`/profile/${user.username}`, navigate)}
+                    style={{ color: "inherit", textDecoration: "none" }}
+                  >
+                    个人主页
+                  </a>
                 </Menu.Item>
-                <Menu.Item key="settings" onClick={() => navigate("/settings")}>
-                  个人设置
+                <Menu.Item key="settings">
+                  <a
+                    href="/settings"
+                    onClick={handleNavClick("/settings", navigate)}
+                    style={{ color: "inherit", textDecoration: "none" }}
+                  >
+                    个人设置
+                  </a>
                 </Menu.Item>
                 {(user.role === "ADMIN" || user.role === "TEACHER") && (
-                  <Menu.Item key="admin" onClick={() => navigate("/admin")}>
-                    后台管理
+                  <Menu.Item key="admin">
+                    <a
+                      href="/admin"
+                      onClick={handleNavClick("/admin", navigate)}
+                      style={{ color: "inherit", textDecoration: "none" }}
+                    >
+                      后台管理
+                    </a>
                   </Menu.Item>
                 )}
                 <Menu.Item key="logout" onClick={() => { logout(); navigate("/"); }}>

@@ -85,14 +85,12 @@ export class ProblemListService {
   async update(id: number, userId: number, userRole: string, dto: UpdateProblemListDto) {
     const list = await this.prisma.problemList.findUnique({ where: { id } });
     if (!list) throw new NotFoundException("题单不存在");
-    if (list.isPublic) {
-      if (userRole !== "ADMIN" && userRole !== "TEACHER") {
-        throw new ForbiddenException("仅管理员和教师可编辑公共题单");
-      }
-    } else {
-      if (list.creatorId !== userId) {
-        throw new ForbiddenException("仅创建者可编辑该题单");
-      }
+    const isAdminOrTeacher = userRole === "ADMIN" || userRole === "TEACHER";
+    if (list.isPublic && !isAdminOrTeacher) {
+      throw new ForbiddenException("仅管理员和教师可编辑公共题单");
+    }
+    if (!list.isPublic && list.creatorId !== userId && !isAdminOrTeacher) {
+      throw new ForbiddenException("仅创建者可编辑该题单");
     }
     return this.prisma.problemList.update({ where: { id }, data: dto });
   }
@@ -100,14 +98,12 @@ export class ProblemListService {
   async delete(id: number, userId: number, userRole: string) {
     const list = await this.prisma.problemList.findUnique({ where: { id } });
     if (!list) throw new NotFoundException("题单不存在");
-    if (list.isPublic) {
-      if (userRole !== "ADMIN" && userRole !== "TEACHER") {
-        throw new ForbiddenException("仅管理员和教师可删除公共题单");
-      }
-    } else {
-      if (list.creatorId !== userId) {
-        throw new ForbiddenException("仅创建者可删除该题单");
-      }
+    const isAdminOrTeacher = userRole === "ADMIN" || userRole === "TEACHER";
+    if (list.isPublic && !isAdminOrTeacher) {
+      throw new ForbiddenException("仅管理员和教师可删除公共题单");
+    }
+    if (!list.isPublic && list.creatorId !== userId && !isAdminOrTeacher) {
+      throw new ForbiddenException("仅创建者可删除该题单");
     }
     return this.prisma.problemList.delete({ where: { id } });
   }
@@ -150,6 +146,15 @@ export class ProblemListService {
   async updateSortOrder(listId: number, items: { id: number; sortOrder: number }[]) {
     const list = await this.prisma.problemList.findUnique({ where: { id: listId } });
     if (!list) throw new NotFoundException("题单不存在");
+    const listItems = await this.prisma.problemListItem.findMany({
+      where: { listId },
+      select: { id: true },
+    });
+    const validIds = new Set(listItems.map((i) => i.id));
+    const invalid = items.filter((i) => !validIds.has(i.id));
+    if (invalid.length > 0) {
+      throw new ForbiddenException("部分题目不属于该题单");
+    }
     await this.prisma.$transaction(
       items.map((item) =>
         this.prisma.problemListItem.update({
