@@ -3,7 +3,15 @@ import {
   Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Modal,
   Form, Typography,
 } from "@arco-design/web-react";
-import { IconPlus } from "@arco-design/web-react/icon";
+import { IconPlus, IconDragArrow } from "@arco-design/web-react/icon";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { problemListApi } from "../../../api/problem-list";
 import DifficultyTag from "../../../components/DifficultyTag";
 
@@ -196,6 +204,50 @@ function CreateOrEditList({ listId, onFinish }: { listId: number | null; onFinis
   );
 }
 
+function AdminSortableRow({
+  item, index, onRemove,
+}: {
+  item: any; index: number; onRemove: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    display: "flex",
+    alignItems: "center",
+    padding: "10px 16px",
+    borderBottom: "1px solid var(--color-border)",
+    background: isDragging ? "var(--color-fill-2)" : "transparent",
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 1 : 0,
+    position: "relative" as const,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        {...attributes}
+        {...listeners}
+        style={{ cursor: "grab", padding: "0 12px 0 0", color: "var(--color-text-3)", touchAction: "none" }}
+      >
+        <IconDragArrow style={{ fontSize: 16 }} />
+      </div>
+      <div style={{ width: 50, textAlign: "center", flexShrink: 0, color: "var(--color-text-3)" }}>{index + 1}</div>
+      <div style={{ width: 120, fontFamily: "Consolas, monospace", flexShrink: 0 }}>{item.problem?.slug}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>{item.problem?.title}</div>
+      <div style={{ width: 90, flexShrink: 0 }}>
+        {item.problem?.difficulty ? <DifficultyTag difficulty={item.problem.difficulty} size="small" /> : "-"}
+      </div>
+      <div style={{ width: 80, textAlign: "center", flexShrink: 0 }}>
+        <Popconfirm title="确认从题单中移除该题目？" onOk={() => onRemove(item.problem?.id)}>
+          <Button type="text" status="danger" size="small">移除</Button>
+        </Popconfirm>
+      </div>
+    </div>
+  );
+}
+
 function ManageItems({ listId }: { listId: number }) {
   const [listInfo, setListInfo] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -203,6 +255,12 @@ function ManageItems({ listId }: { listId: number }) {
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [problemIdsInput, setProblemIdsInput] = useState("");
   const [adding, setAdding] = useState(false);
+  const [orderChanged, setOrderChanged] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   const fetchDetail = useCallback(async () => {
     setLoading(true);
@@ -210,6 +268,7 @@ function ManageItems({ listId }: { listId: number }) {
       const res: any = await problemListApi.getDetail(listId);
       setListInfo(res);
       setItems(res.items || []);
+      setOrderChanged(false);
     } catch {
       Message.error("获取题单详情失败");
     } finally {
@@ -256,26 +315,30 @@ function ManageItems({ listId }: { listId: number }) {
     }
   };
 
-  const columns: any[] = [
-    { title: "排序", dataIndex: "sortOrder", width: 70 },
-    { title: "题号", dataIndex: ["problem", "slug"], width: 120 },
-    { title: "标题", dataIndex: ["problem", "title"] },
-    {
-      title: "难度",
-      dataIndex: ["problem", "difficulty"],
-      width: 90,
-      render: (val: string) => <DifficultyTag difficulty={val} size="small" />,
-    },
-    {
-      title: "操作",
-      width: 80,
-      render: (_: any, record: any) => (
-        <Popconfirm title="确认从题单中移除该题目？" onOk={() => handleRemove(record.problem?.id)}>
-          <Button type="text" status="danger" size="small">移除</Button>
-        </Popconfirm>
-      ),
-    },
-  ];
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setItems((prev) => {
+      const oldIndex = prev.findIndex((i) => i.id === active.id);
+      const newIndex = prev.findIndex((i) => i.id === over.id);
+      setOrderChanged(true);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }, []);
+
+  const handleSaveOrder = async () => {
+    setSaving(true);
+    try {
+      const sortItems = items.map((item, index) => ({ id: item.id, sortOrder: index }));
+      await problemListApi.updateSortOrder(listId, sortItems);
+      Message.success("排序已保存");
+      setOrderChanged(false);
+    } catch {
+      Message.error("保存排序失败");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Card>
@@ -284,15 +347,48 @@ function ManageItems({ listId }: { listId: number }) {
           <Text bold>{listInfo?.title || "加载中..."}</Text>
           <Tag color="blue">共 {items.length} 题</Tag>
         </Space>
-        <Button type="primary" icon={<IconPlus />} onClick={() => setAddModalVisible(true)}>添加题目</Button>
+        <Space>
+          {orderChanged && (
+            <Button type="primary" loading={saving} onClick={handleSaveOrder}>保存排序</Button>
+          )}
+          <Button type="primary" icon={<IconPlus />} onClick={() => setAddModalVisible(true)}>添加题目</Button>
+        </Space>
       </div>
-      <Table
-        loading={loading}
-        columns={columns}
-        data={items}
-        rowKey={(record) => record.problem?.id || record.id}
-        pagination={items.length > 20 ? { pageSize: 20 } : false}
-      />
+
+      {/* 列头 */}
+      <div style={{
+        display: "flex", alignItems: "center", padding: "8px 16px",
+        background: "var(--color-fill-1)", borderRadius: "4px 4px 0 0",
+        fontWeight: 500, fontSize: 13, color: "var(--color-text-3)",
+      }}>
+        <div style={{ width: 24, flexShrink: 0 }} />
+        <div style={{ width: 50, textAlign: "center", flexShrink: 0 }}>序号</div>
+        <div style={{ width: 120, flexShrink: 0 }}>题号</div>
+        <div style={{ flex: 1 }}>标题</div>
+        <div style={{ width: 90, flexShrink: 0 }}>难度</div>
+        <div style={{ width: 80, textAlign: "center", flexShrink: 0 }}>操作</div>
+      </div>
+
+      {/* 可拖拽列表 */}
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40 }}>加载中...</div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-3)" }}>暂无题目</div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            {items.map((item, index) => (
+              <AdminSortableRow
+                key={item.id}
+                item={item}
+                index={index}
+                onRemove={handleRemove}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
+
       <Modal
         title="添加题目"
         visible={addModalVisible}
