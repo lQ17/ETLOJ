@@ -3,11 +3,11 @@ import { writeFileSync } from "fs";
 import { join } from "path";
 import { sanitizeStderr } from "./validation";
 
-export function localCompile(code: string, lang: string, workDir: string): { ok: boolean; exePath?: string; error?: string } {
+export function localCompile(code: string, lang: string, workDir: string): { ok: boolean; artifact?: string; error?: string } {
   if (lang === "python") {
     const srcPath = join(workDir, "main.py");
     writeFileSync(srcPath, code, "utf-8");
-    return { ok: true, exePath: srcPath };
+    return { ok: true, artifact: srcPath };
   }
 
   const srcFile = lang === "java" ? "Main.java" : lang === "c" ? "main.c" : "main.cpp";
@@ -42,7 +42,7 @@ export function localCompile(code: string, lang: string, workDir: string): { ok:
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf-8",
     });
-    return { ok: true, exePath: join(workDir, outExe) };
+    return { ok: true, artifact: join(workDir, outExe) };
   } catch (err: any) {
     return { ok: false, error: sanitizeStderr(err.stderr ?? err.message) };
   }
@@ -50,18 +50,18 @@ export function localCompile(code: string, lang: string, workDir: string): { ok:
 
 export function localRunOneTest(
   lang: string,
-  exePath: string,
+  artifact: string,
   input: string,
   timeLimit: number,
 ): { status: string; exitCode: number; time: number; memory: number; stdout: string; stderr: string } {
   let cmd: string;
   let args: string[];
-  const cwd = join(exePath, "..");
+  const cwd = join(artifact, "..");
 
   switch (lang) {
     case "c":
     case "cpp":
-      cmd = exePath;
+      cmd = artifact;
       args = [];
       break;
     case "java":
@@ -70,7 +70,7 @@ export function localRunOneTest(
       break;
     case "python":
       cmd = "python";
-      args = [exePath];
+      args = [artifact];
       break;
     default:
       return { status: "CE", exitCode: 1, time: 0, memory: 0, stdout: "", stderr: "Unsupported language" };

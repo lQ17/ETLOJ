@@ -101,10 +101,10 @@ async function judgeGoJudge(task: JudgeTask): Promise<JudgeResult> {
     task,
     async (code, lang) => {
       const r = await goJudgeCompile(code, lang);
-      return { ok: r.ok, artifact: r.binary, error: r.error };
+      return { ok: r.ok, artifact: r.artifact, error: r.error };
     },
-    async (lang, binaryId, code, input, timeLimit, memoryLimit) => {
-      const r = await goJudgeRunOneTest(lang, binaryId, code, input, timeLimit, memoryLimit);
+    async (lang, artifactId, code, input, timeLimit, memoryLimit) => {
+      const r = await goJudgeRunOneTest(lang, artifactId, code, input, timeLimit, memoryLimit);
       return { status: r.status, exitCode: r.exitCode, time: r.time, memory: r.memory, stdout: r.stdout, stderr: r.stderr };
     },
     mapGoJudgeStatus,
@@ -118,7 +118,7 @@ async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
     return await judgeWithBackend(
       task,
       (code, lang) => localCompile(code, lang, workDir),
-      (lang, exePath, code, input, timeLimit) => localRunOneTest(lang, exePath!, input, timeLimit),
+      (lang, artifact, code, input, timeLimit) => localRunOneTest(lang, artifact!, input, timeLimit),
       (raw, exitCode) => {
         if (raw === "TLE") return "TLE";
         if (exitCode !== 0) return "RE";
@@ -149,7 +149,7 @@ export async function runSingle(task: RunTask): Promise<RunResult> {
       if (!compiled.ok) {
         return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
       }
-      const r = localRunOneTest(language, compiled.exePath!, input, timeLimit);
+      const r = localRunOneTest(language, compiled.artifact!, input, timeLimit);
       return {
         status: r.status === "OK" ? "OK" : r.status,
         stdout: r.stdout,
@@ -167,7 +167,7 @@ export async function runSingle(task: RunTask): Promise<RunResult> {
     return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
   }
 
-  const r = await goJudgeRunOneTest(language, compiled.binary, code, input, timeLimit, task.memoryLimit);
+  const r = await goJudgeRunOneTest(language, compiled.artifact, code, input, timeLimit, task.memoryLimit);
   const statusMap: Record<string, string> = {
     "Accepted": "OK",
     "Time Limit Exceeded": "TLE",

@@ -37,7 +37,7 @@ async function goJudgeRun(params: {
   return (await res.json()) as any[];
 }
 
-export async function goJudgeCompile(code: string, lang: string): Promise<{ ok: boolean; binary?: string; error?: string }> {
+export async function goJudgeCompile(code: string, lang: string): Promise<{ ok: boolean; artifact?: string; error?: string }> {
   let cmd: string[];
   let srcName: string;
   let binName: string;
@@ -78,12 +78,12 @@ export async function goJudgeCompile(code: string, lang: string): Promise<{ ok: 
     return { ok: false, error: stderr };
   }
 
-  return { ok: true, binary: result[0]?.fileIds?.[binName] };
+  return { ok: true, artifact: result[0]?.fileIds?.[binName] };
 }
 
 export async function goJudgeRunOneTest(
   lang: string,
-  binaryId: string | undefined,
+  artifactId: string | undefined,
   code: string,
   input: string,
   timeLimit: number,
@@ -96,11 +96,11 @@ export async function goJudgeRunOneTest(
     case "c":
     case "cpp":
       cmd = ["./main"];
-      copyIn = { main: { fileId: binaryId! } };
+      copyIn = { main: { fileId: artifactId! } };
       break;
     case "java":
       cmd = ["java", "Main"];
-      copyIn = { "Main.class": { fileId: binaryId! } };
+      copyIn = { "Main.class": { fileId: artifactId! } };
       break;
     case "python":
       cmd = ["python3", "main.py"];
