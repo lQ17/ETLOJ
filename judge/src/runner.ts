@@ -1,0 +1,182 @@
+import { mkdtempSync, rmSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+import type { JudgeTask, JudgeResult, RunTask, RunResult } from "./types";
+import { validateJudgeTask, validateRunTask, normalizeOutput } from "./validation";
+import { goJudgeCompile, goJudgeRunOneTest } from "./goJudge";
+import { localCompile, localRunOneTest } from "./localJudge";
+
+// ─── go-judge 状态映射 ───
+
+function mapGoJudgeStatus(raw: string, exitCode: number): string | null {
+  if (raw === "TimeLimitExceeded") return "TLE";
+  if (raw === "MemoryLimitExceeded") return "MLE";
+  if (exitCode !== 0) return "RE";
+  return null; // 正常退出
+}
+
+// ─── 统一判题核心 ───
+
+type CompileResult = { ok: boolean; artifact?: string; error?: string };
+type TestRunResult = { status: string; exitCode: number; time: number; memory: number; stdout: string; stderr: string };
+
+async function judgeWithBackend(
+  task: JudgeTask,
+  compile: (code: string, lang: string) => Promise<CompileResult> | CompileResult,
+  runTest: (lang: string, artifact: string | undefined, code: string, input: string, timeLimit: number, memoryLimit: number) => Promise<TestRunResult> | TestRunResult,
+  mapStatus: (raw: string, exitCode: number) => string | null,
+  getMemory: (r: TestRunResult) => number,
+): Promise<JudgeResult> {
+  const { submissionId, code, language, testcases, timeLimit, memoryLimit } = task;
+
+  const compiled = await compile(code, language);
+  if (!compiled.ok) {
+    return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0, score: 0 };
+  }
+
+  const totalCount = testcases.length;
+  if (totalCount === 0) {
+    return { submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+  }
+
+  let passedCount = 0;
+  let firstFailStatus = "";
+  let maxTime = 0;
+  let maxMemory = 0;
+
+  for (const tc of testcases) {
+    const r = await runTest(language, compiled.artifact, code, tc.input, timeLimit, memoryLimit);
+
+    const mapped = mapStatus(r.status, r.exitCode);
+    let caseStatus: string | null = mapped;
+
+    if (caseStatus === null) {
+      // 状态正常，检查输出
+      const stdout = normalizeOutput(r.stdout);
+      const expected = normalizeOutput(tc.expectedOutput);
+      if (stdout !== expected) caseStatus = "WA";
+    }
+
+    if (caseStatus === null) {
+      passedCount++;
+      maxTime = Math.max(maxTime, r.time);
+      maxMemory = Math.max(maxMemory, getMemory(r));
+    } else if (!firstFailStatus) {
+      firstFailStatus = caseStatus;
+      maxTime = Math.max(maxTime, r.time);
+      maxMemory = Math.max(maxMemory, getMemory(r));
+    }
+  }
+
+  if (passedCount === totalCount) {
+    return { submissionId, status: "AC", timeUsed: Math.round(maxTime / 1e6), memoryUsed: Math.round(maxMemory / 1024), score: 100 };
+  }
+
+  return {
+    submissionId,
+    status: firstFailStatus,
+    timeUsed: Math.round(maxTime / 1e6),
+    memoryUsed: Math.round(maxMemory / 1024),
+    score: Math.round((passedCount / totalCount) * 100),
+  };
+}
+
+// ─── 导出：判题入口 ───
+
+export async function judge(task: JudgeTask): Promise<JudgeResult> {
+  const validationError = validateJudgeTask(task);
+  if (validationError) {
+    console.warn(`[#${task.submissionId}] 任务校验失败: ${validationError}`);
+    return { submissionId: task.submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+  }
+
+  if (process.env.JUDGE_MODE === "local") {
+    return judgeLocal(task);
+  }
+  return judgeGoJudge(task);
+}
+
+async function judgeGoJudge(task: JudgeTask): Promise<JudgeResult> {
+  return judgeWithBackend(
+    task,
+    async (code, lang) => {
+      const r = await goJudgeCompile(code, lang);
+      return { ok: r.ok, artifact: r.binary, error: r.error };
+    },
+    async (lang, binaryId, code, input, timeLimit, memoryLimit) => {
+      const r = await goJudgeRunOneTest(lang, binaryId, code, input, timeLimit, memoryLimit);
+      return { status: r.status, exitCode: r.exitCode, time: r.time, memory: r.memory, stdout: r.stdout, stderr: r.stderr };
+    },
+    mapGoJudgeStatus,
+    (r) => r.memory,
+  );
+}
+
+async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
+  const workDir = mkdtempSync(join(tmpdir(), "etloj-judge-"));
+  try {
+    return await judgeWithBackend(
+      task,
+      (code, lang) => localCompile(code, lang, workDir),
+      (lang, exePath, code, input, timeLimit) => localRunOneTest(lang, exePath!, input, timeLimit),
+      (raw, exitCode) => {
+        if (raw === "TLE") return "TLE";
+        if (exitCode !== 0) return "RE";
+        return null;
+      },
+      () => 0, // local 模式不追踪内存
+    );
+  } finally {
+    try { rmSync(workDir, { recursive: true, force: true }); } catch {}
+  }
+}
+
+// ─── 导出：自测运行 ───
+
+export async function runSingle(task: RunTask): Promise<RunResult> {
+  const validationError = validateRunTask(task);
+  if (validationError) {
+    console.warn(`[RUN:${task.runId}] 任务校验失败: ${validationError}`);
+    return { status: "SE", stdout: "", stderr: validationError, timeUsed: 0 };
+  }
+
+  const { code, language, input, timeLimit } = task;
+
+  if (process.env.JUDGE_MODE === "local") {
+    const workDir = mkdtempSync(join(tmpdir(), "etloj-run-"));
+    try {
+      const compiled = localCompile(code, language, workDir);
+      if (!compiled.ok) {
+        return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
+      }
+      const r = localRunOneTest(language, compiled.exePath!, input, timeLimit);
+      return {
+        status: r.status === "OK" ? "OK" : r.status,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        timeUsed: Math.round(r.time / 1e6),
+      };
+    } finally {
+      try { rmSync(workDir, { recursive: true, force: true }); } catch {}
+    }
+  }
+
+  // go-judge mode
+  const compiled = await goJudgeCompile(code, language);
+  if (!compiled.ok) {
+    return { status: "CE", stdout: "", stderr: compiled.error || "Compile error", timeUsed: 0 };
+  }
+
+  const r = await goJudgeRunOneTest(language, compiled.binary, code, input, timeLimit, task.memoryLimit);
+  const statusMap: Record<string, string> = {
+    "Accepted": "OK",
+    "Time Limit Exceeded": "TLE",
+    "Memory Limit Exceeded": "MLE",
+  };
+  return {
+    status: statusMap[r.status] || "RE",
+    stdout: r.stdout,
+    stderr: r.stderr,
+    timeUsed: Math.round(r.time / 1e6),
+  };
+}

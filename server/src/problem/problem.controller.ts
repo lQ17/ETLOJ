@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ProblemService } from "./problem.service";
+import { ProblemImportExportService } from "./problem-import-export.service";
 import { CreateProblemDto } from "./dto/create-problem.dto";
 import { UpdateProblemDto } from "./dto/update-problem.dto";
 import { QueryProblemDto } from "./dto/query-problem.dto";
@@ -20,7 +21,10 @@ function parseIdOrSlug(id: string): number | string {
 
 @Controller("problems")
 export class ProblemController {
-  constructor(private problemService: ProblemService) {}
+  constructor(
+    private problemService: ProblemService,
+    private importExportService: ProblemImportExportService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -43,7 +47,7 @@ export class ProblemController {
     if (!body.slugs || body.slugs.length === 0) {
       throw new ConflictException("请选择要导出的题目");
     }
-    const buffer = await this.problemService.exportProblems(body.slugs);
+    const buffer = await this.importExportService.exportProblems(body.slugs);
     res.set({
       'Content-Type': 'application/zip',
       'Content-Disposition': 'attachment; filename="problems-export.zip"',
@@ -56,7 +60,7 @@ export class ProblemController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("ADMIN", "TEACHER")
   async exportAllProblems(@Res() res: any) {
-    const buffer = await this.problemService.exportAllProblems();
+    const buffer = await this.importExportService.exportAllProblems();
     res.set({
       'Content-Type': 'application/zip',
       'Content-Disposition': 'attachment; filename="problems-export.zip"',
@@ -81,7 +85,7 @@ export class ProblemController {
   }))
   async importProblems(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new ConflictException("请上传 zip 文件");
-    return this.problemService.importProblems(file.buffer);
+    return this.importExportService.importProblems(file.buffer);
   }
 
   @Get(":id")

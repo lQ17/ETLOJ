@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AiProviderService } from './ai-provider.service';
 import { AiConversationService } from './ai-conversation.service';
+import { AiQuotaService } from './ai-quota.service';
 import { AiStatsService } from './ai-stats.service';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class AiService {
   constructor(
     private providerService: AiProviderService,
     private conversationService: AiConversationService,
+    private quotaService: AiQuotaService,
     private statsService: AiStatsService,
   ) {}
 
@@ -52,7 +54,7 @@ export class AiService {
   // ─── Conversation / Chat ───
 
   getRemainingUses(userId: number, role: string) {
-    return this.conversationService.getRemainingUses(userId, role);
+    return this.quotaService.getRemainingUses(userId, role);
   }
 
   getHistory(userId: number, problemId: number) {
