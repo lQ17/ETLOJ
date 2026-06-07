@@ -378,8 +378,8 @@ async function judgeGoJudge(task: JudgeTask): Promise<JudgeResult> {
     else if (r.status === "MemoryLimitExceeded") caseStatus = "MLE";
     else if (r.exitCode !== 0) caseStatus = "RE";
     else {
-      const stdout = (r.stdout || "").trim().replace(/\r\n/g, "\n");
-      const expected = (tc.expectedOutput || "").trim().replace(/\r\n/g, "\n");
+      const stdout = (r.stdout || "").trim().replace(/\r\n/g, "\n").split("\n").map(l => l.trimEnd()).join("\n");
+      const expected = (tc.expectedOutput || "").trim().replace(/\r\n/g, "\n").split("\n").map(l => l.trimEnd()).join("\n");
       if (stdout !== expected) caseStatus = "WA";
     }
 
@@ -435,8 +435,8 @@ async function judgeLocal(task: JudgeTask): Promise<JudgeResult> {
       if (r.status === "TLE") caseStatus = "TLE";
       else if (r.exitCode !== 0) caseStatus = "RE";
       else {
-        const stdout = (r.stdout || "").trim().replace(/\r\n/g, "\n");
-        const expected = (tc.expectedOutput || "").trim().replace(/\r\n/g, "\n");
+        const stdout = (r.stdout || "").trim().replace(/\r\n/g, "\n").split("\n").map(l => l.trimEnd()).join("\n");
+        const expected = (tc.expectedOutput || "").trim().replace(/\r\n/g, "\n").split("\n").map(l => l.trimEnd()).join("\n");
         if (stdout !== expected) caseStatus = "WA";
       }
 
