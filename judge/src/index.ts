@@ -21,6 +21,11 @@ async function reportResult(result: JudgeResult) {
 }
 
 async function main() {
+  if (!JUDGE_SECRET) {
+    console.error("FATAL: JUDGE_SECRET environment variable is required");
+    process.exit(1);
+  }
+
   const client = createClient({ url: REDIS_URL });
   await client.connect();
   console.log(`Judge service connected to Redis`);
