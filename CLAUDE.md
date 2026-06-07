@@ -157,7 +157,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
 ### 部署注意事项（踩坑记录）
 
 - **Nginx 上传限制**：`client_max_body_size` 必须 ≥ Multer 的 `fileSize` 限制（当前 100m）。默认 5m 会导致上传 zip 超过 5MB 时 `ERR_CONNECTION_RESET`。同时 `proxy_read_timeout` 需设为 300s，避免大量题目导入超时
-- **部署必须同时构建 client 和 server**：tar 打包排除了 `dist/`，部署后需 `npm run build` 两端。只构建 client 会导致 server 启动失败（找不到编译产物）
+- **构建必须在本地完成**：服务器只有 2C2G，无法承受 npm install/build 的内存开销（tsx 编译可达 1.4GB）。所有代码构建必须在本机完成（`nest build`、`vite build`、`tsc`），只将 `dist/` 产物打包部署到服务器。judge 服务使用 `node dist/index.js` 运行，不用 `npx tsx`
 - **MariaDB 密码恢复**：若 root 密码丢失，用 `mysqld_safe --skip-grant-tables` 启动后，必须先 `FLUSH PRIVILEGES` 再 `ALTER USER`，否则报 `ERROR 1290`。启动前确保旧进程已完全退出（`killall -9 mysqld mariadbd`），否则 `ibdata1` 文件锁会导致 InnoDB 启动失败
 - **tar 排除路径**：`--exclude='./problems/'` 只排除项目根目录的 problems，不会误伤 `client/src/pages/admin/problems/`。不要用 `--exclude='problems'`（会匹配所有包含 "problems" 的路径）
 - **tar 必须排除所有 .env**：`--exclude='./.env'` 只排除根目录 `.env`，不会排除 `server/.env`。tar 解压会覆盖服务器的 .env（含数据库密码、PROBLEMS_DIR 等生产配置），导致服务崩溃。打包时必须加 `--exclude='*.env'` 排除所有 .env 文件
