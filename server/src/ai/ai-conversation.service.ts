@@ -298,6 +298,7 @@ export class AiConversationService {
         await this.prisma.aiUsageLog.create({
           data: {
             userId: user.id,
+            providerId: (provider as any).id ?? null,
             providerName: (provider as any).name || 'Unknown',
             modelName: modelName,
             inputTokens,

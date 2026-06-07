@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { AnnouncementStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import { UpdateAnnouncementDto } from "./dto/update-announcement.dto";
@@ -8,7 +9,7 @@ export class AnnouncementService {
   constructor(private prisma: PrismaService) {}
 
   async findPublished(page = 1, pageSize = 5) {
-    const where = { status: "PUBLISHED" };
+    const where = { status: AnnouncementStatus.PUBLISHED };
     const [items, total] = await Promise.all([
       this.prisma.announcement.findMany({
         where,
@@ -23,7 +24,7 @@ export class AnnouncementService {
 
   async findOnePublic(id: number) {
     const announcement = await this.prisma.announcement.findFirst({
-      where: { id, status: "PUBLISHED" },
+      where: { id, status: AnnouncementStatus.PUBLISHED },
     });
     if (!announcement) throw new NotFoundException("公告不存在");
     return announcement;
@@ -33,7 +34,7 @@ export class AnnouncementService {
     return this.findOneOrThrow(id);
   }
 
-  async findAllForAdmin(status?: string, page = 1, pageSize = 20) {
+  async findAllForAdmin(status?: AnnouncementStatus, page = 1, pageSize = 20) {
     const where = status ? { status } : {};
     const [items, total] = await Promise.all([
       this.prisma.announcement.findMany({
@@ -54,7 +55,7 @@ export class AnnouncementService {
         summary: dto.summary,
         content: dto.content || "",
         isPinned: dto.isPinned ?? false,
-        status: dto.status ?? "DRAFT",
+        status: (dto.status as AnnouncementStatus) ?? AnnouncementStatus.DRAFT,
         authorId,
       },
     });
@@ -69,7 +70,7 @@ export class AnnouncementService {
         ...(dto.summary !== undefined && { summary: dto.summary }),
         ...(dto.content !== undefined && { content: dto.content }),
         ...(dto.isPinned !== undefined && { isPinned: dto.isPinned }),
-        ...(dto.status !== undefined && { status: dto.status }),
+        ...(dto.status !== undefined && { status: dto.status as AnnouncementStatus }),
       },
     });
   }

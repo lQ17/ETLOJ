@@ -43,6 +43,17 @@ enum ContestMode {
   OI
 }
 
+enum SolutionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model User {
   id        Int       @id @default(autoincrement())
   username  String    @unique @db.VarChar(50)
@@ -90,6 +101,7 @@ model Problem {
   solutions      Solution[]
   aiConversations AiConversation[]
 
+  @@index([isPublic, difficulty])
   @@map("problems")
 }
 
@@ -119,7 +131,7 @@ model ProblemTag {
 model Submission {
   id         Int              @id @default(autoincrement())
   problemId  Int              @map("problem_id")
-  userId     Int              @map("user_id")
+  userId     Int?             @map("user_id")
   code       String           @db.Text
   language   String           @db.VarChar(20)
   status     SubmissionStatus @default(PENDING)
@@ -128,8 +140,8 @@ model Submission {
   score      Int?             @map("score")
   createdAt  DateTime         @default(now()) @map("created_at")
 
-  problem Problem @relation(fields: [problemId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Restrict)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([problemId])
   @@index([userId])
@@ -162,7 +174,7 @@ model ContestProblem {
   order     Int @default(0)
 
   contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  problem Problem @relation(fields: [problemId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Restrict)
 
   @@unique([contestId, problemId])
   @@map("contest_problems")
@@ -171,12 +183,12 @@ model ContestProblem {
 model ContestRank {
   id        Int @id @default(autoincrement())
   contestId Int @map("contest_id")
-  userId    Int @map("user_id")
+  userId    Int? @map("user_id")
   score     Int @default(0)
   penalty   Int @default(0)
 
   contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@unique([contestId, userId])
   @@map("contest_ranks")
@@ -190,7 +202,7 @@ model UserTagRecord {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tag])
   @@map("user_tag_records")
@@ -201,11 +213,11 @@ model ProblemList {
   title       String   @db.VarChar(200)
   description String?  @db.Text
   isPublic    Boolean  @default(false) @map("is_public")
-  creatorId   Int      @map("creator_id")
+  creatorId   Int?     @map("creator_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  creator User             @relation(fields: [creatorId], references: [id])
+  creator User?            @relation(fields: [creatorId], references: [id], onDelete: SetNull)
   items   ProblemListItem[]
 
   @@index([creatorId])
@@ -220,24 +232,24 @@ model ProblemListItem {
   sortOrder Int @default(0) @map("sort_order")
 
   list    ProblemList @relation(fields: [listId], references: [id], onDelete: Cascade)
-  problem Problem     @relation(fields: [problemId], references: [id])
+  problem Problem     @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@unique([listId, problemId])
   @@map("problem_list_items")
 }
 
 model Solution {
-  id           Int      @id @default(autoincrement())
-  problemId    Int      @map("problem_id")
-  authorId     Int      @map("author_id")
-  content      String   @db.LongText
-  status       String   @default("PENDING") // PENDING | APPROVED | REJECTED
-  rejectReason String?  @db.Text            @map("reject_reason")
-  createdAt    DateTime @default(now())     @map("created_at")
-  updatedAt    DateTime @updatedAt          @map("updated_at")
+  id           Int            @id @default(autoincrement())
+  problemId    Int            @map("problem_id")
+  authorId     Int?           @map("author_id")
+  content      String         @db.LongText
+  status       SolutionStatus @default(PENDING)
+  rejectReason String?        @db.Text            @map("reject_reason")
+  createdAt    DateTime       @default(now())     @map("created_at")
+  updatedAt    DateTime       @updatedAt          @map("updated_at")
 
-  problem Problem @relation(fields: [problemId], references: [id])
-  author  User    @relation(fields: [authorId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([problemId])
   @@index([authorId])
@@ -246,17 +258,17 @@ model Solution {
 }
 
 model Announcement {
-  id        Int      @id @default(autoincrement())
-  title     String   @db.VarChar(200)
-  summary   String   @db.VarChar(500)
-  content   String   @db.LongText
-  isPinned  Boolean  @default(false) @map("is_pinned")
-  status    String   @default("DRAFT") @db.VarChar(20)
-  authorId  Int      @map("author_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        Int               @id @default(autoincrement())
+  title     String            @db.VarChar(200)
+  summary   String            @db.VarChar(500)
+  content   String            @db.LongText
+  isPinned  Boolean           @default(false) @map("is_pinned")
+  status    AnnouncementStatus @default(DRAFT)
+  authorId  Int?              @map("author_id")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
 
-  author User @relation(fields: [authorId], references: [id])
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([authorId])
   @@index([status])
@@ -271,8 +283,8 @@ model AiConversation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user    User      @relation(fields: [userId], references: [id])
-  problem Problem   @relation(fields: [problemId], references: [id])
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
   messages AiMessage[]
 
   @@index([userId])
@@ -304,6 +316,8 @@ model AiProvider {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  usageLogs AiUsageLog[]
+
   @@map("ai_providers")
 }
 
@@ -321,22 +335,25 @@ model AiPromptConfig {
 }
 
 model AiUsageLog {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @map("user_id")
-  providerName String   @map("provider_name") @db.VarChar(100)
-  modelName    String   @map("model_name") @db.VarChar(100)
-  inputTokens  Int      @default(0) @map("input_tokens")
-  outputTokens Int      @default(0) @map("output_tokens")
-  totalTokens  Int      @default(0) @map("total_tokens")
-  cost         Float    @default(0)
-  timeUsedMs   Int      @default(0) @map("time_used_ms")
-  status       Int      @default(200)
-  source       String   @default("chat") @db.VarChar(50)
-  createdAt    DateTime @default(now()) @map("created_at")
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  providerId   Int?      @map("provider_id")
+  providerName String    @map("provider_name") @db.VarChar(100)
+  modelName    String    @map("model_name") @db.VarChar(100)
+  inputTokens  Int       @default(0) @map("input_tokens")
+  outputTokens Int       @default(0) @map("output_tokens")
+  totalTokens  Int       @default(0) @map("total_tokens")
+  cost         Float     @default(0)
+  timeUsedMs   Int       @default(0) @map("time_used_ms")
+  status       Int       @default(200)
+  source       String    @default("chat") @db.VarChar(50)
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider AiProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([providerId])
   @@index([providerName])
   @@index([modelName])
   @@index([createdAt])

@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class UpdateAnnouncementDto {
   @IsString()
@@ -21,5 +21,6 @@ export class UpdateAnnouncementDto {
 
   @IsString()
   @IsOptional()
+  @IsIn(["DRAFT", "PUBLISHED"])
   status?: string;
 }

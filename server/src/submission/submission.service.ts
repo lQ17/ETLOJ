@@ -181,7 +181,7 @@ export class SubmissionService {
         where: { userId: updated.userId, problemId: updated.problemId, status: 'AC' },
       });
 
-      if (acCount === 1) {
+      if (acCount === 1 && updated.userId) {
         // 这是首次 AC，更新用户标签记录（从 ProblemTag 关联表获取标签名称）
         const problemTags = await this.prisma.problemTag.findMany({
           where: { problemId: updated.problemId },

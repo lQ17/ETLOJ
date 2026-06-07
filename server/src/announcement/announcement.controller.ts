@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Patch, Delete,
   Body, Param, Query, UseGuards, ParseIntPipe,
 } from "@nestjs/common";
+import { AnnouncementStatus } from "@prisma/client";
 import { AnnouncementService } from "./announcement.service";
 import { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import { UpdateAnnouncementDto } from "./dto/update-announcement.dto";
@@ -34,7 +35,7 @@ export class AnnouncementController {
     @Query("pageSize") pageSize?: string,
   ) {
     return this.announcementService.findAllForAdmin(
-      status || undefined,
+      (status as AnnouncementStatus) || undefined,
       page ? +page : 1,
       pageSize ? +pageSize : 20,
     );
