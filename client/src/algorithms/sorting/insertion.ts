@@ -54,7 +54,6 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
       });
 
       arr[j + 1] = arr[j];
-      bars[j + 1] = bars[j];
       j--;
 
       steps.push({
@@ -68,7 +67,12 @@ function generateSteps(input: number[]): { steps: VisualStep[]; state?: unknown 
     }
 
     arr[j + 1] = key;
-    bars[j + 1] = keyBar;
+    // 在 bars 数组中移动元素：把 j+1 到 i-1 的 bar 都向后移一位，keyBar 放到 j+1
+    const insertPos = j + 1;
+    for (let k = i; k > insertPos; k--) {
+      bars[k] = bars[k - 1];
+    }
+    bars[insertPos] = keyBar;
     sorted.push(i);
 
     steps.push({
