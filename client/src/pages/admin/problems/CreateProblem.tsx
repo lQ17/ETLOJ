@@ -4,8 +4,8 @@ import {
 } from "@arco-design/web-react";
 import MDEditor from "@uiw/react-md-editor";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import { problemApi } from "../../../api/problem";
 import { tagApi } from "../../../api/tag";
 import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../../constants/difficulty";
@@ -238,7 +238,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
             preview="live"
             height={500}
             previewOptions={{
-              remarkPlugins: [remarkMath],
+              remarkPlugins: [remarkMath, remarkGfm],
               rehypePlugins: [rehypeKatex],
             }}
           />

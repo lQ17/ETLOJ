@@ -2,6 +2,7 @@
 import { Typography, Button, Tag, Space, Divider } from "@arco-design/web-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { CopyButton, TestButton, parseSamples } from "./utils";
 import DifficultyTag from "../../../components/DifficultyTag";
@@ -37,7 +38,7 @@ export default function ProblemContent({ markdown, problem, codeCollapsed, onExp
       {markdownBefore && (
         <div className="problem-markdown" style={{ fontSize: 16 }}>
           <ReactMarkdown
-            remarkPlugins={[remarkMath]}
+            remarkPlugins={[remarkMath, remarkGfm]}
             rehypePlugins={[rehypeKatex]}
             components={{
               h1: ({ children }) => (
@@ -126,7 +127,7 @@ export default function ProblemContent({ markdown, problem, codeCollapsed, onExp
       {markdownAfter && (
         <div className="problem-markdown" style={{ fontSize: 16, marginTop: 24 }}>
           <ReactMarkdown
-            remarkPlugins={[remarkMath]}
+            remarkPlugins={[remarkMath, remarkGfm]}
             rehypePlugins={[rehypeKatex]}
           >
             {markdownAfter}

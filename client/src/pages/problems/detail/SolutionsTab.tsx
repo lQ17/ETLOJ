@@ -3,6 +3,7 @@ import { Typography, Button, Card, Spin, Avatar, Modal, Message } from "@arco-de
 import { IconPen } from "@arco-design/web-react/icon";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import MDEditor from "@uiw/react-md-editor";
 import { solutionApi } from "../../../api/solution";
@@ -205,7 +206,7 @@ export default function SolutionsTab({
               </div>
               <div className="problem-markdown" style={{ fontSize: 15, lineHeight: 1.8 }}>
                 <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
+                  remarkPlugins={[remarkMath, remarkGfm]}
                   rehypePlugins={[rehypeKatex]}
                 >
                   {selectedSolution.content}

@@ -6,8 +6,8 @@ import {
 import { IconPlus, IconLeft } from "@arco-design/web-react/icon";
 import MDEditor from "@uiw/react-md-editor";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import { announcementApi } from "../../../api/announcement";
 
 const { Text } = Typography;
@@ -247,7 +247,7 @@ function AnnouncementForm({ id, onBack }: { id: number | null; onBack: () => voi
             preview="live"
             height={400}
             previewOptions={{
-              remarkPlugins: [remarkMath],
+              remarkPlugins: [remarkMath, remarkGfm],
               rehypePlugins: [rehypeKatex],
             }}
           />

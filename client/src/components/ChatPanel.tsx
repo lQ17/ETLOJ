@@ -5,6 +5,7 @@ import { Button, Input, Tag, Tooltip, Message, Select } from '@arco-design/web-r
 import { IconSend, IconDelete, IconBulb, IconThunderbolt, IconClockCircle, IconRefresh } from '@arco-design/web-react/icon';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -109,7 +110,7 @@ function renderMessageParts(text: string, problemDifficulty: string, isStreaming
     return (
       <ReactMarkdown
         key={i}
-        remarkPlugins={[remarkMath]}
+        remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex]}
         components={{ code: codeComponent(problemDifficulty) }}
       >

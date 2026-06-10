@@ -4,8 +4,8 @@ import { IconNotification } from "@arco-design/web-react/icon";
 import { useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import { announcementApi } from "../../api/announcement";
 
 const { Title, Text } = Typography;
@@ -137,7 +137,7 @@ export default function AnnouncementsPage() {
               {new Date(selected.createdAt).toLocaleString("zh-CN")}
             </Text>
             <div className="problem-markdown" style={{ fontSize: 16 }}>
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                 {selected.content || "暂无详情"}
               </ReactMarkdown>
             </div>

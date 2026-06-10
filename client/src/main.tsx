@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./styles/global.css";
 import "@arco-design/web-react/dist/css/arco.css";
+import "katex/dist/katex.min.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

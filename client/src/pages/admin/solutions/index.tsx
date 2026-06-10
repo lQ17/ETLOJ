@@ -4,6 +4,7 @@ import {
 } from "@arco-design/web-react";
 import { solutionApi } from "../../../api/solution";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const { Text } = Typography;
 
@@ -135,7 +136,7 @@ function PendingSolutions() {
               {viewModal.problem?.slug} {viewModal.problem?.title} — {viewModal.author?.username}
             </div>
             <div className="problem-markdown" style={{ maxHeight: 500, overflow: "auto" }}>
-              <ReactMarkdown>{viewModal.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewModal.content}</ReactMarkdown>
             </div>
           </div>
         )}
