@@ -208,11 +208,20 @@ export class ProblemService {
       select: { tag: { select: { id: true, name: true } } },
     });
 
+    // 获取测试用例数量（不加载内容）
+    const tcDir = this.getTestcasesDir(problem.slug);
+    let testcaseCount = 0;
+    if (fs.existsSync(tcDir)) {
+      const files = fs.readdirSync(tcDir);
+      testcaseCount = files.filter(f => f.endsWith(".in")).length;
+    }
+
     return {
       ...problem,
       markdown,
       tagIds: problemTags.map(pt => pt.tag.id),
       tags: problemTags.map(pt => pt.tag.name),
+      testcaseCount,
     };
   }
 

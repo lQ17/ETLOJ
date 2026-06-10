@@ -29,6 +29,11 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
 
+  // 测试用例惰性加载状态
+  const [testcasesLoaded, setTestcasesLoaded] = useState(false);
+  const [testcasesDirty, setTestcasesDirty] = useState(false);
+  const [testcaseCount, setTestcaseCount] = useState(0);
+
   const [batchUploadVisible, setBatchUploadVisible] = useState(false);
 
   // 标签相关状态
@@ -61,17 +66,11 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
           const md = (data.markdown || "").replace(/^#[^\n]*\n?/, "");
           setMarkdown(md);
 
-          const tcRes: any = await problemApi.getTestcases(problemId);
-          if (tcRes && tcRes.length > 0) {
-            setTestCases(tcRes.map((tc: any, i: number) => ({
-              id: Date.now().toString() + "_" + i,
-              name: `测试点 ${i + 1}`,
-              input: tc.input || "",
-              output: tc.expectedOutput || tc.output || ""
-            })));
-          } else {
-            setTestCases([]);
-          }
+          // 惰性加载：只记录测试用例数量，不加载内容
+          setTestcaseCount(data.testcaseCount || 0);
+          setTestcasesLoaded(false);
+          setTestcasesDirty(false);
+          setTestCases([]);
         } catch (e) {
           Message.error("加载题目信息失败");
         } finally {
@@ -83,6 +82,9 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
       form.resetFields();
       setMarkdown(DEFAULT_MARKDOWN);
       setTestCases([]);
+      setTestcasesLoaded(false);
+      setTestcasesDirty(false);
+      setTestcaseCount(0);
     }
   }, [problemId, form]);
 
@@ -103,13 +105,14 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
 
       if (problemId) {
         await problemApi.update(problemId, payload);
-        if (testCases.length > 0) {
+        // 只有测试用例被修改过才保存
+        if (testcasesDirty && testCases.length > 0) {
           await problemApi.saveTestcases(
             problemId,
             testCases.map((tc) => ({ input: tc.input, output: tc.output }))
           );
         }
-        Message.success("题目及测试节点修改成功");
+        Message.success(testcasesDirty ? "题目及测试节点修改成功" : "题目信息修改成功");
         if (onFinish) onFinish();
       } else {
         await problemApi.create({ ...payload, slug: values.slug } as any);
@@ -132,8 +135,37 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
     }
   };
 
+  // 加载测试用例（惰性加载）
+  const handleLoadTestcases = async () => {
+    if (!problemId) return;
+    setLoading(true);
+    try {
+      const tcRes: any = await problemApi.getTestcases(problemId);
+      if (tcRes && tcRes.length > 0) {
+        setTestCases(tcRes.map((tc: any, i: number) => ({
+          id: Date.now().toString() + "_" + i,
+          name: `测试点 ${i + 1}`,
+          input: tc.input || "",
+          output: tc.expectedOutput || tc.output || ""
+        })));
+      }
+      setTestcasesLoaded(true);
+    } catch (e) {
+      Message.error("加载测试用例失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 包装 setTestCases 以标记 dirty 状态
+  const handleTestCasesChange = (newTestCases: TestCase[] | ((prev: TestCase[]) => TestCase[])) => {
+    setTestCases(newTestCases);
+    setTestcasesDirty(true);
+  };
+
   const handleBatchConfirm = (cases: TestCase[]) => {
     setTestCases(prev => [...prev, ...cases]);
+    setTestcasesDirty(true);
     setBatchUploadVisible(false);
   };
 
@@ -214,10 +246,31 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
 
         <Typography.Title heading={6}>测试节点</Typography.Title>
         <div style={{ marginBottom: 24 }}>
-          <Space style={{ marginBottom: 16 }}>
-            <Button onClick={() => setBatchUploadVisible(true)} type="primary">一键导入测试数据</Button>
-          </Space>
-          <TestCaseManager testCases={testCases} setTestCases={setTestCases} />
+          {problemId && !testcasesLoaded ? (
+            // 编辑模式：惰性加载测试用例
+            <div style={{ padding: "16px 0" }}>
+              <Space>
+                <Typography.Text>
+                  测试用例: {testcaseCount} 个
+                </Typography.Text>
+                <Button
+                  type="outline"
+                  onClick={handleLoadTestcases}
+                  loading={loading}
+                >
+                  加载并编辑
+                </Button>
+              </Space>
+            </div>
+          ) : (
+            // 创建模式 或 已加载测试用例
+            <>
+              <Space style={{ marginBottom: 16 }}>
+                <Button onClick={() => setBatchUploadVisible(true)} type="primary">一键导入测试数据</Button>
+              </Space>
+              <TestCaseManager testCases={testCases} setTestCases={handleTestCasesChange} />
+            </>
+          )}
         </div>
 
         <Form.Item>

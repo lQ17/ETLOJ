@@ -107,7 +107,7 @@ export default function HomePage() {
             让算法学习<br />从未如此简单
           </Title>
           <Paragraph style={{ fontSize: 18, color: "var(--color-muted)", marginBottom: 32, lineHeight: 1.6, maxWidth: 540 }}>
-            ETLOJ 专注于 <strong>Easy To Learn</strong> 体验。通过 AI 智能引导解题与沉浸式算法可视化，打破枯燥的刷题模式，带你直观领悟算法精髓。
+            <p>ETLOJ 专注于 <strong>Easy To Learn（易于学习）</strong> 体验。</p><p>与其硬啃代码，不如让AI陪你一步步想通算法。</p>
           </Paragraph>
           <Space size="large">
             <Button type="primary" style={{ padding: "0 20px", height: 40, fontSize: 14, borderRadius: 8 }} onClick={() => navigate("/problems")}>
