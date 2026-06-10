@@ -51,6 +51,11 @@ export default function AppFooter() {
             </div>
             <div className="footer-bottom">
                 <div>© 2026 ETLOJ. All rights reserved.</div>
+                <div>
+                    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-on-dark-soft)", textDecoration: "none" }}>
+                        豫ICP备2026023742号-1
+                    </a>
+                </div>
             </div>
         </div>
     </footer>
