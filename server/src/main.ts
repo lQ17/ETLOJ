@@ -20,10 +20,10 @@ async function bootstrap() {
     credentials: true,
   });
   
-  // Increase payload limit for Base64 image uploads
+  // Increase payload limit for Base64 image uploads and large testcase sets
   const express = require('express');
-  app.use(express.json({ limit: '5mb' }));
-  app.use(express.urlencoded({ limit: '5mb', extended: true }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   app.useGlobalPipes(
     new ValidationPipe({
