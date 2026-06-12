@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import type { JudgeTask, JudgeResult, RunTask, RunResult } from "./types";
+import type { JudgeTask, JudgeResult, RunTask, RunResult, TestCaseResult } from "./types";
 import { validateJudgeTask, validateRunTask, normalizeOutput } from "./validation";
 import { goJudgeCompile, goJudgeRunOneTest } from "./goJudge";
 import { localCompile, localRunOneTest } from "./localJudge";
@@ -31,20 +31,22 @@ async function judgeWithBackend(
 
   const compiled = await compile(code, language);
   if (!compiled.ok) {
-    return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0, score: 0 };
+    return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0, score: 0, testcases: [{ index: 1, status: "CE", timeUsed: 0, memoryUsed: 0 }] };
   }
 
   const totalCount = testcases.length;
   if (totalCount === 0) {
-    return { submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+    return { submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0, testcases: [] };
   }
 
+  const testcaseResults: TestCaseResult[] = [];
   let passedCount = 0;
   let firstFailStatus = "";
   let maxTime = 0;
   let maxMemory = 0;
 
-  for (const tc of testcases) {
+  for (let i = 0; i < testcases.length; i++) {
+    const tc = testcases[i];
     const r = await runTest(language, compiled.artifact, code, tc.input, timeLimit, memoryLimit);
 
     const mapped = mapStatus(r.status, r.exitCode);
@@ -66,10 +68,17 @@ async function judgeWithBackend(
       maxTime = Math.max(maxTime, r.time);
       maxMemory = Math.max(maxMemory, getMemory(r));
     }
+
+    testcaseResults.push({
+      index: i + 1,
+      status: caseStatus || "AC",
+      timeUsed: Math.round(r.time / 1e6),
+      memoryUsed: Math.round(r.memory / 1024),
+    });
   }
 
   if (passedCount === totalCount) {
-    return { submissionId, status: "AC", timeUsed: Math.round(maxTime / 1e6), memoryUsed: Math.round(maxMemory / 1024), score: 100 };
+    return { submissionId, status: "AC", timeUsed: Math.round(maxTime / 1e6), memoryUsed: Math.round(maxMemory / 1024), score: 100, testcases: testcaseResults };
   }
 
   return {
@@ -78,6 +87,7 @@ async function judgeWithBackend(
     timeUsed: Math.round(maxTime / 1e6),
     memoryUsed: Math.round(maxMemory / 1024),
     score: Math.round((passedCount / totalCount) * 100),
+    testcases: testcaseResults,
   };
 }
 
@@ -87,7 +97,7 @@ export async function judge(task: JudgeTask): Promise<JudgeResult> {
   const validationError = validateJudgeTask(task);
   if (validationError) {
     console.warn(`[#${task.submissionId}] 任务校验失败: ${validationError}`);
-    return { submissionId: task.submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0 };
+    return { submissionId: task.submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0, testcases: [] };
   }
 
   if (process.env.JUDGE_MODE === "local") {

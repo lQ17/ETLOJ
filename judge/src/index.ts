@@ -93,6 +93,7 @@ async function main() {
             timeUsed: 0,
             memoryUsed: 0,
             score: 0,
+            testcases: [],
           });
         }
       }

@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
 import { Select, Button, Space, Tag, Card, Popover, Radio, InputNumber, Message } from "@arco-design/web-react";
-import { IconSettings } from "@arco-design/web-react/icon";
+import { IconSettings, IconDown, IconRight } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
 import { langMap, statusLabel, statusColor } from "./constants";
+import { submissionApi } from "../../../api/submission";
 import TestArea from "./TestArea";
 
 interface CodeEditorPanelProps {
@@ -75,6 +76,42 @@ export default function CodeEditorPanel({
 
   const clampFontSize = (v: number) => Math.min(48, Math.max(12, Math.round(v)));
 
+  // 测试点详情面板状态
+  const [tcExpanded, setTcExpanded] = useState(false);
+  const [tcData, setTcData] = useState<any[] | null>(null);
+  const [tcLoading, setTcLoading] = useState(false);
+
+  const formatMemory = (kb: number | null | undefined): string => {
+    if (kb == null) return "-";
+    if (kb >= 1024) return `${(kb / 1024).toFixed(1)}MB`;
+    return `${kb}KB`;
+  };
+
+  const toggleTestcases = useCallback(async () => {
+    if (tcExpanded) {
+      setTcExpanded(false);
+      return;
+    }
+    setTcExpanded(true);
+    // 如果已有数据则不重复请求
+    if (tcData) return;
+    // result 中可能自带 testcases
+    if (result?.testcases?.length) {
+      setTcData(result.testcases);
+      return;
+    }
+    if (!result?.id) return;
+    setTcLoading(true);
+    try {
+      const data: any = await submissionApi.getTestcases(result.id);
+      setTcData(Array.isArray(data) ? data : []);
+    } catch {
+      setTcData([]);
+    } finally {
+      setTcLoading(false);
+    }
+  }, [tcExpanded, tcData, result]);
+
   return (
     <div style={{
       flex: codeCollapsed ? "0 0 0px" : 1,
@@ -113,6 +150,17 @@ export default function CodeEditorPanel({
             </Space>
           )}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+            {result && result.status !== "PENDING" && result.status !== "JUDGING" && (
+              <Button
+                type="text"
+                size="mini"
+                onClick={toggleTestcases}
+                style={{ fontSize: 12, color: "var(--color-text-3)" }}
+              >
+                {tcExpanded ? <IconDown /> : <IconRight />}
+                {tcExpanded ? "收起测试点详情" : "查看测试点详情"}
+              </Button>
+            )}
             <Button
               type="text"
               size="mini"
@@ -181,6 +229,54 @@ export default function CodeEditorPanel({
             </Popover>
           </div>
         </div>
+        {/* 测试点详情列表，始终渲染以支持过渡动画 */}
+        {result && result.status !== "PENDING" && result.status !== "JUDGING" && (
+          <div style={{
+            maxHeight: tcExpanded ? 380 : 0,
+            overflow: "hidden",
+            transition: "max-height 0.3s ease",
+          }}>
+            <div style={{
+              marginTop: 8,
+              padding: "8px 12px",
+              background: "var(--color-fill-1)",
+              borderRadius: 4,
+              fontSize: 13,
+              maxHeight: 380,
+              overflowY: "auto",
+            }}>
+              {tcLoading ? (
+                <span style={{ color: "var(--color-text-3)" }}>加载中...</span>
+              ) : tcData && tcData.length > 0 ? (
+                tcData.map((tc: any, i: number) => (
+                  <div
+                    key={tc.id || i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "4px 0",
+                      borderBottom: i < tcData.length - 1 ? "1px solid var(--color-border)" : "none",
+                    }}
+                  >
+                    <span style={{ color: "var(--color-text-3)", minWidth: 32 }}>#{i + 1}</span>
+                    <Tag color={statusColor[tc.status]} size="small">
+                      {statusLabel[tc.status] || tc.status}
+                    </Tag>
+                    <span style={{ color: "var(--color-text-3)", fontSize: 12, minWidth: 64 }}>
+                      {tc.timeUsed != null ? `${tc.timeUsed}ms` : "-"}
+                    </span>
+                    <span style={{ color: "var(--color-text-3)", fontSize: 12 }}>
+                      {formatMemory(tc.memoryUsed)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <span style={{ color: "var(--color-text-3)" }}>暂无测试点数据</span>
+              )}
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* 代码编辑器 */}

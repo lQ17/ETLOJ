@@ -61,6 +61,10 @@ export default function RecordsPage() {
   const [codeLanguage, setCodeLanguage] = useState("cpp");
   const [codeLoading, setCodeLoading] = useState(false);
 
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailData, setDetailData] = useState<any[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const fetchData = useCallback(async (p = page, ps = pageSize) => {
     setLoading(true);
     try {
@@ -126,6 +130,20 @@ export default function RecordsPage() {
     return record.user?.id === user.id || user.role === "TEACHER" || user.role === "ADMIN";
   };
 
+  const handleViewDetail = async (record: any) => {
+    setDetailLoading(true);
+    setDetailModalVisible(true);
+    setDetailData([]);
+    try {
+      const data: any = await submissionApi.getTestcases(record.id);
+      setDetailData(Array.isArray(data) ? data : []);
+    } catch {
+      setDetailData([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const columns: any[] = [
     {
       title: "用户名", dataIndex: ["user", "username"], width: 100,
@@ -174,16 +192,28 @@ export default function RecordsPage() {
       render: (v: string) => <Tag size="small">{langLabel[v] || v}</Tag>,
     },
     {
-      title: "操作", width: 100, fixed: "right" as const,
+      title: "操作", width: 160, fixed: "right" as const,
       render: (_: any, record: any) => (
-        <Button
-          type="text"
-          size="mini"
-          disabled={!canViewCode(record)}
-          onClick={() => handleViewCode(record)}
-        >
-          查看代码
-        </Button>
+        <Space size={0}>
+          {record.status !== "PENDING" && record.status !== "JUDGING" && (
+            <Button
+              type="text"
+              size="mini"
+              disabled={!canViewCode(record)}
+              onClick={() => handleViewDetail(record)}
+            >
+              查看测试点
+            </Button>
+          )}
+          <Button
+            type="text"
+            size="mini"
+            disabled={!canViewCode(record)}
+            onClick={() => handleViewCode(record)}
+          >
+            查看代码
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -311,6 +341,47 @@ export default function RecordsPage() {
               }}
             />
           </div>
+        )}
+      </Modal>
+
+      <Modal
+        title="测试点详情"
+        visible={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        footer={null}
+        style={{ width: 480 }}
+        unmountOnExit
+      >
+        {detailLoading ? (
+          <div style={{ textAlign: "center", padding: 40 }}>加载中...</div>
+        ) : detailData.length > 0 ? (
+          <div style={{ fontSize: 13 }}>
+            {detailData.map((tc: any, i: number) => (
+              <div
+                key={tc.id || i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "6px 0",
+                  borderBottom: i < detailData.length - 1 ? "1px solid var(--color-border)" : "none",
+                }}
+              >
+                <span style={{ color: "var(--color-text-3)", minWidth: 32 }}>#{i + 1}</span>
+                <Tag color={statusColor[tc.status]} size="small">
+                  {statusLabel[tc.status] || tc.status}
+                </Tag>
+                <span style={{ color: "var(--color-text-3)", fontSize: 12, minWidth: 64 }}>
+                  {tc.timeUsed != null ? `${tc.timeUsed}ms` : "-"}
+                </span>
+                <span style={{ color: "var(--color-text-3)", fontSize: 12 }}>
+                  {formatMemory(tc.memoryUsed)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-3)" }}>暂无测试点数据</div>
         )}
       </Modal>
     </div>

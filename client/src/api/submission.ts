@@ -25,4 +25,7 @@ export const submissionApi = {
 
   getStatus: (problemIds: number[]) =>
     client.get("/submissions/status", { params: { problemIds: problemIds.join(",") } }),
+
+  getTestcases: (submissionId: number) =>
+    client.get(`/submissions/${submissionId}/testcases`),
 };

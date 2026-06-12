@@ -88,6 +88,15 @@ export class SubmissionController {
     return this.submissionService.getProblemsStatus(userId, ids);
   }
 
+  @Get(":id/testcases")
+  @UseGuards(JwtAuthGuard)
+  getTestcases(
+    @Param("id", ParseIntPipe) id: number,
+    @CurrentUser() user: { id: number; role: string },
+  ) {
+    return this.submissionService.getTestcases(id, user.id, user.role);
+  }
+
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   findOne(

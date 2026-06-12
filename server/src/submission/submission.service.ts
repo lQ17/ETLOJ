@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from "@nestjs/common";
+import { SubmissionStatus } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { createClient } from "redis";
 import { ConfigService } from "@nestjs/config";
@@ -163,7 +164,7 @@ export class SubmissionService {
     return { items: itemsWithSize, total, page, pageSize };
   }
 
-  async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number }) {
+  async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number; testcases?: Array<{ index: number; status: string; timeUsed: number; memoryUsed: number }> }) {
     const updated = await this.prisma.submission.update({
       where: { id: submissionId },
       data: {
@@ -197,8 +198,31 @@ export class SubmissionService {
       }
     }
 
+    // 保存每个测试点的结果
+    if (result.testcases?.length) {
+      await this.prisma.submissionTestCase.createMany({
+        data: result.testcases.map(tc => ({
+          submissionId,
+          index: tc.index,
+          status: tc.status as SubmissionStatus,
+          timeUsed: tc.timeUsed,
+          memoryUsed: tc.memoryUsed,
+        })),
+      });
+    }
+
+    // 重新查询包含 testcases 的完整数据用于 WebSocket 推送
+    const fullSubmission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: {
+        problem: { select: { id: true, slug: true, title: true } },
+        user: { select: { id: true, username: true } },
+        testcases: { orderBy: { index: 'asc' } },
+      },
+    });
+
     // 推送实时判题结果到订阅的客户端
-    this.submissionGateway.notifySubmissionUpdate(submissionId, updated);
+    this.submissionGateway.notifySubmissionUpdate(submissionId, fullSubmission);
 
     return updated;
   }
@@ -253,6 +277,26 @@ export class SubmissionService {
         memoryUsed: true,
         createdAt: true,
       },
+    });
+  }
+
+  async getTestcases(submissionId: number, userId?: number, role?: string) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      select: { userId: true },
+    });
+    if (!submission) throw new NotFoundException('提交不存在');
+
+    // 权限检查：提交者本人、TEACHER、ADMIN 可访问
+    const isOwner = userId && submission.userId === userId;
+    const isPrivileged = role === 'ADMIN' || role === 'TEACHER';
+    if (!isOwner && !isPrivileged) {
+      throw new ForbiddenException('无权查看测试点详情');
+    }
+
+    return this.prisma.submissionTestCase.findMany({
+      where: { submissionId },
+      orderBy: { index: 'asc' },
     });
   }
 }
