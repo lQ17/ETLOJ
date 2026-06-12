@@ -36,10 +36,18 @@ export type RunResult = {
   timeUsed: number;
 };
 
+export type TestCaseResult = {
+  index: number;
+  status: string;
+  timeUsed: number;   // ms
+  memoryUsed: number;  // KB
+};
+
 export type JudgeResult = {
   submissionId: number;
   status: string;
   timeUsed: number;
   memoryUsed: number;
   score: number;
+  testcases: TestCaseResult[];
 };
