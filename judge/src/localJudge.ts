@@ -84,6 +84,7 @@ export function localRunOneTest(
       timeout: timeLimit + 500,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
+      maxBuffer: 100 * 1024 * 1024,
       windowsHide: true,
       killSignal: "SIGKILL"
     });

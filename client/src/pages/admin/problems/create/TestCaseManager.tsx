@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Button, Space, Table, Modal, Upload, Typography, Message } from "@arco-design/web-react";
 import Editor from "@monaco-editor/react";
+import { problemApi } from "../../../../api/problem";
 import type { TestCase } from "./constants";
 
 interface TestCaseManagerProps {
   testCases: TestCase[];
   setTestCases: React.Dispatch<React.SetStateAction<TestCase[]>>;
+  problemId?: number | null;
 }
 
-export default function TestCaseManager({ testCases, setTestCases }: TestCaseManagerProps) {
+export default function TestCaseManager({ testCases, setTestCases, problemId }: TestCaseManagerProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
 
@@ -17,8 +19,23 @@ export default function TestCaseManager({ testCases, setTestCases }: TestCaseMan
     setTestCases([...testCases, newCase]);
   };
 
-  const handleDeleteTestCase = (id: string) => {
-    setTestCases(testCases.filter(t => t.id !== id));
+  const handleDeleteTestCase = async (id: string, index: number) => {
+    // 如果是编辑已有题目，需要调用后端 API 删除文件
+    if (problemId) {
+      try {
+        await problemApi.deleteTestcase(problemId, index + 1);
+        Message.success("测试点删除成功");
+      } catch (err: any) {
+        Message.error(err?.message || "删除失败");
+        return;
+      }
+    }
+
+    // 更新前端 state：移除该项并重排编号
+    const newTestCases = testCases
+      .filter(t => t.id !== id)
+      .map((tc, i) => ({ ...tc, name: `测试点 ${i + 1}` }));
+    setTestCases(newTestCases);
   };
 
   const handleUploadTestCase = (file: File, id: string, type: "input" | "output") => {
@@ -84,10 +101,10 @@ export default function TestCaseManager({ testCases, setTestCases }: TestCaseMan
     },
     {
       title: "操作",
-      render: (_: any, record: TestCase) => (
+      render: (_: any, record: TestCase, index: number) => (
         <Space>
           <Button type="text" onClick={() => openEditModal(record)}>修改</Button>
-          <Button type="text" status="danger" onClick={() => handleDeleteTestCase(record.id)}>删除</Button>
+          <Button type="text" status="danger" onClick={() => handleDeleteTestCase(record.id, index)}>删除</Button>
         </Space>
       )
     }

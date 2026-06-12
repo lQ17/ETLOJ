@@ -39,6 +39,8 @@ export const problemApi = {
 
   getTestcases: (id: number) => client.get(`/problems/${id}/testcases`),
 
+  deleteTestcase: (id: number, num: number) => client.delete(`/problems/${id}/testcases/${num}`),
+
   exportProblems: (slugs: string[]) =>
     client.post("/problems/export", { slugs }, { responseType: "blob" }),
 

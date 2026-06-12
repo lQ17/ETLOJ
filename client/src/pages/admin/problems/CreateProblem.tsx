@@ -268,7 +268,7 @@ export default function CreateProblem({ problemId, onFinish }: CreateProblemProp
               <Space style={{ marginBottom: 16 }}>
                 <Button onClick={() => setBatchUploadVisible(true)} type="primary">一键导入测试数据</Button>
               </Space>
-              <TestCaseManager testCases={testCases} setTestCases={handleTestCasesChange} />
+              <TestCaseManager testCases={testCases} setTestCases={handleTestCasesChange} problemId={problemId} />
             </>
           )}
         </div>

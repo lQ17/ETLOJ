@@ -323,6 +323,17 @@ export class ProblemService {
     const tcDir = this.getTestcasesDir(problem.slug);
     fs.mkdirSync(tcDir, { recursive: true });
 
+    // 清理旧的测试用例文件
+    if (fs.existsSync(tcDir)) {
+      const oldFiles = fs.readdirSync(tcDir);
+      for (const file of oldFiles) {
+        if (file.endsWith('.in') || file.endsWith('.out')) {
+          fs.unlinkSync(path.join(tcDir, file));
+        }
+      }
+    }
+
+    // 写入新测试用例
     testcases.forEach((tc, i) => {
       const num = i + 1;
       fs.writeFileSync(path.join(tcDir, `${num}.in`), tc.input, "utf-8");
@@ -352,6 +363,59 @@ export class ProblemService {
     }
 
     return testcases;
+  }
+
+  async deleteTestcase(idOrSlug: number | string, num: number) {
+    const problem = await this.resolveProblem(idOrSlug, true);
+    const tcDir = this.getTestcasesDir(problem.slug);
+
+    if (!fs.existsSync(tcDir)) {
+      throw new NotFoundException("测试用例目录不存在");
+    }
+
+    const inFile = path.join(tcDir, `${num}.in`);
+    const outFile = path.join(tcDir, `${num}.out`);
+
+    if (!fs.existsSync(inFile) && !fs.existsSync(outFile)) {
+      throw new NotFoundException(`测试点 ${num} 不存在`);
+    }
+
+    // 删除指定编号的文件
+    try { fs.unlinkSync(inFile); } catch {}
+    try { fs.unlinkSync(outFile); } catch {}
+
+    // 获取当前所有测试点文件，重排编号
+    const files = fs.readdirSync(tcDir);
+    const inFiles = files.filter(f => f.endsWith(".in")).sort((a, b) => {
+      const numA = parseInt(a.replace(".in", ""));
+      const numB = parseInt(b.replace(".in", ""));
+      return numA - numB;
+    });
+
+    // 重排编号：将剩余文件重新编号为 1, 2, 3...
+    inFiles.forEach((oldInFile, index) => {
+      const newNum = index + 1;
+      const oldNum = parseInt(oldInFile.replace(".in", ""));
+      if (oldNum !== newNum) {
+        const oldOutFile = `${oldNum}.out`;
+        const newInFile = `${newNum}.in`;
+        const newOutFile = `${newNum}.out`;
+
+        const oldInPath = path.join(tcDir, oldInFile);
+        const oldOutPath = path.join(tcDir, oldOutFile);
+        const newInPath = path.join(tcDir, newInFile);
+        const newOutPath = path.join(tcDir, newOutFile);
+
+        if (fs.existsSync(oldInPath)) {
+          fs.renameSync(oldInPath, newInPath);
+        }
+        if (fs.existsSync(oldOutPath)) {
+          fs.renameSync(oldOutPath, newOutPath);
+        }
+      }
+    });
+
+    return { count: inFiles.length };
   }
 
 }

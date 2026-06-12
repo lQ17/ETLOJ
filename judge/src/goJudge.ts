@@ -21,7 +21,7 @@ async function goJudgeRun(params: {
           env: ["PATH=/usr/bin:/bin", "HOME=/tmp"],
           files: [
             params.stdin !== undefined ? { content: params.stdin } : { src: "/dev/null" },
-            { name: "stdout", max: 10240 },
+            { name: "stdout", max: 100 * 1024 * 1024 },
             { name: "stderr", max: 10240 },
           ],
           cpuLimit: params.cpuLimit ?? 10_000_000_000,

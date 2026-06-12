@@ -133,4 +133,14 @@ export class ProblemController {
   ) {
     return this.problemService.saveTestcases(parseIdOrSlug(id), body.testcases);
   }
+
+  @Delete(":id/testcases/:num")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("ADMIN", "TEACHER")
+  deleteTestcase(
+    @Param("id") id: string,
+    @Param("num") num: string,
+  ) {
+    return this.problemService.deleteTestcase(parseIdOrSlug(id), parseInt(num));
+  }
 }
