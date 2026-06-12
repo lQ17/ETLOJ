@@ -140,8 +140,9 @@ model Submission {
   score      Int?             @map("score")
   createdAt  DateTime         @default(now()) @map("created_at")
 
-  problem Problem @relation(fields: [problemId], references: [id], onDelete: Restrict)
-  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  problem   Problem             @relation(fields: [problemId], references: [id], onDelete: Restrict)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  testcases SubmissionTestCase[]
 
   @@index([problemId])
   @@index([userId])
@@ -149,6 +150,21 @@ model Submission {
   @@index([createdAt])
   @@index([userId, status, problemId, createdAt]) // 复合索引：大幅优化个人主页 AC 统计查询 (涵盖过滤和分组)
   @@map("submissions")
+}
+
+model SubmissionTestCase {
+  id           Int              @id @default(autoincrement())
+  submissionId Int              @map("submission_id")
+  index        Int
+  status       SubmissionStatus
+  timeUsed     Int?             @map("time_used")
+  memoryUsed   Int?             @map("memory_used")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("submission_testcases")
 }
 
 model Contest {
