@@ -127,7 +127,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
                                          ↑ judge(Node.js) ← Redis 队列 → :5050 go-judge 沙箱
 ```
 
-- **服务器**：your-server-ip（root，SSH 免密已配）
+- **服务器**：150.158.39.151（root，SSH 免密已配）
 - **系统依赖**：mariadb-server, redis-server, nginx, nodejs 20, gcc, g++, python3, go-judge
 - **systemd 服务**：
   - `etloj-server.service` — NestJS 后端，WorkingDirectory=/opt/etloj/server，ExecStart=node dist/src/main.js
@@ -135,6 +135,7 @@ JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts          
   - `etloj-go-judge.service` — 沙箱，ExecStart=/usr/local/bin/go-judge
 - **Nginx**：`/etc/nginx/sites-available/etloj` — 前端 `root /var/www/etloj` + `/api/` 反向代理 `127.0.0.1:3000`
 - **前端部署**：先 `rm -rf /var/www/etloj/*` 清空旧文件，再 `cp -r client/dist/* /var/www/etloj/`（旧 hash 文件不会被覆盖，必须先删）
+- **Prisma schema 同步**：本地构建 + scp 部署路径下，`nest build` 不会更新 `prisma/schema.prisma`。若 schema 有变更，必须额外执行：`scp server/prisma/schema.prisma root@150.158.39.151:/opt/etloj/server/prisma/` → `ssh root@150.158.39.151 "cd /opt/etloj/server && npx prisma generate && npx prisma db push"` → 重启 etloj-server。否则服务器的 Prisma 客户端缺少新模型，运行时 `this.prisma.xxx` 为 undefined 导致 500
 - **数据目录**：`/opt/etloj/data/problems`（题目测试数据）
 - **密钥管理**：`secrets.env`（不入 Git）存放 MYSQL_ROOT_PASSWORD、JWT_SECRET、JUDGE_SECRET；首次部署时 `cp secrets.env.example secrets.env` 并填入真实值；`deploy.sh` 和 `docker-compose.yml` 均从此文件读取
 - **题目不入 Git**：`/problems/` 和 `/data/` 均在 `.gitignore`，题目通过管理后台导入
