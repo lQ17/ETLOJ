@@ -92,6 +92,41 @@ export default function CodeEditorPanel({
   const [tcExpanded, setTcExpanded] = useState(false);
   const [tcData, setTcData] = useState<any[] | null>(null);
   const [tcLoading, setTcLoading] = useState(false);
+  const lastResultIdRef = useRef<number | null>(null);
+
+  // 监听评测结果变化和展开状态，声明式管理测试点数据的加载与重置
+  useEffect(() => {
+    if (!result?.id) {
+      setTcData(null);
+      lastResultIdRef.current = null;
+      return;
+    }
+
+    // 如果是新的提交 ID，重置测试点数据
+    if (result.id !== lastResultIdRef.current) {
+      setTcData(null);
+      lastResultIdRef.current = result.id;
+    }
+
+    // 展开状态且没有数据时触发加载
+    if (tcExpanded && !tcData && !tcLoading) {
+      if (result.testcases?.length) {
+        setTcData(result.testcases);
+        return;
+      }
+      setTcLoading(true);
+      submissionApi.getTestcases(result.id)
+        .then((data: any) => {
+          setTcData(Array.isArray(data) ? data : []);
+        })
+        .catch(() => {
+          setTcData([]);
+        })
+        .finally(() => {
+          setTcLoading(false);
+        });
+    }
+  }, [result?.id, tcExpanded, tcData, tcLoading, result?.testcases]);
 
   const formatMemory = (kb: number | null | undefined): string => {
     if (kb == null) return "-";
@@ -99,30 +134,9 @@ export default function CodeEditorPanel({
     return `${kb}KB`;
   };
 
-  const toggleTestcases = useCallback(async () => {
-    if (tcExpanded) {
-      setTcExpanded(false);
-      return;
-    }
-    setTcExpanded(true);
-    // 如果已有数据则不重复请求
-    if (tcData) return;
-    // result 中可能自带 testcases
-    if (result?.testcases?.length) {
-      setTcData(result.testcases);
-      return;
-    }
-    if (!result?.id) return;
-    setTcLoading(true);
-    try {
-      const data: any = await submissionApi.getTestcases(result.id);
-      setTcData(Array.isArray(data) ? data : []);
-    } catch {
-      setTcData([]);
-    } finally {
-      setTcLoading(false);
-    }
-  }, [tcExpanded, tcData, result]);
+  const toggleTestcases = useCallback(() => {
+    setTcExpanded((prev) => !prev);
+  }, []);
 
   return (
     <div id="code-editor-panel" className={`problem-split-right ${codeCollapsed ? 'is-collapsed' : ''}`} style={{

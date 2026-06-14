@@ -92,7 +92,7 @@ export function localRunOneTest(
     const stdout = result.stdout ?? "";
     const stderr = result.stderr ?? "";
     const code = result.status ?? 1;
-    const timedOut = (result.error as any)?.code === "ETIMEDOUT";
+    const timedOut = (result.error as any)?.code === "ETIMEDOUT" || elapsed > timeLimit;
 
     return {
       status: timedOut ? "TLE" : (code === 0 ? "OK" : "RE"),

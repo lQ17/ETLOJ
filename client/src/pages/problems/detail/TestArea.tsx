@@ -16,7 +16,7 @@ interface TestAreaProps {
 }
 
 function normalizeOutput(s: string) {
-  return s.trim().replace(/\r\n/g, "\n");
+  return (s || "").trim().replace(/\r\n/g, "\n").split("\n").map(l => l.trimEnd()).join("\n");
 }
 
 function getActualOutputBg(testOutput: string, actualOutput: string) {
