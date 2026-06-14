@@ -11,7 +11,7 @@ interface DifficultyTagProps {
 export default function DifficultyTag({ difficulty, size, style }: DifficultyTagProps) {
   const config = DIFFICULTY_CONFIG[difficulty as DifficultyLevel];
   const [imgError, setImgError] = useState(false);
-  const height = size === 'small' ? 26 : 34;
+  const height = size === 'small' ? 22 : 28;
 
   // SVG 加载失败或无配置时，回退到文字 badge
   if (!config || imgError) {
@@ -30,7 +30,7 @@ export default function DifficultyTag({ difficulty, size, style }: DifficultyTag
       src={config.svg}
       alt={config.label}
       onError={() => setImgError(true)}
-      style={{ height, width: 'auto', display: 'inline-block', verticalAlign: '-6px', ...style }}
+      style={{ height, width: 'auto', display: 'inline-block', verticalAlign: 'middle', ...style }}
     />
   );
 }
