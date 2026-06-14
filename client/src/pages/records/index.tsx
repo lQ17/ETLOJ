@@ -60,6 +60,7 @@ export default function RecordsPage() {
   const [codeContent, setCodeContent] = useState("");
   const [codeLanguage, setCodeLanguage] = useState("cpp");
   const [codeLoading, setCodeLoading] = useState(false);
+  const [currentRecord, setCurrentRecord] = useState<any>(null);
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailData, setDetailData] = useState<any[]>([]);
@@ -107,6 +108,7 @@ export default function RecordsPage() {
   };
 
   const handleViewCode = async (record: any) => {
+    setCurrentRecord(record);
     setCodeLoading(true);
     setCodeModalVisible(true);
     setCodeContent("");
@@ -123,6 +125,17 @@ export default function RecordsPage() {
     } finally {
       setCodeLoading(false);
     }
+  };
+
+  const handleOpenInEditor = () => {
+    if (!currentRecord?.problem?.slug) return;
+    setCodeModalVisible(false);
+    navigate(`/problems/${currentRecord.problem.slug}`, {
+      state: {
+        code: codeContent,
+        language: codeLanguage,
+      },
+    });
   };
 
   const canViewCode = (record: any) => {
@@ -318,7 +331,21 @@ export default function RecordsPage() {
         title="查看代码"
         visible={codeModalVisible}
         onCancel={() => setCodeModalVisible(false)}
-        footer={null}
+        closable={false}
+        footer={
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button onClick={() => setCodeModalVisible(false)}>
+              关闭
+            </Button>
+            <Button
+              type="primary"
+              disabled={codeLoading || !codeContent || codeContent.startsWith("//")}
+              onClick={handleOpenInEditor}
+            >
+              编辑器中打开
+            </Button>
+          </div>
+        }
         style={{ width: 720 }}
         unmountOnExit
       >

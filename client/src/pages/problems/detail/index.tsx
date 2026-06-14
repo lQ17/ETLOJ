@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Typography, Button, Spin, Message } from "@arco-design/web-react";
 import {
   IconFile, IconEdit, IconRobot, IconLeft,
@@ -18,6 +18,7 @@ import { useSubmissionWatch } from "./useSubmissionWatch";
 export default function ProblemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const backToListParams = searchParams.get("back") || undefined;
   const { user } = useAuthStore();
@@ -34,6 +35,7 @@ export default function ProblemDetailPage() {
   const [actualOutput, setActualOutput] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
   const submitTimesRef = useRef<number[]>([]);
+  const codeLoadedRef = useRef(false);
 
   const [editorFontSize, setEditorFontSize] = useState(() => {
     const saved = localStorage.getItem("oj_editor_fontSize");
@@ -72,17 +74,38 @@ export default function ProblemDetailPage() {
         const p: any = await problemApi.getOne(id);
         setProblem(p);
         setMarkdown(p.markdown || "");
-        // 恢复浏览器本地保存的代码
+        
+        // 优先使用路由 state 中传递过来的代码（“在编辑器中打开”动作传递的代码）
+        const stateCode = location.state?.code;
+        const stateLanguage = location.state?.language;
         const uid = user?.id || "anon";
-        const saved = localStorage.getItem(`oj_code_${p.id}_${uid}`);
-        if (saved != null) {
-          setCode(saved);
+
+        if (stateCode && !codeLoadedRef.current) {
+          codeLoadedRef.current = true;
+          setCode(stateCode);
+          if (stateLanguage) {
+            setLanguage(stateLanguage);
+          }
+          // 保存到本地存储防止刷新丢失
+          localStorage.setItem(`oj_code_${p.id}_${uid}`, stateCode);
+          if (stateLanguage) {
+            localStorage.setItem(`oj_language_${p.id}_${uid}`, stateLanguage);
+          }
+          Message.success("已成功载入该评测记录的代码");
+          // 重置 state，防止之后从其他地方切换回来时误触发
+          navigate(location.pathname, { replace: true, state: {} });
+        } else {
+          // 恢复浏览器本地保存的代码
+          const saved = localStorage.getItem(`oj_code_${p.id}_${uid}`);
+          if (saved != null) {
+            setCode(saved);
+          }
         }
       } catch {
         Message.error("加载题目失败");
       }
     })();
-  }, [id]);
+  }, [id, location.state, user]);
 
   const handleSubmit = async () => {
     if (!user) {
