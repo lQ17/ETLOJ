@@ -10,7 +10,7 @@ export default function HeatmapChart({ data }: { data: [string, number][] }) {
   const [sums, setSums] = useState({ sum6Months: 0, sum1Month: 0, sum1Week: 0 });
   const calendarRef = useRef<HTMLDivElement>(null);
 
-  // 修复库渲染的 SVG viewBox 宽度不足导致最后一列被裁剪的问题
+  // 修复库渲染的 SVG viewBox 宽度不足导致最后一列被裁剪的问题，并默认滚动到最右侧
   useLayoutEffect(() => {
     if (!calendarData || !calendarRef.current) return;
     const svg = calendarRef.current.querySelector('svg');
@@ -22,6 +22,14 @@ export default function HeatmapChart({ data }: { data: [string, number][] }) {
     svg.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
     svg.setAttribute('width', String(newWidth));
     svg.setAttribute('height', String(newHeight));
+
+    // 默认滚动到最右侧，展示最近一段时间的活跃度
+    const animId = requestAnimationFrame(() => {
+      if (calendarRef.current) {
+        calendarRef.current.scrollLeft = calendarRef.current.scrollWidth;
+      }
+    });
+    return () => cancelAnimationFrame(animId);
   }, [calendarData]);
 
   useEffect(() => {
@@ -81,45 +89,47 @@ export default function HeatmapChart({ data }: { data: [string, number][] }) {
   return (
     <div className="gh-calendar-container" style={{ paddingTop: '10px' }}>
       {/* 热力图主体 */}
-      <div ref={calendarRef} style={{ overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <ActivityCalendar
-          data={calendarData}
-          showWeekdayLabels
-          blockSize={20}
-          blockMargin={5}
-          blockRadius={3}
-          labels={{
-            months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
-            weekdays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
-            totalCount: "此处仅统计初次通过的题目记录",
-            legend: {
-              less: "少",
-              more: "多",
-            },
-          }}
-          theme={{
-            light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
-            dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
-          }}
-          renderBlock={(block, activity) => {
-            const [y, m, d] = activity.date.split("-");
-            const dateStr = `${y}年${parseInt(m)}月${parseInt(d)}日`;
-            const tooltipContent = (
-              <div style={{ textAlign: "center", padding: "4px 2px" }}>
-                <div style={{ fontWeight: 600, marginBottom: "4px" }}>{dateStr}</div>
-                <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
-                  {activity.count > 0 ? `通过了 ${activity.count} 道题` : "无通过记录"}
+      <div ref={calendarRef} style={{ overflowX: 'auto', width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', minWidth: 'max-content', padding: '0 8px' }}>
+          <ActivityCalendar
+            data={calendarData}
+            showWeekdayLabels
+            blockSize={20}
+            blockMargin={5}
+            blockRadius={3}
+            labels={{
+              months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+              weekdays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+              totalCount: "此处仅统计初次通过的题目记录",
+              legend: {
+                less: "少",
+                more: "多",
+              },
+            }}
+            theme={{
+              light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
+              dark: ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"],
+            }}
+            renderBlock={(block, activity) => {
+              const [y, m, d] = activity.date.split("-");
+              const dateStr = `${y}年${parseInt(m)}月${parseInt(d)}日`;
+              const tooltipContent = (
+                <div style={{ textAlign: "center", padding: "4px 2px" }}>
+                  <div style={{ fontWeight: 600, marginBottom: "4px" }}>{dateStr}</div>
+                  <div style={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>
+                    {activity.count > 0 ? `通过了 ${activity.count} 道题` : "无通过记录"}
+                  </div>
                 </div>
-              </div>
-            );
+              );
 
-            return (
-              <Tooltip key={activity.date} content={tooltipContent} position="top" trigger="hover" style={{ backgroundColor: '#24292e' }}>
-                {block}
-              </Tooltip>
-            );
-          }}
-        />
+              return (
+                <Tooltip key={activity.date} content={tooltipContent} position="top" trigger="hover" style={{ backgroundColor: '#24292e' }}>
+                  {block}
+                </Tooltip>
+              );
+            }}
+          />
+        </div>
       </div>
 
       {/* 下方统计卡片 - 3列水平排列 */}
