@@ -46,6 +46,48 @@ function App() {
 
   useEffect(() => {
     initFromStorage();
+
+    const applyTheme = (mode: string) => {
+      if (mode === "dark") {
+        document.body.setAttribute("arco-theme", "dark");
+        document.body.setAttribute("data-color-mode", "dark");
+      } else {
+        document.body.removeAttribute("arco-theme");
+        document.body.setAttribute("data-color-mode", "light");
+      }
+      window.dispatchEvent(new Event("theme-change"));
+    };
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handleSystemThemeChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      const followSystem = localStorage.getItem("theme_follow_system") === "true";
+      if (followSystem) {
+        applyTheme(e.matches ? "dark" : "light");
+      }
+    };
+
+    const followSystem = localStorage.getItem("theme_follow_system") === "true";
+    if (followSystem) {
+      applyTheme(mediaQuery.matches ? "dark" : "light");
+    } else {
+      const savedTheme = localStorage.getItem("theme") || "light";
+      applyTheme(savedTheme);
+    }
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleSystemThemeChange);
+    } else {
+      mediaQuery.addListener(handleSystemThemeChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleSystemThemeChange);
+      } else {
+        mediaQuery.removeListener(handleSystemThemeChange);
+      }
+    };
   }, []);
 
   if (loading) {

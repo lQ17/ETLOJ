@@ -128,9 +128,9 @@ export default function HomePage() {
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <span style={{ fontWeight: 600, fontSize: 14 }}>Solution.cpp</span>
-            <span style={{ background: "#d1fae5", color: "#065f46", padding: "2px 10px", borderRadius: 9999, fontSize: 12, fontWeight: 600 }}>Accepted</span>
+            <span style={{ background: "var(--color-badge-emerald)", color: "var(--color-badge-emerald-text)", padding: "2px 10px", borderRadius: 9999, fontSize: 12, fontWeight: 600 }}>Accepted</span>
           </div>
-          <div style={{
+          <div className="home-code-mockup" style={{
             fontFamily: "Consolas, monospace",
             fontSize: 13,
             background: "var(--color-canvas)",

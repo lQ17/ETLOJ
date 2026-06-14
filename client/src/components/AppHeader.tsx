@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Layout, Menu, Space, Button, Tag, Dropdown } from "@arco-design/web-react";
-import { IconUser } from "@arco-design/web-react/icon";
+import { IconUser, IconSun, IconMoon } from "@arco-design/web-react/icon";
 import logoWithText from "../assets/images/logo-with-text.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../stores/auth";
@@ -29,6 +29,37 @@ export default function AppHeader() {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+
+  const [theme, setTheme] = useState(() => {
+    return document.body.getAttribute("arco-theme") === "dark" ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    const syncThemeState = () => {
+      setTheme(document.body.getAttribute("arco-theme") === "dark" ? "dark" : "light");
+    };
+    window.addEventListener("theme-change", syncThemeState);
+    return () => window.removeEventListener("theme-change", syncThemeState);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    
+    // 手动切换时，关闭“跟随系统”设定
+    localStorage.setItem("theme_follow_system", "false");
+    
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    
+    if (nextTheme === "dark") {
+      document.body.setAttribute("arco-theme", "dark");
+      document.body.setAttribute("data-color-mode", "dark");
+    } else {
+      document.body.removeAttribute("arco-theme");
+      document.body.setAttribute("data-color-mode", "light");
+    }
+    window.dispatchEvent(new Event("theme-change"));
+  };
 
   const menuItems = [
     { key: "/", label: "首页" },
@@ -84,7 +115,7 @@ export default function AppHeader() {
         onClick={handleNavClick("/", navigate)}
         style={{ cursor: "pointer", marginRight: 48, color: "inherit", textDecoration: "none" }}
       >
-        <img src={logoWithText} alt="ETLOJ" style={{ height: 32, objectFit: "contain" }} />
+        <img src={logoWithText} alt="ETLOJ" className="logo-image" style={{ height: 32, objectFit: "contain" }} />
       </a>
       <div style={{ flex: 1, display: "flex", justifyContent: "center", height: "100%" }}>
         <div ref={navContainerRef} style={{ position: "relative", display: "flex", height: "100%", gap: 40 }}>
@@ -127,7 +158,19 @@ export default function AppHeader() {
           />
         </div>
       </div>
-      <Space>
+      <Space size={16}>
+        <Button
+          type="text"
+          shape="circle"
+          onClick={toggleTheme}
+          icon={theme === "dark" ? <IconSun style={{ fontSize: 18, color: "var(--color-ink)" }} /> : <IconMoon style={{ fontSize: 18, color: "var(--color-ink)" }} />}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        />
         {user ? (
           <Dropdown
             droplist={

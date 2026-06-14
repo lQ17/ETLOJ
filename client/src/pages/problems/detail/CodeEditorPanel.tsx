@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Select, Button, Space, Tag, Card, Popover, Radio, InputNumber, Message } from "@arco-design/web-react";
 import { IconSettings, IconDown, IconRight } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
@@ -70,6 +70,18 @@ export default function CodeEditorPanel({
   codeCompletion,
   setCodeCompletion,
 }: CodeEditorPanelProps) {
+  const [systemTheme, setSystemTheme] = useState(() => {
+    return document.body.getAttribute("arco-theme") === "dark" ? "vs-dark" : "vs";
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setSystemTheme(document.body.getAttribute("arco-theme") === "dark" ? "vs-dark" : "vs");
+    };
+    window.addEventListener("theme-change", handleThemeChange);
+    return () => window.removeEventListener("theme-change", handleThemeChange);
+  }, []);
+
   const editorRef = useRef<any>(null);
   const fontSizeRef = useRef(editorFontSize);
   fontSizeRef.current = editorFontSize;
@@ -208,7 +220,7 @@ export default function CodeEditorPanel({
                     >
                       <Radio value="vs">亮色</Radio>
                       <Radio value="vs-dark">暗色</Radio>
-                      <Radio value="hc-black">跟随网站</Radio>
+                      <Radio value="auto">跟随网站</Radio>
                     </Radio.Group>
                   </div>
                   <div>
@@ -286,7 +298,7 @@ export default function CodeEditorPanel({
           language={langMap[language]}
           value={code}
           onChange={(v) => setCode(v || "")}
-          theme={editorTheme}
+          theme={editorTheme === "auto" ? systemTheme : editorTheme}
           onMount={(editor, monaco) => {
             editorRef.current = editor;
             // Ctrl+S 保存代码到本地

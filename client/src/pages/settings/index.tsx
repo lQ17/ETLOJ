@@ -1,8 +1,9 @@
 import { Layout, Menu, Typography, Card } from "@arco-design/web-react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { IconUser, IconSafe } from "@arco-design/web-react/icon";
+import { IconUser, IconSafe, IconSkin } from "@arco-design/web-react/icon";
 import GeneralSettings from "./views/GeneralSettings";
 import SecuritySettings from "./views/SecuritySettings";
+import ThemeSettings from "./views/ThemeSettings";
 
 const { Sider, Content } = Layout;
 const MenuItem = Menu.Item;
@@ -12,7 +13,11 @@ export default function SettingsPage() {
   const location = useLocation();
 
   // 根据当前路由确定高亮的菜单项
-  const selectedKey = location.pathname.includes("security") ? "security" : "general";
+  const selectedKey = location.pathname.includes("security")
+    ? "security"
+    : location.pathname.includes("theme")
+    ? "theme"
+    : "general";
 
   return (
     <Card bordered={false} style={{ borderRadius: 8 }}>
@@ -34,6 +39,10 @@ export default function SettingsPage() {
               <IconSafe style={{ marginRight: 8 }} />
               密码与安全
             </MenuItem>
+            <MenuItem key="theme">
+              <IconSkin style={{ marginRight: 8 }} />
+              个性化设计
+            </MenuItem>
           </Menu>
         </Sider>
         
@@ -42,6 +51,7 @@ export default function SettingsPage() {
             <Route path="/" element={<GeneralSettings />} />
             <Route path="/general" element={<GeneralSettings />} />
             <Route path="/security" element={<SecuritySettings />} />
+            <Route path="/theme" element={<ThemeSettings />} />
           </Routes>
         </Content>
       </Layout>

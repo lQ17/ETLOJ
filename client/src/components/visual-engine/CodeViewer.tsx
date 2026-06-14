@@ -23,7 +23,7 @@ function highlightLine(text: string): { text: string; color?: string }[] {
   while (i < text.length) {
     // Comment
     if (text[i] === "/" && text[i + 1] === "/") {
-      tokens.push({ text: text.slice(i), color: "#008000" });
+      tokens.push({ text: text.slice(i), color: "var(--code-comment)" });
       return tokens;
     }
 
@@ -31,7 +31,7 @@ function highlightLine(text: string): { text: string; color?: string }[] {
     if (text[i] === '"') {
       let j = i + 1;
       while (j < text.length && text[j] !== '"') j++;
-      tokens.push({ text: text.slice(i, j + 1), color: "#A31515" });
+      tokens.push({ text: text.slice(i, j + 1), color: "var(--code-string)" });
       i = j + 1;
       continue;
     }
@@ -40,7 +40,7 @@ function highlightLine(text: string): { text: string; color?: string }[] {
     if (/[0-9]/.test(text[i])) {
       let j = i;
       while (j < text.length && /[0-9]/.test(text[j])) j++;
-      tokens.push({ text: text.slice(i, j), color: "#098658" });
+      tokens.push({ text: text.slice(i, j), color: "var(--code-number)" });
       i = j;
       continue;
     }
@@ -51,11 +51,11 @@ function highlightLine(text: string): { text: string; color?: string }[] {
       while (j < text.length && /[a-zA-Z0-9_]/.test(text[j])) j++;
       const word = text.slice(i, j);
       if (KEYWORDS.has(word)) {
-        tokens.push({ text: word, color: "#0000FF" });
+        tokens.push({ text: word, color: "var(--code-keyword)" });
       } else if (TYPES.has(word)) {
-        tokens.push({ text: word, color: "#267F99" });
+        tokens.push({ text: word, color: "var(--code-type)" });
       } else if (j < text.length && text[j] === "(") {
-        tokens.push({ text: word, color: "#795E26" });
+        tokens.push({ text: word, color: "var(--code-function)" });
       } else {
         tokens.push({ text: word });
       }
@@ -67,21 +67,21 @@ function highlightLine(text: string): { text: string; color?: string }[] {
     if ("=+-*/<>!&|".includes(text[i])) {
       let j = i + 1;
       if (j < text.length && "=+-<>|&".includes(text[j])) j++;
-      tokens.push({ text: text.slice(i, j), color: "#000000" });
+      tokens.push({ text: text.slice(i, j), color: "var(--code-operator)" });
       i = j;
       continue;
     }
 
     // Brackets
     if ("(){}[]".includes(text[i])) {
-      tokens.push({ text: text[i], color: "#000000" });
+      tokens.push({ text: text[i], color: "var(--code-operator)" });
       i++;
       continue;
     }
 
     // Semicolons, commas
     if (";,".includes(text[i])) {
-      tokens.push({ text: text[i], color: "#000000" });
+      tokens.push({ text: text[i], color: "var(--code-operator)" });
       i++;
       continue;
     }
@@ -118,7 +118,7 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
   const varEntries = variables ? Object.entries(variables) : [];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--code-text)" }}>
       <div
         ref={containerRef}
         style={{
@@ -128,8 +128,8 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
           maxHeight: 360,
           overflow: "auto",
           borderRadius: 6,
-          background: "#FFFFFF",
-          border: "1px solid #E5E6EB",
+          background: "var(--code-background)",
+          border: "1px solid var(--code-border)",
         }}
       >
         {highlightedLines.map((tokens, idx) => {
@@ -142,8 +142,8 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
               style={{
                 display: "flex",
                 padding: "0 12px",
-                background: isActive ? "#E8F3FF" : "transparent",
-                borderLeft: isActive ? "3px solid #165DFF" : "3px solid transparent",
+                background: isActive ? "var(--code-active-bg)" : "transparent",
+                borderLeft: isActive ? "3px solid var(--code-active-border)" : "3px solid transparent",
                 transition: "background 0.2s",
               }}
             >
@@ -152,7 +152,7 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
                   width: 36,
                   textAlign: "right",
                   paddingRight: 12,
-                  color: isActive ? "#165DFF" : "#999",
+                  color: isActive ? "var(--code-active-border)" : "var(--code-linenum)",
                   userSelect: "none",
                   flexShrink: 0,
                   fontWeight: isActive ? 600 : 400,
@@ -162,7 +162,7 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
               </span>
               <span style={{ whiteSpace: "pre" }}>
                 {tokens.map((token, ti) => (
-                  <span key={ti} style={{ color: token.color || "#000000" }}>
+                  <span key={ti} style={{ color: token.color || "var(--code-text)" }}>
                     {token.text}
                   </span>
                 ))}
@@ -179,8 +179,8 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
             fontSize: 18,
             padding: "8px 12px",
             borderRadius: 6,
-            background: "#FFFFFF",
-            border: "1px solid #E5E6EB",
+            background: "var(--code-background)",
+            border: "1px solid var(--code-border)",
             lineHeight: 1.6,
           }}
         >
@@ -188,16 +188,16 @@ export default function CodeViewer({ sourceCode, activeLine, variables, array }:
             <div>
               {varEntries.map(([key, val], idx) => (
                 <span key={key}>
-                  {idx > 0 && <span style={{ color: "#CCC", margin: "0 8px" }}>|</span>}
-                  <span style={{ color: "#267F99", fontWeight: 500 }}>{key}</span>
-                  <span style={{ color: "#000" }}>=</span>
-                  <span style={{ color: "#098658" }}>{val}</span>
+                  {idx > 0 && <span style={{ color: "var(--code-var-sep)", margin: "0 8px" }}>|</span>}
+                  <span style={{ color: "var(--code-var-name)", fontWeight: 500 }}>{key}</span>
+                  <span style={{ color: "var(--code-var-eq)" }}>=</span>
+                  <span style={{ color: "var(--code-var-val)" }}>{val}</span>
                 </span>
               ))}
             </div>
           )}
           {array && (
-            <div style={{ marginTop: varEntries.length > 0 ? 2 : 0, color: "#808080" }}>
+            <div style={{ marginTop: varEntries.length > 0 ? 2 : 0, color: "var(--code-linenum)" }}>
               arr = [{array.join(", ")}]
             </div>
           )}

@@ -45,7 +45,7 @@ export default function ProblemDetailPage() {
     return saved ? Number(saved) : 4;
   });
   const [editorTheme, setEditorTheme] = useState(() => {
-    return localStorage.getItem("oj_editor_theme") || "vs";
+    return localStorage.getItem("oj_editor_theme") || "auto";
   });
   const [codeCompletion, setCodeCompletion] = useState(() => {
     return localStorage.getItem("oj_editor_codeCompletion") === "true";

@@ -41,9 +41,102 @@
   --border-radius-small: var(--rounded-md);
   --border-radius-medium: var(--rounded-md);
   --border-radius-large: var(--rounded-lg);
+
+  /* CodeViewer Syntax Highlight Theme Variables - Light Mode */
+  --code-background: #ffffff;
+  --code-border: var(--color-hairline);
+  --code-active-bg: #e8f3ff;
+  --code-active-border: #165dff;
+  --code-comment: #008000;
+  --code-string: #a31515;
+  --code-number: #098658;
+  --code-keyword: #0000ff;
+  --code-type: #267f99;
+  --code-function: #795e26;
+  --code-operator: #000000;
+  --code-text: #000000;
+  --code-linenum: #999999;
+  --code-var-name: #267f99;
+  --code-var-eq: #000000;
+  --code-var-val: #098658;
+  --code-var-sep: #cccccc;
   
   --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
+
+body[arco-theme="dark"] {
+  /* Cal.com Design System Tokens - Dark Mode Adaptation */
+  --color-primary: #ffffff;
+  --color-primary-active: #e5e7eb;
+  --color-primary-disabled: #374151;
+  --color-ink: #ffffff;
+  --color-body: #a1a1aa;
+  --color-muted: #71717a;
+  --color-muted-soft: #52525b;
+  --color-hairline: #27272a;
+  --color-hairline-soft: #1a1a1a;
+  --color-canvas: #101010;
+  --color-surface-soft: #1a1a1a;
+  --color-surface-card: #161616;
+  --color-surface-dark: #090909;
+  --color-on-primary: #101010;
+  --color-on-dark: #ffffff;
+  --color-on-dark-soft: #a1a1aa;
+
+  --color-badge-emerald: rgba(16, 185, 129, 0.15);
+  --color-badge-emerald-text: #34d399;
+  --color-badge-orange: rgba(245, 158, 11, 0.15);
+  --color-badge-orange-text: #fbbf24;
+  --color-badge-pink: rgba(239, 68, 68, 0.15);
+  --color-badge-pink-text: #f87171;
+
+  /* Override Arco Design Variables in Dark Mode */
+  --arcoblue-6: var(--color-primary);
+  --arcoblue-5: var(--color-primary-active);
+  --color-bg-1: var(--color-canvas);
+  --color-bg-2: var(--color-canvas);
+  --color-bg-3: var(--color-surface-card);
+  --color-bg-4: var(--color-surface-soft);
+  --color-text-1: var(--color-ink);
+  --color-text-2: var(--color-body);
+  --color-text-3: var(--color-muted);
+  --color-border: var(--color-hairline);
+  --color-border-2: var(--color-hairline);
+  --color-fill-2: var(--color-surface-soft);
+  --color-fill-1: var(--color-surface-dark);
+
+  /* CodeViewer Syntax Highlight Theme Variables - Dark Mode */
+  --code-background: var(--color-surface-card); /* 即 #161616 */
+  --code-border: var(--color-hairline); /* 即 #27272a */
+  --code-active-bg: rgba(22, 93, 255, 0.15);
+  --code-active-border: #3491fa;
+  --code-comment: #6a9955;
+  --code-string: #ce9178;
+  --code-number: #b5cea8;
+  --code-keyword: #569cd6;
+  --code-type: #4ec9b0;
+  --code-function: #dcdcaa;
+  --code-operator: #d4d4d4;
+  --code-text: #d4d4d4;
+  --code-linenum: #71717a;
+  --code-var-name: #9cdcfe;
+  --code-var-eq: #d4d4d4;
+  --code-var-val: #b5cea8;
+  --code-var-sep: #52525b;
+}
+
+/* LOGO 反色处理 */
+body[arco-theme="dark"] .logo-image {
+  filter: invert(1);
+}
+
+/* 首页 Mockup 代码语法高亮深色适配 */
+body[arco-theme="dark"] .home-code-mockup span[style*="color: #AF00DB"] { color: #c586c0 !important; }
+body[arco-theme="dark"] .home-code-mockup span[style*="color: #A31515"] { color: #ce9178 !important; }
+body[arco-theme="dark"] .home-code-mockup span[style*="color: #0000FF"] { color: #569cd6 !important; }
+body[arco-theme="dark"] .home-code-mockup span[style*="color: #795E26"] { color: #dcdcaa !important; }
+body[arco-theme="dark"] .home-code-mockup span[style*="color: #008000"] { color: #6a9955 !important; }
+body[arco-theme="dark"] .home-code-mockup span[style*="color: #001080"] { color: #9cdcfe !important; }
 
 * {
   margin: 0;
@@ -496,4 +589,115 @@ h1, h2, h3, h4, h5, h6,
 }
 .ai-chat-scroll::-webkit-scrollbar {
   display: none;               /* Chrome/Safari */
+}
+
+/* ===== MDEditor (Markdown Editor) Dark Mode Overrides ===== */
+body[arco-theme="dark"] .w-md-editor {
+  background-color: var(--color-surface-card) !important;
+  border: 1px solid var(--color-hairline) !important;
+  box-shadow: none !important;
+  color: var(--color-text-1) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-toolbar {
+  background-color: var(--color-surface-soft) !important;
+  border-bottom: 1px solid var(--color-hairline) !important;
+  color: var(--color-text-2) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-toolbar button {
+  color: var(--color-text-2) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-toolbar button:hover {
+  background-color: var(--color-fill-1) !important;
+  color: var(--color-text-1) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-content {
+  background-color: var(--color-surface-card) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-area {
+  background-color: var(--color-surface-card) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-text-input {
+  color: var(--color-text-1) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-preview {
+  background-color: var(--color-surface-card) !important;
+  border-left: 1px solid var(--color-hairline) !important;
+  box-shadow: none !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-bar {
+  background-color: var(--color-surface-soft) !important;
+  border-top: 1px solid var(--color-hairline) !important;
+  border-bottom: 1px solid var(--color-hairline) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-bar svg {
+  color: var(--color-text-3) !important;
+}
+
+body[arco-theme="dark"] .w-md-editor-preview hr {
+  background-color: var(--color-hairline) !important;
+}
+
+/* MDEditor Markdown Preview Theme Sync */
+body[arco-theme="dark"] .wmde-markdown {
+  background-color: transparent !important;
+  color: var(--color-text-1) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown h1,
+body[arco-theme="dark"] .wmde-markdown h2,
+body[arco-theme="dark"] .wmde-markdown h3,
+body[arco-theme="dark"] .wmde-markdown h4,
+body[arco-theme="dark"] .wmde-markdown h5,
+body[arco-theme="dark"] .wmde-markdown h6 {
+  color: var(--color-text-1) !important;
+  border-bottom-color: var(--color-hairline) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown p,
+body[arco-theme="dark"] .wmde-markdown li,
+body[arco-theme="dark"] .wmde-markdown ul,
+body[arco-theme="dark"] .wmde-markdown ol {
+  color: var(--color-text-2) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown code {
+  color: #ce9178 !important;
+  background-color: var(--color-surface-soft) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown pre {
+  background-color: var(--color-surface-soft) !important;
+  border: 1px solid var(--color-hairline) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown pre code {
+  color: var(--color-text-1) !important;
+  background-color: transparent !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown blockquote {
+  color: var(--color-text-3) !important;
+  border-left-color: var(--color-hairline) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown table {
+  color: var(--color-text-2) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown th {
+  background-color: var(--color-surface-soft) !important;
+  border-color: var(--color-hairline) !important;
+}
+
+body[arco-theme="dark"] .wmde-markdown td {
+  border-color: var(--color-hairline) !important;
 }
