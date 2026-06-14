@@ -248,7 +248,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', height: '100%', width: '100%',
+      display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%',
     }}>
       {/* 顶栏 */}
       <div style={{

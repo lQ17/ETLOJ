@@ -52,7 +52,7 @@ export default function ProblemDetailPage() {
   const [codeCompletion, setCodeCompletion] = useState(() => {
     return localStorage.getItem("oj_editor_codeCompletion") === "true";
   });
-  const [codeCollapsed, setCodeCollapsed] = useState(false);
+  const [codeCollapsed, setCodeCollapsed] = useState(() => window.innerWidth < 1024);
 
   // 二级导航
   const [activeTab, setActiveTab] = useState<"detail" | "solutions" | "ai">(() => {
@@ -260,9 +260,9 @@ export default function ProblemDetailPage() {
   ];
 
   return (
-    <div style={{ display: "flex", gap: 0, height: "calc(100vh - 140px)", fontSize: 16 }}>
+    <div className="problem-detail-layout" data-tab={activeTab} style={{ display: "flex", gap: 0, height: "calc(100vh - 140px)", fontSize: 16 }}>
       {/* 最左侧：二级导航 */}
-      <div style={{
+      <div className="problem-detail-nav" style={{
         width: 120,
         flexShrink: 0,
         display: "flex",
@@ -288,7 +288,7 @@ export default function ProblemDetailPage() {
             {item.label}
           </Button>
         ))}
-        <div style={{ flex: 1 }} />
+        <div className="problem-detail-nav-spacer" style={{ flex: 1 }} />
         <Button
           type="text"
           size="small"
@@ -307,12 +307,12 @@ export default function ProblemDetailPage() {
       </div>
 
       {/* 内容区 */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", marginLeft: 16 }}>
+      <div className="problem-detail-content" style={{ flex: 1, display: "flex", overflow: "hidden", marginLeft: 16 }}>
         {/* 题目详情与问问AI（左右分栏共用代码编辑器） */}
         {(activeTab === "detail" || activeTab === "ai") && (
-          <div style={{ display: "flex", gap: 24, width: "100%" }}>
+          <div className="problem-split-view" data-tab={activeTab} style={{ display: "flex", gap: 24, width: "100%" }}>
             {/* 左侧：动态内容（题面 或 AI） */}
-            <div style={{
+            <div className="problem-split-left" style={{
               flex: codeCollapsed ? 1 : "0 0 50%",
               display: "flex",
               flexDirection: "column",
@@ -330,7 +330,12 @@ export default function ProblemDetailPage() {
                   markdown={markdown}
                   problem={problem}
                   codeCollapsed={codeCollapsed}
-                  onExpandIDE={() => setCodeCollapsed(false)}
+                  onExpandIDE={() => {
+                    setCodeCollapsed(false);
+                    setTimeout(() => {
+                      document.getElementById("code-editor-panel")?.scrollIntoView({ behavior: "smooth" });
+                    }, 150);
+                  }}
                   onTestSample={handleTestSample}
                 />
               </div>
@@ -339,6 +344,7 @@ export default function ProblemDetailPage() {
               <div style={{
                 display: activeTab === "ai" ? "flex" : "none",
                 flex: 1,
+                minHeight: 0,
                 flexDirection: "column",
                 overflow: "hidden",
               }}>

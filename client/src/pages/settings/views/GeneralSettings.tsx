@@ -3,6 +3,7 @@ import { Typography, Form, Input, Button, Message, Avatar, Upload, Divider, Grid
 import { IconCamera, IconUser } from "@arco-design/web-react/icon";
 import { useAuthStore } from "../../../stores/auth";
 import { userApi } from "../../../api/user";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
 const { Title, Paragraph } = Typography;
 const { Row, Col } = Grid;
@@ -10,6 +11,7 @@ const { Row, Col } = Grid;
 export default function GeneralSettings() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const { isMobile } = useMediaQuery();
   
   const user = useAuthStore((s) => s.user);
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
@@ -65,8 +67,8 @@ export default function GeneralSettings() {
       
       <div style={{ marginTop: 24 }}>
         <Form form={form} layout="vertical" onSubmit={handleSubmit} size="large">
-          <Row gutter={48}>
-            <Col span={16}>
+          <Row gutter={isMobile ? 0 : 48}>
+            <Col span={isMobile ? 24 : 16} style={{ order: isMobile ? 2 : 1 }}>
               <Form.Item label="用户名 (Username)" field="username">
                 <Input disabled placeholder="用户名不可修改" />
               </Form.Item>
@@ -90,7 +92,7 @@ export default function GeneralSettings() {
               </Form.Item>
             </Col>
 
-            <Col span={8}>
+            <Col span={isMobile ? 24 : 8} style={{ order: isMobile ? 1 : 2, marginBottom: isMobile ? 24 : 0 }}>
               <Form.Item label="头像 (Avatar)">
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <Upload

@@ -10,6 +10,7 @@ import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
 import DifficultyTag from "../../components/DifficultyTag";
 import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../constants/difficulty";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 export default function ProblemListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,6 +34,8 @@ export default function ProblemListPage() {
   const [tagSearchKeyword, setTagSearchKeyword] = useState("");
   const [tempSelectedTags, setTempSelectedTags] = useState<string[]>([]);
   const [tempTagMode, setTempTagMode] = useState<"AND" | "OR">("AND");
+  
+  const { isMobile, isTablet } = useMediaQuery();
 
   // 加载标签列表
   useEffect(() => {
@@ -146,11 +149,11 @@ export default function ProblemListPage() {
       width: 100,
       render: (d: string) => <DifficultyTag difficulty={d} />,
     },
-    {
+    ...(!isMobile ? [{
       title: "分数", dataIndex: "score", width: 70,
       render: (v: number) => <span style={{ fontWeight: 600 }}>{v ?? 0}</span>,
-    },
-    {
+    }] : []),
+    ...(!isTablet ? [{
       title: "通过率",
       width: 100,
       render: (_: any, record: any) => {
@@ -158,20 +161,20 @@ export default function ProblemListPage() {
         const ac = record.acceptedCount || 0;
         return total > 0 ? `${Math.round((ac / total) * 100)}%` : "-";
       },
-    },
-    {
+    }] : []),
+    ...(!isMobile ? [{
       title: "提交数",
       dataIndex: "totalSubmissions",
       width: 80,
-    },
-    {
+    }] : []),
+    ...(!isTablet ? [{
       title: "标签",
       dataIndex: "tags",
       render: (tags: string[]) =>
         Array.isArray(tags)
-          ? tags.map((t) => <Tag key={t} style={{ marginRight: 4 }}>{t}</Tag>)
+          ? tags.map((t: string) => <Tag key={t} style={{ marginRight: 4 }}>{t}</Tag>)
           : null,
-    },
+    }] : []),
   ];
 
   return (

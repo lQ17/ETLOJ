@@ -42,7 +42,6 @@ function App() {
   const location = useLocation();
   const isDetailPage = /^\/problems\/[^/]+/.test(location.pathname);
   const isVisualizationPage = location.pathname === "/visualization";
-  const contentMaxWidth = isDetailPage ? "100%" : isVisualizationPage ? "90%" : 1200;
 
   useEffect(() => {
     initFromStorage();
@@ -61,13 +60,13 @@ function App() {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
     const handleSystemThemeChange = (e: MediaQueryListEvent | MediaQueryList) => {
-      const followSystem = localStorage.getItem("theme_follow_system") === "true";
+      const followSystem = localStorage.getItem("theme_follow_system") !== "false";
       if (followSystem) {
         applyTheme(e.matches ? "dark" : "light");
       }
     };
 
-    const followSystem = localStorage.getItem("theme_follow_system") === "true";
+    const followSystem = localStorage.getItem("theme_follow_system") !== "false";
     if (followSystem) {
       applyTheme(mediaQuery.matches ? "dark" : "light");
     } else {
@@ -103,11 +102,10 @@ function App() {
       <ScrollToTop />
       <AppHeader />
       <Content
+        className={`page-main-content ${isDetailPage ? "is-detail-page" : ""}`}
         style={{
-          maxWidth: contentMaxWidth,
-          margin: "0 auto",
+          maxWidth: isVisualizationPage ? "90%" : (isDetailPage ? "100%" : 1200),
           padding: isDetailPage ? "24px 32px" : "96px 32px",
-          width: "100%",
         }}
       >
         <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin /></div>}>

@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const statusLabel: Record<string, string> = {
   PENDING: "等待中",
@@ -44,6 +45,7 @@ export default function RecordsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const authLoading = useAuthStore((s) => s.loading);
+  const { isMobile, isTablet } = useMediaQuery();
 
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -184,26 +186,26 @@ export default function RecordsPage() {
         </Link>
       ),
     },
-    {
+    ...(!isTablet ? [{
       title: "评测时间", dataIndex: "createdAt", width: 170,
       render: (v: string) => new Date(v).toLocaleString("zh-CN"),
-    },
-    {
+    }] : []),
+    ...(!isTablet ? [{
       title: "运行时间", dataIndex: "timeUsed", width: 90,
       render: (v: number | null) => v != null ? `${v}ms` : "-",
-    },
-    {
+    }] : []),
+    ...(!isMobile ? [{
       title: "内存", dataIndex: "memoryUsed", width: 100,
       render: (v: number | null) => formatMemory(v),
-    },
-    {
+    }] : []),
+    ...(!isTablet ? [{
       title: "代码大小", dataIndex: "codeSize", width: 90,
       render: (v: number | null) => formatCodeSize(v),
-    },
-    {
+    }] : []),
+    ...(!isMobile ? [{
       title: "语言", dataIndex: "language", width: 80,
       render: (v: string) => <Tag size="small">{langLabel[v] || v}</Tag>,
-    },
+    }] : []),
     {
       title: "操作", width: 160, fixed: "right" as const,
       render: (_: any, record: any) => (

@@ -5,7 +5,7 @@ const { Title, Paragraph, Text } = Typography;
 
 export default function ThemeSettings() {
   const [followSystem, setFollowSystem] = useState(() => {
-    return localStorage.getItem("theme_follow_system") === "true";
+    return localStorage.getItem("theme_follow_system") !== "false";
   });
 
   const [currentRealTheme, setCurrentRealTheme] = useState(() => {

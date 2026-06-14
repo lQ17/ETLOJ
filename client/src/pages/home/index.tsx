@@ -95,7 +95,7 @@ export default function HomePage() {
 
   return (
     <div style={{ padding: "96px 0" }}>
-      <div style={{
+      <div className="home-hero-grid" style={{
         display: "grid",
         gridTemplateColumns: "1.2fr 0.8fr",
         gap: "48px",
@@ -158,7 +158,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div style={{
+      <div className="home-stats-grid" style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "32px",
@@ -177,7 +177,7 @@ export default function HomePage() {
           <Paragraph style={{ color: "var(--color-muted)", fontSize: 14, marginBottom: 32 }}>
             记录每一次进步
           </Paragraph>
-          <div ref={statsRef} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", textAlign: "center" }}>
+          <div ref={statsRef} className="home-stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", textAlign: "center" }}>
             {[
               { label: "题目总数", value: displayProblems },
               { label: "提交总数", value: displaySubmissions },
@@ -264,7 +264,7 @@ export default function HomePage() {
         border: "1px solid var(--color-hairline)",
         marginBottom: 96
       }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center" }}>
+        <div className="home-ai-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center" }}>
           {[
             { label: "今日 Tokens 数", value: displayTodayTokens },
             { label: "今日请求数", value: displayTodayCalls },

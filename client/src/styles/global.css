@@ -201,6 +201,7 @@ h1, h2, h3, h4, h5, h6,
 .arco-table-container {
   border-radius: var(--rounded-lg);
   border: 1px solid var(--color-hairline);
+  overflow-x: auto;
 }
 .arco-table-th {
   background-color: var(--color-surface-soft) !important;
@@ -700,4 +701,239 @@ body[arco-theme="dark"] .wmde-markdown th {
 
 body[arco-theme="dark"] .wmde-markdown td {
   border-color: var(--color-hairline) !important;
+}
+
+/* ===== Responsive Utilities ===== */
+
+@media (max-width: 1023px) {
+  .hide-on-tablet {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+/* Page Layout Content Constraints */
+.page-main-content {
+  margin: 0 auto;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+@media (min-width: 1441px) {
+  .page-main-content:not(.is-detail-page) {
+    max-width: 1440px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-main-content {
+    padding: 24px 16px !important;
+  }
+  .page-main-content.is-detail-page {
+    padding: 16px 8px !important;
+  }
+}
+
+/* Problem Detail Responsive Overrides */
+@media (max-width: 1023px) {
+  .problem-detail-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+  
+  .problem-detail-nav {
+    width: 100% !important;
+    flex-direction: row !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    padding: 8px !important;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  
+  .problem-detail-nav::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+  }
+  
+  .problem-detail-nav .arco-btn {
+    height: 32px !important;
+    padding: 0 12px !important;
+    white-space: nowrap;
+    justify-content: center !important;
+  }
+
+  .problem-detail-nav-spacer {
+    display: none !important;
+  }
+  
+  .problem-detail-content {
+    margin-left: 0 !important;
+    padding-top: 12px;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+  
+  .problem-split-view {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  /* === AI 聊天全屏布局 (移动端) === */
+  /* 1. 从 Content 层开始锁定高度、去掉 padding、禁止滚动 */
+  .page-main-content:has(.problem-detail-layout[data-tab="ai"]) {
+    padding: 0 !important;
+    height: calc(100dvh - 64px) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  /* 2. page-transition-wrapper 也撑满 */
+  .page-main-content:has(.problem-detail-layout[data-tab="ai"]) .page-transition-wrapper {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  /* 3. 最外层 layout 撑满 */
+  .problem-detail-layout[data-tab="ai"] {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  /* 4. 内容区撑满 */
+  .problem-detail-layout[data-tab="ai"] .problem-detail-content {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+  }
+  /* 5. split-view 撑满 */
+  .problem-detail-layout[data-tab="ai"] .problem-split-view {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  /* 6. split-left（ChatPanel 容器）撑满 */
+  .problem-detail-layout[data-tab="ai"] .problem-split-left {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .problem-split-view[data-tab="ai"] .problem-split-right {
+    display: none !important;
+  }
+  
+  .problem-split-left {
+    flex: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+
+  .problem-split-right {
+    height: 800px !important;
+    flex: none !important;
+    overflow: visible !important;
+  }
+  .problem-split-right.is-collapsed {
+    height: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .solution-split-view {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .solution-list-panel {
+    flex: none !important;
+    height: 40vh !important;
+    padding-right: 0 !important;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 16px;
+  }
+  .solution-detail-panel {
+    flex: none !important;
+    border-left: none !important;
+    padding-left: 0 !important;
+    height: 50vh !important;
+  }
+}
+
+/* ===== 移动端 Bug 修复补充 ===== */
+
+/* 根治横向滚动溢出白边 */
+html, body, #root {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Header 导航 */
+@media (max-width: 1023px) {
+  .desktop-nav {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .mobile-nav-btn {
+    display: none !important;
+  }
+}
+
+/* 首页响应式网格覆盖 */
+@media (max-width: 1023px) {
+  .home-hero-grid,
+  .home-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 767px) {
+  .home-ai-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px 16px !important;
+  }
+  .home-stats-row {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .home-hero-grid {
+    gap: 32px !important;
+    margin-bottom: 64px !important;
+  }
+  .home-stats-grid {
+    gap: 24px !important;
+    margin-bottom: 64px !important;
+  }
+  /* 让 Mockup 代码块字体变小，防止超宽 */
+  .home-code-mockup {
+    font-size: 12px !important;
+    padding: 12px !important;
+  }
 }

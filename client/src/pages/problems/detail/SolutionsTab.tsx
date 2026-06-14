@@ -112,9 +112,9 @@ export default function SolutionsTab({
 
   return (
     <>
-      <div style={{ display: "flex", gap: 24, width: "100%", overflow: "hidden" }}>
+      <div className="solution-split-view" style={{ display: "flex", gap: 24, width: "100%", overflow: "hidden" }}>
         {/* 左侧：题解列表 */}
-        <div style={{ flex: "0 0 35%", overflow: "auto", paddingRight: 8 }}>
+        <div className="solution-list-panel" style={{ flex: "0 0 35%", overflow: "auto", paddingRight: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <Typography.Title heading={5} style={{ margin: 0 }}>
               题解列表
@@ -187,7 +187,7 @@ export default function SolutionsTab({
         </div>
 
         {/* 右侧：题解详情展示 */}
-        <div style={{ flex: 1, overflow: "auto", minWidth: 0, borderLeft: "1px solid var(--color-border)", paddingLeft: 24 }}>
+        <div className="solution-detail-panel" style={{ flex: 1, overflow: "auto", minWidth: 0, borderLeft: "1px solid var(--color-border)", paddingLeft: 24 }}>
           {selectedSolution ? (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-border)" }}>

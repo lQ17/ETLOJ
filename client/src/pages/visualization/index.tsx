@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Radio, Input, Button, Space, Typography, Card, Message } from "@arco-design/web-react";
-import { IconLoop } from "@arco-design/web-react/icon";
+import { IconLoop, IconHome } from "@arco-design/web-react/icon";
+import { useNavigate } from "react-router-dom";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import BarChart from "../../components/visual-engine/BarChart";
 import GridChart from "../../components/visual-engine/GridChart";
 import PlaybackController from "../../components/visual-engine/PlaybackController";
@@ -91,6 +93,9 @@ function InteractiveOpControl({ op, algoState, onExecute }: { op: InteractiveOp;
 }
 
 export default function VisualizationPage() {
+  const { isTablet } = useMediaQuery();
+  const navigate = useNavigate();
+
   const allAlgos = getAllAlgorithms();
   const categories = [...new Set(allAlgos.map((a) => a.category))] as AlgorithmCategory[];
 
@@ -273,6 +278,107 @@ export default function VisualizationPage() {
   }, []);
 
   const currentVisual = steps[currentStep];
+
+  if (isTablet) {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "calc(100vh - 200px)",
+        padding: "40px 24px",
+        textAlign: "center",
+      }}>
+        {/* 精美科技感插图 */}
+        <div style={{ position: "relative", marginBottom: 32 }}>
+          {/* 背景光晕 */}
+          <div style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 180,
+            height: 180,
+            background: "radial-gradient(circle, rgba(78, 89, 255, 0.2) 0%, rgba(78, 89, 255, 0) 70%)",
+            borderRadius: "50%",
+            filter: "blur(20px)",
+            pointerEvents: "none",
+            animation: "pulse 3s infinite ease-in-out"
+          }} />
+          
+          <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="screen-grad" x1="10" y1="10" x2="110" y2="90" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#4E59FF" />
+                <stop offset="100%" stopColor="#00D2FF" />
+              </linearGradient>
+              <filter id="shadow" x="0" y="0" width="120" height="120" filterUnits="userSpaceOnUse">
+                <feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#4E59FF" floodOpacity="0.15" />
+              </filter>
+            </defs>
+            {/* Monitor outline */}
+            <rect x="15" y="15" width="90" height="60" rx="6" stroke="url(#screen-grad)" strokeWidth="3" filter="url(#shadow)" />
+            {/* Screen inner details - code lines representation */}
+            <path d="M25 28 H75 M25 38 H60 M25 48 H85 M25 58 H45" stroke="var(--color-text-4)" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+            <circle cx="85" cy="58" r="4" fill="#00D2FF" />
+            <circle cx="73" cy="38" r="3" fill="#4E59FF" />
+            {/* Stand */}
+            <path d="M50 75 L45 95 H75 L70 75 Z" fill="url(#screen-grad)" opacity="0.8" />
+            <path d="M35 95 H85" stroke="url(#screen-grad)" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+        </div>
+
+        <Typography.Title heading={4} style={{
+          margin: "0 0 12px",
+          background: "linear-gradient(90deg, #4E59FF 0%, #00D2FF 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          fontWeight: 700,
+          letterSpacing: "0.5px"
+        }}>
+          算法可视化引擎
+        </Typography.Title>
+        
+        <Typography.Paragraph style={{
+          maxWidth: 400,
+          margin: "0 0 32px",
+          fontSize: 14,
+          color: "var(--color-text-2)",
+          lineHeight: "1.6",
+        }}>
+          为保障最佳的视觉呈现与完整的交互操作体验，请使用电脑端设备（屏幕宽度 ≥ 1024px）访问此页面。
+        </Typography.Paragraph>
+
+        <Button 
+          type="primary" 
+          icon={<IconHome />} 
+          size="large"
+          onClick={() => navigate("/")}
+          style={{
+            borderRadius: 24,
+            padding: "0 28px",
+            background: "linear-gradient(90deg, #4E59FF 0%, #00C6FF 100%)",
+            border: "none",
+            boxShadow: "0 8px 16px rgba(78, 89, 255, 0.25)",
+            cursor: "pointer",
+            fontWeight: 500
+          }}
+        >
+          返回首页
+        </Button>
+
+        {/* CSS Keyframes for animation */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.5; }
+          }
+        `}} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

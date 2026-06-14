@@ -125,7 +125,7 @@ export default function CodeEditorPanel({
   }, [tcExpanded, tcData, result]);
 
   return (
-    <div style={{
+    <div id="code-editor-panel" className={`problem-split-right ${codeCollapsed ? 'is-collapsed' : ''}`} style={{
       flex: codeCollapsed ? "0 0 0px" : 1,
       display: "flex",
       flexDirection: "column",

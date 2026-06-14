@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Layout, Menu, Space, Button, Tag, Dropdown } from "@arco-design/web-react";
-import { IconUser, IconSun, IconMoon } from "@arco-design/web-react/icon";
+import { Layout, Menu, Space, Button, Tag, Dropdown, Drawer } from "@arco-design/web-react";
+import { IconUser, IconSun, IconMoon, IconMenu } from "@arco-design/web-react/icon";
 import logoWithText from "../assets/images/logo-with-text.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../stores/auth";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const { Header } = Layout;
 
@@ -29,10 +30,13 @@ export default function AppHeader() {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const { isMobile } = useMediaQuery();
 
   const [theme, setTheme] = useState(() => {
     return document.body.getAttribute("arco-theme") === "dark" ? "dark" : "light";
   });
+
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   useEffect(() => {
     const syncThemeState = () => {
@@ -117,7 +121,7 @@ export default function AppHeader() {
       >
         <img src={logoWithText} alt="ETLOJ" className="logo-image" style={{ height: 32, objectFit: "contain" }} />
       </a>
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", height: "100%" }}>
+      <div className="desktop-nav" style={{ flex: 1, display: "flex", justifyContent: "center", height: "100%" }}>
         <div ref={navContainerRef} style={{ position: "relative", display: "flex", height: "100%", gap: 40 }}>
           {menuItems.map((item, index) => {
             const isActive = item.key === selectedKey;
@@ -173,6 +177,11 @@ export default function AppHeader() {
         />
         {user ? (
           <Dropdown
+            trigger={isMobile ? 'click' : 'hover'}
+            triggerProps={{
+              mouseEnterDelay: 0,
+              mouseLeaveDelay: 150
+            }}
             droplist={
               <Menu>
                 <Menu.Item key="profile">
@@ -225,7 +234,39 @@ export default function AppHeader() {
             登录
           </Button>
         )}
+        <Button
+          type="text"
+          shape="circle"
+          onClick={() => setDrawerVisible(true)}
+          className="mobile-nav-btn"
+          icon={<IconMenu style={{ fontSize: 18, color: "var(--color-ink)" }} />}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+        />
       </Space>
+
+      <Drawer
+        width={250}
+        title={<span style={{ fontWeight: 600 }}>导航</span>}
+        visible={drawerVisible}
+        placement="right"
+        onCancel={() => setDrawerVisible(false)}
+        footer={null}
+      >
+        <Menu
+          selectedKeys={[selectedKey]}
+          onClickMenuItem={(key) => {
+            navigate(key);
+            setDrawerVisible(false);
+          }}
+          style={{ width: '100%' }}
+        >
+          {menuItems.map((item) => (
+            <Menu.Item key={item.key}>
+              {item.label}
+            </Menu.Item>
+          ))}
+        </Menu>
+      </Drawer>
     </Header>
   );
 }
