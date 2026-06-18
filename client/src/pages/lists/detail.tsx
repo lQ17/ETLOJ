@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { Table, Tag, Breadcrumb, Message, Typography, Space } from "@arco-design/web-react";
+import { Table, Tag, Breadcrumb, Message, Typography, Space, Popconfirm, Button } from "@arco-design/web-react";
 import { useParams, Link } from "react-router-dom";
+import { IconPlus } from "@arco-design/web-react/icon";
 import { problemListApi } from "../../api/problem-list";
 import { submissionApi } from "../../api/submission";
 import { useAuthStore } from "../../stores/auth";
 import DifficultyTag from "../../components/DifficultyTag";
+import AddProblemsModal from "../../components/AddProblemsModal";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -15,6 +17,7 @@ export default function ProblemListDetailPage() {
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [statusMap, setStatusMap] = useState<Record<number, string>>({});
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const fetchDetail = async () => {
     if (!id) return;
@@ -33,6 +36,32 @@ export default function ProblemListDetailPage() {
       Message.error("加载题单详情失败");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const canModify = user && detail && (
+    detail.isPublic
+      ? (user.role === "ADMIN" || user.role === "TEACHER")
+      : (detail.creatorId === user.id || user.role === "ADMIN" || user.role === "TEACHER")
+  );
+
+  const handleAddProblems = async (slugs: string[]) => {
+    const res: any = await problemListApi.addItems(+id!, slugs);
+    fetchDetail();
+    if (res.errors?.length > 0) {
+      Message.warning(`以下题号不存在：${res.errors.join("、")}`);
+    } else {
+      Message.success(`成功添加 ${res.added?.length ?? slugs.length} 道题目`);
+    }
+  };
+
+  const handleRemove = async (problemId: number) => {
+    try {
+      await problemListApi.removeItem(+id!, problemId);
+      Message.success("移除成功");
+      fetchDetail();
+    } catch {
+      Message.error("移除失败");
     }
   };
 
@@ -95,6 +124,25 @@ export default function ProblemListDetailPage() {
       width: 70,
       render: (_: any, record: any) => record.problem?.score ?? "-",
     },
+    ...(canModify
+      ? [
+          {
+            title: "操作",
+            width: 80,
+            align: "center" as const,
+            render: (_: any, record: any) => (
+              <Popconfirm
+                title="确认从题单中移除该题目？"
+                onOk={() => handleRemove(record.problem?.id)}
+              >
+                <Button type="text" status="danger" size="small">
+                  移除
+                </Button>
+              </Popconfirm>
+            ),
+          },
+        ]
+      : []),
   ];
 
   if (loading) {
@@ -105,6 +153,10 @@ export default function ProblemListDetailPage() {
     return <div style={{ textAlign: "center", padding: 80 }}>题单不存在</div>;
   }
 
+  const existingSlugs = (detail.items || [])
+    .map((item: any) => item.problem?.slug)
+    .filter(Boolean);
+
   return (
     <div>
       <Breadcrumb style={{ marginBottom: 16 }}>
@@ -114,25 +166,36 @@ export default function ProblemListDetailPage() {
         <Breadcrumb.Item>{detail.title}</Breadcrumb.Item>
       </Breadcrumb>
 
-      <div style={{ marginBottom: 24 }}>
-        <Title heading={4} style={{ marginBottom: 8 }}>{detail.title}</Title>
-        <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          {detail.description || "暂无简介"}
-        </Paragraph>
-        <Space>
-          <Text type="secondary">创建者: {detail.creator?.username}</Text>
-          <Tag color="blue">{detail.items?.length ?? 0} 题</Tag>
-          {user && detail.items?.length > 0 && (() => {
-            const acCount = detail.items.filter((item: any) => statusMap[item.problem?.id] === "AC").length;
-            const total = detail.items.length;
-            const pct = Math.round((acCount / total) * 100);
-            return (
-              <Tag color={acCount === total && total > 0 ? "green" : acCount > 0 ? "orange" : "gray"}>
-                {acCount}/{total} 已通过{pct === 100 ? " ✓" : ` (${pct}%)`}
-              </Tag>
-            );
-          })()}
-        </Space>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <div>
+          <Title heading={4} style={{ marginBottom: 8 }}>{detail.title}</Title>
+          <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+            {detail.description || "暂无简介"}
+          </Paragraph>
+          <Space>
+            <Text type="secondary">创建者: {detail.creator?.username}</Text>
+            <Tag color="blue">{detail.items?.length ?? 0} 题</Tag>
+            {user && detail.items?.length > 0 && (() => {
+              const acCount = detail.items.filter((item: any) => statusMap[item.problem?.id] === "AC").length;
+              const total = detail.items.length;
+              const pct = Math.round((acCount / total) * 100);
+              return (
+                <Tag color={acCount === total && total > 0 ? "green" : acCount > 0 ? "orange" : "gray"}>
+                  {acCount}/{total} 已通过{pct === 100 ? " ✓" : ` (${pct}%)`}
+                </Tag>
+              );
+            })()}
+          </Space>
+        </div>
+        {canModify && (
+          <Button
+            type="primary"
+            icon={<IconPlus />}
+            onClick={() => setAddModalVisible(true)}
+          >
+            添加题目
+          </Button>
+        )}
       </div>
 
       <Table
@@ -141,6 +204,13 @@ export default function ProblemListDetailPage() {
         rowKey={(record: any) => record.id}
         pagination={false}
         border={false}
+      />
+
+      <AddProblemsModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        onAdd={handleAddProblems}
+        existingSlugs={existingSlugs}
       />
     </div>
   );

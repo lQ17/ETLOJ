@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Typography, Button, Spin, Message } from "@arco-design/web-react";
+import { useParams, useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
+import { Typography, Button, Spin, Message, Modal, Checkbox } from "@arco-design/web-react";
 import {
-  IconFile, IconEdit, IconRobot, IconLeft,
+  IconFile, IconEdit, IconRobot, IconLeft, IconStar,
 } from "@arco-design/web-react/icon";
+import { problemListApi } from "../../../api/problem-list";
 import { problemApi } from "../../../api/problem";
 import { submissionApi } from "../../../api/submission";
 import { useAuthStore } from "../../../stores/auth";
@@ -36,6 +37,64 @@ export default function ProblemDetailPage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const submitTimesRef = useRef<number[]>([]);
   const codeLoadedRef = useRef(false);
+
+  // 个人题单相关
+  const [listModalVisible, setListModalVisible] = useState(false);
+  const [myLists, setMyLists] = useState<any[]>([]);
+  const [selectedListIds, setSelectedListIds] = useState<number[]>([]);
+  const [loadingLists, setLoadingLists] = useState(false);
+  const [addingToList, setAddingToList] = useState(false);
+
+  const handleOpenListModal = async () => {
+    if (!user) {
+      Message.warning("请先登录");
+      navigate("/login");
+      return;
+    }
+    setListModalVisible(true);
+    setLoadingLists(true);
+    try {
+      const res: any = await problemListApi.getMyLists({ page: 1, pageSize: 100 });
+      setMyLists(res.items || []);
+    } catch {
+      Message.error("获取题单列表失败");
+    } finally {
+      setLoadingLists(false);
+    }
+  };
+
+  const handleConfirmAddToLists = async () => {
+    if (selectedListIds.length === 0) {
+      Message.warning("请至少选择一个题单");
+      return;
+    }
+    setAddingToList(true);
+    try {
+      let successCount = 0;
+      let failCount = 0;
+      for (const listId of selectedListIds) {
+        try {
+          await problemListApi.addItems(listId, [problem.slug]);
+          successCount++;
+        } catch {
+          failCount++;
+        }
+      }
+      if (failCount === 0) {
+        Message.success(`成功加入 ${successCount} 个题单`);
+      } else if (successCount > 0) {
+        Message.warning(`成功加入 ${successCount} 个题单，失败 ${failCount} 个`);
+      } else {
+        Message.error("加入题单失败");
+      }
+      setListModalVisible(false);
+      setSelectedListIds([]);
+    } catch {
+      Message.error("操作失败");
+    } finally {
+      setAddingToList(false);
+    }
+  };
 
   const [editorFontSize, setEditorFontSize] = useState(() => {
     const saved = localStorage.getItem("oj_editor_fontSize");
@@ -289,6 +348,23 @@ export default function ProblemDetailPage() {
           </Button>
         ))}
         <div className="problem-detail-nav-spacer" style={{ flex: 1 }} />
+        {user && (
+          <Button
+            type="text"
+            size="small"
+            icon={<IconStar />}
+            onClick={handleOpenListModal}
+            style={{
+              justifyContent: "flex-start",
+              paddingLeft: 12,
+              height: 36,
+              borderRadius: 8,
+              color: "var(--color-text-3)",
+            }}
+          >
+            加入题单
+          </Button>
+        )}
         <Button
           type="text"
           size="small"
@@ -421,6 +497,36 @@ export default function ProblemDetailPage() {
           />
         )}
       </div>
+
+      <Modal
+        title="加入个人题单"
+        visible={listModalVisible}
+        onCancel={() => { setListModalVisible(false); setSelectedListIds([]); }}
+        onOk={handleConfirmAddToLists}
+        confirmLoading={addingToList}
+        unmountOnExit
+      >
+        {loadingLists ? (
+          <div style={{ textAlign: "center", padding: 20 }}><Spin /></div>
+        ) : myLists.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 20, color: "var(--color-text-3)" }}>
+            暂无个人题单，可前往 <Link to="/lists" style={{ color: "#3b82f6" }}>题单页面</Link> 新建。
+          </div>
+        ) : (
+          <Checkbox.Group
+            value={selectedListIds}
+            onChange={(val: any[]) => setSelectedListIds(val)}
+            direction="vertical"
+            style={{ width: "100%" }}
+          >
+            {myLists.map((item) => (
+              <Checkbox key={item.id} value={item.id} style={{ margin: "8px 0" }}>
+                {item.title}
+              </Checkbox>
+            ))}
+          </Checkbox.Group>
+        )}
+      </Modal>
     </div>
   );
 }

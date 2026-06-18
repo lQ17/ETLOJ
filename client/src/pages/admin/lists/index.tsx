@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Table, Card, Button, Input, Space, Popconfirm, Message, Tag, Modal,
+  Table, Card, Button, Input, Space, Popconfirm, Message, Tag,
   Form, Typography,
 } from "@arco-design/web-react";
 import { IconPlus, IconDragArrow } from "@arco-design/web-react/icon";
@@ -14,6 +14,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { problemListApi } from "../../../api/problem-list";
 import DifficultyTag from "../../../components/DifficultyTag";
+import AddProblemsModal from "../../../components/AddProblemsModal";
 
 const { Text } = Typography;
 const FormItem = Form.Item;
@@ -253,8 +254,6 @@ function ManageItems({ listId }: { listId: number }) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
-  const [problemIdsInput, setProblemIdsInput] = useState("");
-  const [adding, setAdding] = useState(false);
   const [orderChanged, setOrderChanged] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -278,30 +277,13 @@ function ManageItems({ listId }: { listId: number }) {
 
   useEffect(() => { fetchDetail(); }, [listId]);
 
-  const handleAdd = async () => {
-    const slugs = problemIdsInput
-      .split(/[,，\s\n]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (slugs.length === 0) {
-      Message.warning("请输入题号");
-      return;
-    }
-    setAdding(true);
-    try {
-      const res: any = await problemListApi.addItems(listId, slugs);
-      setAddModalVisible(false);
-      setProblemIdsInput("");
-      fetchDetail();
-      if (res.errors?.length > 0) {
-        Message.warning(`以下题号不存在：${res.errors.join("、")}`);
-      } else {
-        Message.success(`成功添加 ${res.added?.length ?? slugs.length} 道题目`);
-      }
-    } catch {
-      Message.error("添加题目失败");
-    } finally {
-      setAdding(false);
+  const handleAddProblems = async (slugs: string[]) => {
+    const res: any = await problemListApi.addItems(listId, slugs);
+    fetchDetail();
+    if (res.errors?.length > 0) {
+      Message.warning(`以下题号不存在：${res.errors.join("、")}`);
+    } else {
+      Message.success(`成功添加 ${res.added?.length ?? slugs.length} 道题目`);
     }
   };
 
@@ -389,24 +371,12 @@ function ManageItems({ listId }: { listId: number }) {
         </DndContext>
       )}
 
-      <Modal
-        title="添加题目"
+      <AddProblemsModal
         visible={addModalVisible}
-        onCancel={() => { setAddModalVisible(false); setProblemIdsInput(""); }}
-        onOk={handleAdd}
-        confirmLoading={adding}
-        okText="添加"
-      >
-        <div style={{ marginBottom: 8 }}>
-          <Text type="secondary">输入题号（如 P1012），多个用逗号或空格分隔</Text>
-        </div>
-        <Input.TextArea
-          placeholder="例如：P1001, P1002, P1012"
-          value={problemIdsInput}
-          onChange={setProblemIdsInput}
-          rows={3}
-        />
-      </Modal>
+        onClose={() => setAddModalVisible(false)}
+        onAdd={handleAddProblems}
+        existingSlugs={items.map((item) => item.problem?.slug).filter(Boolean)}
+      />
     </Card>
   );
 }
