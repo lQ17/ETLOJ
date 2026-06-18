@@ -82,7 +82,47 @@ function SingleGrid({ data, cols, cellSize, fontSize }: { data: GridData; cols: 
           </div>
           {row.map((val, c) => {
             const highlighted = isHighlighted(r, c, highlights);
-            const bgColor = getCellColor(r, c, val, maxVal, highlights);
+            let bgColor = getCellColor(r, c, val, maxVal, highlights);
+            let textColor = highlighted ? "#fff" : COLORS.text;
+            let displayVal: React.ReactNode = val;
+
+            const isMaze = label?.includes("迷宫") || label?.includes("地图") || label?.includes("Maze") || label?.includes("Map");
+            if (isMaze) {
+              if (val === -1) {
+                // 墙壁
+                if (!highlighted) {
+                  bgColor = "#2D3748";
+                }
+                displayVal = "";
+              } else if (val === -2) {
+                // 起点
+                if (!highlighted) {
+                  bgColor = "#3182CE";
+                }
+                textColor = "#fff";
+                displayVal = "S";
+              } else if (val === -3) {
+                // 终点
+                if (!highlighted) {
+                  bgColor = "#E53E3E";
+                }
+                textColor = "#fff";
+                displayVal = "E";
+              } else if (val === 0) {
+                // 通路
+                if (!highlighted) {
+                  bgColor = "#F7FAFC";
+                }
+                displayVal = "";
+              } else if (val > 0) {
+                // 已走过的步数
+                if (!highlighted) {
+                  bgColor = "#EBF8FF";
+                  textColor = "#2B6CB0";
+                }
+                displayVal = val;
+              }
+            }
 
             return (
               <motion.div
@@ -104,11 +144,11 @@ function SingleGrid({ data, cols, cellSize, fontSize }: { data: GridData; cols: 
                     : "1px solid #C9DCF0",
                   fontSize,
                   fontWeight: highlighted ? 700 : 500,
-                  color: highlighted ? "#fff" : COLORS.text,
+                  color: textColor,
                   cursor: "default",
                 }}
               >
-                {val}
+                {displayVal}
               </motion.div>
             );
           })}

@@ -24,6 +24,8 @@ import "../../algorithms/prefix-diff/prefix-sum-1d";
 import "../../algorithms/prefix-diff/diff-array-1d";
 import "../../algorithms/prefix-diff/prefix-sum-2d";
 import "../../algorithms/prefix-diff/diff-array-2d";
+import "../../algorithms/graph/bfs-grid";
+import "../../algorithms/graph/dfs-grid";
 
 const CATEGORY_LABELS: Record<AlgorithmCategory, string> = {
   sorting: "排序",
@@ -213,7 +215,20 @@ export default function VisualizationPage() {
 
   const handleRandom = useCallback(() => {
     let arr: number[];
-    if (selectedAlgo.inputDimension === "2d") {
+    if (selectedAlgo.randomInput) {
+      arr = selectedAlgo.randomInput();
+      if (selectedAlgo.inputDimension === "2d") {
+        const C = Math.ceil(Math.sqrt(arr.length));
+        const R = Math.ceil(arr.length / C);
+        const grid: number[][] = [];
+        for (let i = 0; i < R; i++) {
+          grid.push(arr.slice(i * C, (i + 1) * C));
+        }
+        setInputText(grid.map((row) => row.join(", ")).join("; "));
+      } else {
+        setInputText(arr.join(", "));
+      }
+    } else if (selectedAlgo.inputDimension === "2d") {
       const grid = randomGrid();
       setInputText(grid.map((row) => row.join(", ")).join("; "));
       arr = grid.flat();

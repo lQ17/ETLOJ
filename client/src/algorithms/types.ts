@@ -58,5 +58,6 @@ export interface AlgorithmDef {
   defaultTarget?: number;
   inputDimension?: "1d" | "2d";
   interactive?: InteractiveOp[];
+  randomInput?: () => number[];
   generateSteps(input: number[], target?: number): { steps: VisualStep[]; state?: unknown };
 }
