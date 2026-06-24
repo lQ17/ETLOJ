@@ -539,6 +539,69 @@ h1, h2, h3, h4, h5, h6,
   color: #e64553;
 }
 
+/* AI 快捷胶囊栏滚动条隐藏 */
+.ai-chat-quick-actions::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+.ai-chat-quick-actions {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* 自定义 AI Chat Tooltip，支持浅色圆角和主题自适应 */
+.ai-chat-tooltip .arco-tooltip-content {
+  background-color: var(--color-bg-3, #ffffff) !important;
+  color: var(--color-text-1, #1d2129) !important;
+  border: 1px solid var(--color-border, #e5e6eb) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06) !important;
+  font-size: 13px !important;
+  padding: 6px 10px !important;
+}
+.ai-chat-tooltip .arco-tooltip-arrow {
+  background-color: var(--color-bg-3, #ffffff) !important;
+  border: 1px solid var(--color-border, #e5e6eb) !important;
+}
+
+/* AI 聊天气泡样式 */
+.ai-chat-bubble-user,
+.ai-chat-bubble-assistant {
+  max-width: 85%;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.ai-chat-bubble-user {
+  border-radius: 16px 16px 4px 16px;
+  background-color: var(--color-primary-light-1);
+  color: #1f2937; /* 浅色模式下深色字 */
+}
+
+.ai-chat-bubble-assistant {
+  border-radius: 16px 16px 16px 4px;
+  background-color: var(--color-fill-2);
+}
+
+/* 深色模式下的调整 */
+body[arco-theme="dark"] .ai-chat-bubble-user {
+  background-color: var(--color-primary-light-2) !important; /* 偏浅的蓝色，以便对比 */
+  color: #f3f4f6 !important; /* 深色模式下白灰色字，易读 */
+}
+
+body[arco-theme="dark"] .ai-chat-bubble-assistant {
+  background-color: var(--color-fill-3) !important;
+}
+
+/* 深色模式下的行内代码块 */
+body[arco-theme="dark"] .ai-chat-message p > code,
+body[arco-theme="dark"] .ai-chat-message li > code {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ff7a85 !important; /* 亮红色/粉色 */
+}
+
+
 /* AI 思考过程折叠块 */
 .ai-think-block {
   margin: 6px 0;

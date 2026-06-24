@@ -8,7 +8,7 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vs, vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import cpp from 'react-syntax-highlighter/dist/esm/languages/prism/cpp';
 import c from 'react-syntax-highlighter/dist/esm/languages/prism/c';
 import java from 'react-syntax-highlighter/dist/esm/languages/prism/java';
@@ -33,13 +33,13 @@ interface ChatPanelProps {
 }
 
 const quickActions = [
-  { icon: <IconBulb />, label: '解题思路', message: '请给我这道题的解题思路提示，不要直接给答案' },
-  { icon: <IconThunderbolt />, label: '检查代码', message: '请帮我检查当前代码中可能存在的问题' },
-  { icon: <IconClockCircle />, label: '优化建议', message: '请分析我代码的时间复杂度，有什么优化方向？' },
-  { icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因' },
+  { icon: <IconBulb />, label: '解题思路', message: '请给我这道题的解题思路提示，不要直接给答案', description: '获取当前题目的解题思路与算法提示（不直接给答案）。适合看懂题目后长时间没有思路的时候使用。' },
+  { icon: <IconThunderbolt />, label: '检查代码', message: '请帮我检查当前代码中可能存在的问题', description: 'AI获取并分析当前编辑器实时代码。适合自己无法排查到bug或边界逻辑错误时使用。' },
+  { icon: <IconClockCircle />, label: '优化建议', message: '请分析我代码的时间复杂度，有什么优化方向？', description: '分析代码的时间与空间复杂度，提供优化方向。适合题目出现TLE、MLE，又不知道如何优化时使用。' },
+  { icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因', description: 'AI获取最后一次提交的评测结果，定位 WA/RE/TLE 等错误的原因。适合提交后出现无法分析出的错误时使用。' },
 ];
 
-function codeComponent(problemDifficulty: string) {
+function codeComponent(problemDifficulty: string, isDark: boolean) {
   return function CodeBlock({ node, inline, className, children, ...props }: any) {
     const match = /language-(\w+)/.exec(className || '');
     const isLowDifficulty = ['IRON', 'BRONZE', 'SILVER'].includes(problemDifficulty);
@@ -60,10 +60,16 @@ function codeComponent(problemDifficulty: string) {
         style={isLowDifficulty ? { userSelect: 'none', WebkitUserSelect: 'none', cursor: 'not-allowed' } : {}}
       >
         <SyntaxHighlighter
-          style={vs}
+          style={isDark ? vscDarkPlus : vs}
           language={match[1]}
           PreTag="div"
-          customStyle={{ margin: 0, background: '#ffffff', borderRadius: 0, padding: '12px 16px', fontSize: '14px' }}
+          customStyle={{
+            margin: 0,
+            background: isDark ? 'var(--color-bg-1)' : '#ffffff',
+            borderRadius: 0,
+            padding: '12px 16px',
+            fontSize: '14px'
+          }}
           codeTagProps={{ style: { fontSize: '14px', fontFamily: '"Consolas", monospace' } }}
           {...props}
         >
@@ -78,7 +84,7 @@ function codeComponent(problemDifficulty: string) {
   };
 }
 
-function renderMessageParts(text: string, problemDifficulty: string, isStreaming: boolean) {
+function renderMessageParts(text: string, problemDifficulty: string, isStreaming: boolean, isDark: boolean) {
   const parts = text.split(/(<think>[\s\S]*?<\/think>)/);
   const hasOpenThink = isStreaming && text.includes('<think>') && !text.includes('</think>');
 
@@ -112,7 +118,7 @@ function renderMessageParts(text: string, problemDifficulty: string, isStreaming
         key={i}
         remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex]}
-        components={{ code: codeComponent(problemDifficulty) }}
+        components={{ code: codeComponent(problemDifficulty, isDark) }}
       >
         {part}
       </ReactMarkdown>
@@ -126,6 +132,24 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   const [input, setInput] = useState('');
   const [promptConfigs, setPromptConfigs] = useState<{ id: number; name: string; isActive: boolean }[]>([]);
   const [selectedPromptId, setSelectedPromptId] = useState<number | undefined>(undefined);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return document.body.getAttribute('arco-theme') === 'dark' ? 'dark' : 'light';
+  });
+
+  // 监听 Arco Theme 深浅色模式变化，以便实时重绘代码块与气泡颜色
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const currentTheme = document.body.getAttribute('arco-theme') === 'dark' ? 'dark' : 'light';
+      setTheme(currentTheme);
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['arco-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // 获取 token
   const token = localStorage.getItem('token') || '';
@@ -316,26 +340,6 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
                 我会根据你的代码和提交记录给出针对性的提示
               </div>
             </div>
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
-              width: '100%', maxWidth: 400,
-            }}>
-              {quickActions.map((action, i) => (
-                <Button
-                  key={i}
-                  type="outline"
-                  size="small"
-                  icon={action.icon}
-                  style={{
-                    justifyContent: 'flex-start', height: 40,
-                    borderRadius: 8, paddingLeft: 12,
-                  }}
-                  onClick={() => handleQuickAction(action.message)}
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -351,24 +355,18 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
               }}
             >
               <div
-                style={{
-                  maxWidth: '85%',
-                  padding: '10px 14px',
-                  borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                  background: m.role === 'user'
-                    ? 'var(--color-primary-light-1)'
-                    : 'var(--color-fill-2)',
-                  color: m.role === 'user' ? '#374151' : undefined,
-                  fontSize: 14,
-                  lineHeight: 1.7,
-                  wordBreak: 'break-word',
-                }}
+                className={m.role === 'user' ? 'ai-chat-bubble-user' : 'ai-chat-bubble-assistant'}
               >
                 {m.role === 'user' ? (
                   <span>{text}</span>
                 ) : (
                   <div className="problem-markdown ai-chat-message" style={{ fontSize: 14 }}>
-                    {renderMessageParts(text, problemDifficulty, isLoading && m.id === messages[messages.length - 1].id)}
+                    {renderMessageParts(
+                      text,
+                      problemDifficulty,
+                      isLoading && m.id === messages[messages.length - 1].id,
+                      theme === 'dark'
+                    )}
                   </div>
                 )}
               </div>
@@ -378,10 +376,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
 
         {isLoading && messages.length > 0 && messages[messages.length - 1].role !== 'assistant' && (
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <div style={{
-              padding: '10px 14px', borderRadius: '16px 16px 16px 4px',
-              background: 'var(--color-fill-2)', fontSize: 14,
-            }}>
+            <div className="ai-chat-bubble-assistant" style={{ fontSize: 14 }}>
               <span className="ai-typing-indicator">思考中</span>
             </div>
           </div>
@@ -398,12 +393,87 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         )}
       </div>
 
+      {/* 快捷操作与代码关联状态栏 */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '10px 16px 8px 16px',
+        borderTop: '1px solid var(--color-border)',
+        background: 'var(--color-fill-1)',
+        flexShrink: 0,
+      }}>
+        {/* 状态指示器与基本信息 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 12,
+          color: 'var(--color-text-3)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--color-success)',
+              boxShadow: '0 0 4px var(--color-success)',
+            }} />
+            <span>已实时关联当前编辑器代码 ({currentLanguage})</span>
+          </div>
+          {currentCode?.trim() ? (
+            <span>约 {currentCode.length} 字符</span>
+          ) : (
+            <span style={{ color: 'var(--color-warning)' }}>当前编辑器无代码</span>
+          )}
+        </div>
+
+        {/* 快捷按钮行 */}
+        <div 
+          className="ai-chat-quick-actions"
+          style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 2,
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {quickActions.map((action, i) => (
+            <Tooltip
+              key={i}
+              content={action.description}
+              triggerProps={{ className: 'ai-chat-tooltip' }}
+            >
+              <Button
+                size="mini"
+                type="secondary"
+                shape="round"
+                icon={action.icon}
+                disabled={isLoading}
+                style={{
+                  flexShrink: 0,
+                  fontSize: 12,
+                  padding: '2px 10px',
+                  background: 'var(--color-fill-2)',
+                  border: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                }}
+                onClick={() => handleQuickAction(action.message)}
+              >
+                {action.label}
+              </Button>
+            </Tooltip>
+          ))}
+        </div>
+      </div>
+
       {/* 输入区 */}
       <form
         onSubmit={handleFormSubmit}
         style={{
-          display: 'flex', gap: 8, padding: '12px 16px',
-          borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, padding: '8px 16px 12px 16px',
           alignItems: 'flex-end',
           flexShrink: 0,
         }}
