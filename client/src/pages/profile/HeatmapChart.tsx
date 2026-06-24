@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { ActivityCalendar } from "react-activity-calendar";
 import { Tooltip, Typography } from "@arco-design/web-react";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const { Text } = Typography;
 
@@ -9,8 +10,9 @@ export default function HeatmapChart({ data }: { data: [string, number][] }) {
   const [calendarData, setCalendarData] = useState<Array<{ date: string; count: number; level: 0 | 1 | 2 | 3 | 4 }> | null>(null);
   const [sums, setSums] = useState({ sum6Months: 0, sum1Month: 0, sum1Week: 0 });
   const calendarRef = useRef<HTMLDivElement>(null);
+  const { isMobile } = useMediaQuery();
 
-  // 修复库渲染的 SVG viewBox 宽度不足导致最后一列被裁剪的问题，并默认滚动到最右侧
+  // 修复库渲染 of SVG viewBox 宽度不足导致最后一列被裁剪的问题，并默认滚动到最右侧
   useLayoutEffect(() => {
     if (!calendarData || !calendarRef.current) return;
     const svg = calendarRef.current.querySelector('svg');
@@ -23,13 +25,20 @@ export default function HeatmapChart({ data }: { data: [string, number][] }) {
     svg.setAttribute('width', String(newWidth));
     svg.setAttribute('height', String(newHeight));
 
-    // 默认滚动到最右侧，展示最近一段时间的活跃度
-    const animId = requestAnimationFrame(() => {
+    const scrollToEnd = () => {
       if (calendarRef.current) {
         calendarRef.current.scrollLeft = calendarRef.current.scrollWidth;
       }
-    });
-    return () => cancelAnimationFrame(animId);
+    };
+
+    // 默认滚动到最右侧，展示最近一段时间的活跃度
+    const animId = requestAnimationFrame(scrollToEnd);
+    const timerId = setTimeout(scrollToEnd, 200); // 增加 200ms 的兜底延迟滚动，保证即使在页面渲染、动画及排版完成后也能顺利滚动到最右侧
+
+    return () => {
+      cancelAnimationFrame(animId);
+      clearTimeout(timerId);
+    };
   }, [calendarData]);
 
   useEffect(() => {
@@ -90,7 +99,7 @@ export default function HeatmapChart({ data }: { data: [string, number][] }) {
     <div className="gh-calendar-container" style={{ paddingTop: '10px' }}>
       {/* 热力图主体 */}
       <div ref={calendarRef} style={{ overflowX: 'auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', minWidth: 'max-content', padding: '0 8px' }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'flex-start' : 'center', minWidth: 'max-content', padding: '0 8px' }}>
           <ActivityCalendar
             data={calendarData}
             showWeekdayLabels

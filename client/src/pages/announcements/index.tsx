@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Typography, Spin } from "@arco-design/web-react";
-import { IconNotification } from "@arco-design/web-react/icon";
+import { IconNotification, IconLeft } from "@arco-design/web-react/icon";
 import { useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import { announcementApi } from "../../api/announcement";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const { Title, Text } = Typography;
 
@@ -25,6 +26,7 @@ export default function AnnouncementsPage() {
   const [selected, setSelected] = useState<Announcement | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const { isMobile } = useMediaQuery();
 
   useEffect(() => {
     announcementApi.list({ pageSize: 100 }).then((res: any) => {
@@ -36,6 +38,9 @@ export default function AnnouncementsPage() {
         const found = res.items.find((a: Announcement) => a.id === +paramId);
         if (found) { loadDetail(found.id); return; }
       }
+      // 如果是移动端且没有 URL id 参数，则不进行默认加载详情，以便用户先看到列表
+      if (window.innerWidth < 768) return;
+
       const firstPinned = res.items.find((a: Announcement) => a.isPinned);
       if (firstPinned) loadDetail(firstPinned.id);
       else if (res.items.length > 0) loadDetail(res.items[0].id);
@@ -61,16 +66,21 @@ export default function AnnouncementsPage() {
   };
 
   return (
-    <div style={{ display: "flex", gap: 32, minHeight: "calc(100vh - 200px)" }}>
+    <div style={{
+      display: "flex",
+      gap: isMobile ? 0 : 32,
+      minHeight: isMobile ? "calc(100vh - 120px)" : "calc(100vh - 200px)",
+      flexDirection: isMobile ? "column" : "row"
+    }}>
       {/* 左侧列表 */}
       <div style={{
-        width: 340,
+        width: isMobile ? "100%" : 340,
         flexShrink: 0,
         background: "var(--color-surface-soft)",
         borderRadius: "var(--rounded-xl, 16px)",
         border: "1px solid var(--color-hairline)",
         overflow: "hidden",
-        display: "flex",
+        display: (isMobile && selected) ? "none" : "flex",
         flexDirection: "column",
       }}>
         <div style={{
@@ -125,13 +135,34 @@ export default function AnnouncementsPage() {
         background: "var(--color-surface-card)",
         borderRadius: "var(--rounded-xl, 16px)",
         border: "1px solid var(--color-hairline)",
-        padding: "32px 40px",
+        padding: isMobile ? "20px" : "32px 40px",
         overflow: "auto",
+        display: (isMobile && !selected) ? "none" : "block",
       }}>
         {detailLoading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin /></div>
         ) : selected ? (
           <>
+            {isMobile && (
+              <div
+                onClick={() => {
+                  setSelected(null);
+                  setSearchParams({}, { replace: true });
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  color: "var(--color-primary-6)",
+                  cursor: "pointer",
+                  marginBottom: 16,
+                  fontSize: 14,
+                  fontWeight: 500,
+                }}
+              >
+                <IconLeft /> 返回列表
+              </div>
+            )}
             <Title heading={3} style={{ marginTop: 0, marginBottom: 8 }}>{selected.title}</Title>
             <Text style={{ fontSize: 13, color: "var(--color-muted)", display: "block", marginBottom: 24 }}>
               {new Date(selected.createdAt).toLocaleString("zh-CN")}
