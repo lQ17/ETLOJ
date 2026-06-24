@@ -209,6 +209,11 @@ function ManageUsersTab() {
   const [editUser, setEditUser] = useState<any>(null);
   const [editForm] = Form.useForm();
 
+  // Reject modal state
+  const [rejectVisible, setRejectVisible] = useState(false);
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
   const fetchData = useCallback(async (p = page, ps = pageSize) => {
     setLoading(true);
     try {
@@ -234,6 +239,28 @@ function ManageUsersTab() {
     try {
       await userApi.toggleActive(record.id);
       Message.success(`用户 ${record.username} 已${record.isActive ? "停用" : "启用"}`);
+      fetchData();
+    } catch (err: any) {
+      Message.error(err?.message || "操作失败");
+    }
+  };
+
+  const handleDirectApprove = async (record: any) => {
+    try {
+      await userApi.updateStatus(record.id, "APPROVED");
+      Message.success(`用户 ${record.username} 已通过审核并启用`);
+      fetchData();
+    } catch (err: any) {
+      Message.error(err?.message || "操作失败");
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectId) return;
+    try {
+      await userApi.updateStatus(rejectId, "REJECTED", rejectReason);
+      Message.success("已拒绝该申请");
+      setRejectVisible(false);
       fetchData();
     } catch (err: any) {
       Message.error(err?.message || "操作失败");
@@ -288,25 +315,63 @@ function ManageUsersTab() {
       render: (v: string) => <Tag color={roleColors[v]}>{v}</Tag>,
     },
     {
-      title: "状态", dataIndex: "isActive", width: 80,
-      render: (v: boolean) => <Tag color={v ? "green" : "red"}>{v ? "启用" : "停用"}</Tag>,
+      title: "状态", dataIndex: "isActive", width: 130,
+      render: (_: boolean, record: any) => {
+        if (record.status === "PENDING") {
+          return <Tag color="orange">待审核</Tag>;
+        }
+        if (record.status === "REJECTED") {
+          return (
+            <Popconfirm
+              title={record.rejectReason ? `拒绝原因: ${record.rejectReason}` : "拒绝原因: 未填写"}
+              icon={null}
+              okText="知道了"
+              cancelText={null}
+            >
+              <Tag color="red" style={{ cursor: "pointer" }}>已拒绝 (查看理由)</Tag>
+            </Popconfirm>
+          );
+        }
+        return record.isActive ? <Tag color="green">已启用</Tag> : <Tag color="red">已停用</Tag>;
+      },
     },
     {
       title: "创建时间", dataIndex: "createdAt", width: 170,
       render: (v: string) => new Date(v).toLocaleString("zh-CN"),
     },
     {
-      title: "操作", width: 200, fixed: "right" as const,
+      title: "操作", width: 220, fixed: "right" as const,
       render: (_: any, record: any) => (
         <Space>
           <Button type="text" size="mini" onClick={() => openEdit(record)}>编辑</Button>
-          <Button
-            type="text" size="mini"
-            status={record.isActive ? "warning" : "success"}
-            onClick={() => handleToggleActive(record)}
-          >
-            {record.isActive ? "停用" : "启用"}
-          </Button>
+          {record.status === "APPROVED" ? (
+            <Button
+              type="text" size="mini"
+              status={record.isActive ? "warning" : "success"}
+              onClick={() => handleToggleActive(record)}
+            >
+              {record.isActive ? "停用" : "启用"}
+            </Button>
+          ) : (
+            <>
+              <Popconfirm title="确认通过该用户的注册申请并启用？" onOk={() => handleDirectApprove(record)}>
+                <Button type="text" size="mini" status="success">通过</Button>
+              </Popconfirm>
+              {record.status === "PENDING" && (
+                <Button
+                  type="text" size="mini"
+                  status="danger"
+                  onClick={() => {
+                    setRejectId(record.id);
+                    setRejectReason("");
+                    setRejectVisible(true);
+                  }}
+                >
+                  拒绝
+                </Button>
+              )}
+            </>
+          )}
           <Popconfirm title="确认删除此用户？" onOk={() => handleDelete(record)}>
             <Button type="text" size="mini" status="danger">删除</Button>
           </Popconfirm>
@@ -411,6 +476,117 @@ function ManageUsersTab() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Modal
+        title="拒绝申请"
+        visible={rejectVisible}
+        onOk={handleRejectSubmit}
+        onCancel={() => setRejectVisible(false)}
+      >
+        <Form layout="vertical">
+          <Form.Item label="拒绝原因 (将展示给用户)">
+            <Input.TextArea
+              placeholder="请输入拒绝原因（选填）"
+              value={rejectReason}
+              onChange={setRejectReason}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+}
+
+// ========== 待审核用户 Tab ==========
+function PendingUsersTab() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [rejectVisible, setRejectVisible] = useState(false);
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res: any = await userApi.list({ status: "PENDING", pageSize: 100 });
+      setData(res.items);
+    } catch {
+      Message.error("加载待审核用户失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleApprove = async (id: number) => {
+    try {
+      await userApi.updateStatus(id, "APPROVED");
+      Message.success("已通过审核");
+      fetchData();
+    } catch (err: any) {
+      Message.error(err?.message || "操作失败");
+    }
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectId) return;
+    try {
+      await userApi.updateStatus(rejectId, "REJECTED", rejectReason);
+      Message.success("已拒绝该申请");
+      setRejectVisible(false);
+      fetchData();
+    } catch (err: any) {
+      Message.error(err?.message || "操作失败");
+    }
+  };
+
+  const columns = [
+    { title: "ID", dataIndex: "id", width: 60 },
+    { title: "用户名", dataIndex: "username", width: 120 },
+    { title: "邮箱", dataIndex: "email", width: 180, render: (v: string) => v || "-" },
+    { title: "申请说明 (Remark)", dataIndex: "remark", width: 250, render: (v: string) => v || <Typography.Text type="secondary">无</Typography.Text> },
+    { title: "申请时间", dataIndex: "createdAt", width: 170, render: (v: string) => new Date(v).toLocaleString("zh-CN") },
+    {
+      title: "操作", width: 160, fixed: "right" as const,
+      render: (_: any, record: any) => (
+        <Space>
+          <Button type="text" size="mini" status="success" onClick={() => handleApprove(record.id)}>通过</Button>
+          <Button type="text" size="mini" status="danger" onClick={() => {
+            setRejectId(record.id);
+            setRejectReason("");
+            setRejectVisible(true);
+          }}>拒绝</Button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <Space style={{ marginBottom: 16 }}>
+        <Button icon={<IconRefresh />} onClick={fetchData}>刷新列表</Button>
+      </Space>
+      <Table columns={columns} data={data} loading={loading} rowKey="id" />
+
+      <Modal
+        title="拒绝申请"
+        visible={rejectVisible}
+        onOk={handleRejectSubmit}
+        onCancel={() => setRejectVisible(false)}
+      >
+        <Form layout="vertical">
+          <Form.Item label="拒绝原因 (将展示给用户)">
+            <Input.TextArea
+              placeholder="请输入拒绝原因（选填）"
+              value={rejectReason}
+              onChange={setRejectReason}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
@@ -420,6 +596,9 @@ export default function AdminUsersPage() {
   return (
     <div>
       <Tabs defaultActiveTab="create" style={{ marginTop: 16 }}>
+        <Tabs.TabPane key="pending" title="待审核申请">
+          <PendingUsersTab />
+        </Tabs.TabPane>
         <Tabs.TabPane key="create" title="创建用户">
           <CreateUserTab />
         </Tabs.TabPane>

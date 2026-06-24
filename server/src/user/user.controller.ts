@@ -66,4 +66,13 @@ export class UserController {
   toggleActive(@Param("id", ParseIntPipe) id: number) {
     return this.userService.toggleActive(id);
   }
+
+  @Patch(":id/status")
+  @Roles("ADMIN", "TEACHER")
+  updateStatus(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { status: "PENDING" | "APPROVED" | "REJECTED"; rejectReason?: string }
+  ) {
+    return this.userService.updateStatus(id, body.status, body.rejectReason);
+  }
 }

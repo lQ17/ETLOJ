@@ -1,9 +1,11 @@
-import { Controller, Post, Body, Get, UseGuards, Req, HttpException, HttpStatus } from "@nestjs/common";
+import { Controller, Post, Body, Get, UseGuards, Req, HttpException, HttpStatus, BadRequestException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient } from "redis";
 import { AuthService } from "./auth.service";
 import { UserService } from "../user/user.service";
 import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
+import { ReapplyDto } from "./dto/reapply.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { CurrentUser } from "./current-user.decorator";
 import type { Request } from "express";
@@ -47,6 +49,26 @@ export class AuthController {
       }
       throw err;
     }
+  }
+
+  @Post("register")
+  async register(@Body() dto: RegisterDto) {
+    // 验证 Turnstile
+    const isValid = await this.authService.verifyTurnstile(dto.turnstileToken);
+    if (!isValid) {
+      throw new BadRequestException("人机验证失败，请重试");
+    }
+    return this.authService.register(dto);
+  }
+
+  @Post("reapply")
+  async reapply(@Body() dto: ReapplyDto) {
+    // 验证 Turnstile
+    const isValid = await this.authService.verifyTurnstile(dto.turnstileToken);
+    if (!isValid) {
+      throw new BadRequestException("人机验证失败，请重试");
+    }
+    return this.authService.reapply(dto);
   }
 
   @UseGuards(JwtAuthGuard)

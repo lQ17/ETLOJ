@@ -14,6 +14,7 @@ const ProblemListDetailPage = lazy(() => import("./pages/lists/detail"));
 const AnnouncementsPage = lazy(() => import("./pages/announcements"));
 const RankingPage = lazy(() => import("./pages/ranking"));
 const LoginPage = lazy(() => import("./pages/login"));
+const RegisterPage = lazy(() => import("./pages/register"));
 const AdminPage = lazy(() => import("./pages/admin"));
 const RecordsPage = lazy(() => import("./pages/records"));
 const ProfilePage = lazy(() => import("./pages/profile"));
@@ -113,6 +114,7 @@ function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route path="/problems" element={<ProblemListPage />} />
               <Route path="/problems/:id" element={<ProblemDetailPage />} />
               <Route path="/lists" element={<ProblemListsPage />} />

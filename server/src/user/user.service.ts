@@ -25,11 +25,11 @@ export class UserService {
 
     return this.prisma.user.create({
       data: { username, email, phone, password: hashed, role: role as any },
-      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, status: true, remark: true, rejectReason: true, createdAt: true },
     });
   }
 
-  async findAll(query: { page?: number; pageSize?: number; keyword?: string; role?: string; isActive?: boolean }) {
+  async findAll(query: { page?: number; pageSize?: number; keyword?: string; role?: string; isActive?: boolean; status?: any }) {
     const page = query.page || 1;
     const pageSize = query.pageSize || 20;
     const where: any = {};
@@ -43,6 +43,7 @@ export class UserService {
     }
     if (query.role) where.role = query.role;
     if (query.isActive !== undefined) where.isActive = query.isActive;
+    if (query.status) where.status = query.status;
 
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -50,7 +51,7 @@ export class UserService {
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { createdAt: "desc" },
-        select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
+        select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, status: true, remark: true, rejectReason: true, createdAt: true },
       }),
       this.prisma.user.count({ where }),
     ]);
@@ -61,7 +62,7 @@ export class UserService {
   async findById(id: number) {
     return this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, status: true, remark: true, rejectReason: true, createdAt: true },
     });
   }
 
@@ -197,7 +198,7 @@ export class UserService {
     return this.prisma.user.update({
       where: { id },
       data: updateData,
-      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, status: true, remark: true, rejectReason: true, createdAt: true },
     });
   }
 
@@ -213,7 +214,17 @@ export class UserService {
     return this.prisma.user.update({
       where: { id },
       data: { isActive: !user.isActive },
-      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
+      select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, status: true, remark: true, rejectReason: true, createdAt: true },
+    });
+  }
+
+  async updateStatus(id: number, status: any, rejectReason?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException("用户不存在");
+    return this.prisma.user.update({
+      where: { id },
+      data: { status, rejectReason: rejectReason || null },
+      select: { id: true, username: true, email: true, status: true, rejectReason: true },
     });
   }
 

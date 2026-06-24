@@ -4,7 +4,7 @@ export const userApi = {
   create: (data: { username: string; email?: string; phone?: string; password?: string; role?: string }) =>
     client.post("/users", data),
 
-  list: (params?: { page?: number; pageSize?: number; keyword?: string; role?: string; isActive?: boolean }) =>
+  list: (params?: { page?: number; pageSize?: number; keyword?: string; role?: string; isActive?: boolean; status?: string }) =>
     client.get("/users", { params }),
 
   getOne: (id: number) => client.get(`/users/${id}`),
@@ -15,6 +15,9 @@ export const userApi = {
   remove: (id: number) => client.delete(`/users/${id}`),
 
   toggleActive: (id: number) => client.patch(`/users/${id}/toggle-active`),
+
+  updateStatus: (id: number, status: "PENDING" | "APPROVED" | "REJECTED", rejectReason?: string) =>
+    client.patch(`/users/${id}/status`, { status, rejectReason }),
 
   updateProfile: (data: { email?: string; phone?: string; avatar?: string; signature?: string }) =>
     client.patch("/users/me/profile", data),

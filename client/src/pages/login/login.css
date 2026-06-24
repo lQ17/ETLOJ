@@ -1,0 +1,298 @@
+/* login.css */
+
+:root {
+  --login-glow-1: rgba(17, 17, 17, 0.015);
+  --login-glow-2: rgba(0, 0, 0, 0.01);
+  --login-grid-color: rgba(17, 17, 17, 0.035);
+  --login-card-bg: rgba(255, 255, 255, 0.7);
+  --login-card-border: rgba(0, 0, 0, 0.06);
+  --login-card-shadow: 0 20px 40px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --login-text-gradient: linear-gradient(135deg, #111111 0%, #4b5563 100%);
+  --login-glow-pos-1: translate(0, 0);
+  --login-glow-pos-2: translate(0, 0);
+}
+
+body[arco-theme="dark"] {
+  --login-glow-1: rgba(99, 102, 241, 0.08); /* Indigo Glow */
+  --login-glow-2: rgba(168, 85, 247, 0.08); /* Purple Glow */
+  --login-grid-color: rgba(255, 255, 255, 0.025);
+  --login-card-bg: rgba(22, 22, 22, 0.65);
+  --login-card-border: rgba(255, 255, 255, 0.07);
+  --login-card-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+  --login-text-gradient: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
+}
+
+/* Page Wrapper with Negative Margins to cover parent Padding */
+.login-page-wrapper {
+  margin: -96px -32px;
+  padding: 96px 32px;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-canvas);
+  transition: background-color 0.3s ease;
+}
+
+/* Background Grid Fade to Transparent at Borders */
+.login-page-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, var(--login-grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--login-grid-color) 1px, transparent 1px);
+  background-size: 24px 24px;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(circle at center, black 35%, transparent 75%);
+  mask-image: radial-gradient(circle at center, black 35%, transparent 75%);
+  transition: background-image 0.3s ease;
+}
+
+@media (max-width: 767px) {
+  .login-page-wrapper {
+    margin: -24px -16px;
+    padding: 48px 16px;
+    min-height: calc(100vh - 64px - 48px);
+  }
+}
+
+/* Animated Floating Glow Elements */
+.login-glow-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-glow-1, .login-glow-2 {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.8;
+}
+
+.login-glow-1 {
+  background: var(--login-glow-1);
+  top: -100px;
+  right: -50px;
+  animation: floatGlow1 25s infinite alternate ease-in-out;
+}
+
+.login-glow-2 {
+  background: var(--login-glow-2);
+  bottom: -150px;
+  left: -100px;
+  animation: floatGlow2 20s infinite alternate ease-in-out;
+}
+
+@keyframes floatGlow1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 80px) scale(1.1); }
+  100% { transform: translate(30px, -40px) scale(0.95); }
+}
+
+@keyframes floatGlow2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(80px, -60px) scale(1.05); }
+  100% { transform: translate(-30px, 40px) scale(0.9); }
+}
+
+/* Central Login Content Area */
+.login-content {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  animation: loginFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Brand Header */
+.login-brand-section {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.login-logo-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  transition: transform 0.3s ease;
+}
+
+.login-logo-container:hover {
+  transform: scale(1.02);
+}
+
+.login-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
+  background: var(--login-text-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-subtitle {
+  color: var(--color-muted);
+  font-size: 14px;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Custom Glassmorphism Card */
+.login-glass-card {
+  background: var(--login-card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--login-card-border) !important;
+  border-radius: var(--rounded-xl) !important;
+  box-shadow: var(--login-card-shadow) !important;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+/* Top Flow-light Indicator Bar */
+.login-glass-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  opacity: 0.6;
+  z-index: 10;
+}
+
+.login-glass-card .arco-card-body {
+  padding: 32px !important;
+}
+
+@media (max-width: 480px) {
+  .login-glass-card .arco-card-body {
+    padding: 24px !important;
+  }
+}
+
+/* Custom Form Styles */
+.login-form .arco-form-item {
+  margin-bottom: 20px;
+}
+
+.login-form .arco-form-item-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: 6px;
+}
+
+/* Custom Inputs styling */
+.login-input-wrapper .arco-input-inner-wrapper {
+  background-color: transparent !important;
+  border: 1px solid var(--color-hairline) !important;
+  border-radius: var(--rounded-md) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.login-input-wrapper .arco-input-inner-wrapper:hover {
+  border-color: var(--color-muted-soft) !important;
+}
+
+.login-input-wrapper .arco-input-inner-wrapper-focus {
+  border-color: var(--color-ink) !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body[arco-theme="dark"] .login-input-wrapper .arco-input-inner-wrapper-focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+}
+
+.login-input-wrapper .arco-input-prefix {
+  color: var(--color-muted) !important;
+  margin-right: 8px;
+}
+
+.login-input-wrapper .arco-input-inner-wrapper-focus .arco-input-prefix {
+  color: var(--color-ink) !important;
+}
+
+/* Action button styling */
+.login-submit-btn {
+  height: 42px !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  border-radius: var(--rounded-md) !important;
+  background-color: var(--color-ink) !important;
+  color: var(--color-canvas) !important;
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.login-submit-btn:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+body[arco-theme="dark"] .login-submit-btn:hover {
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15) !important;
+}
+
+.login-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* Footer Section */
+.login-footer-info {
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 13px;
+  margin-top: 24px;
+}
+
+.login-footer-copyright {
+  text-align: center;
+  color: var(--color-muted-soft);
+  font-size: 11px;
+  margin-top: 12px;
+}
+
+.login-footer-info a {
+  color: var(--color-ink);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.login-footer-info a:hover {
+  text-decoration: underline;
+}

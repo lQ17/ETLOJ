@@ -14,6 +14,12 @@ enum Role {
   TEACHER
 }
 
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum Difficulty {
   IRON
   BRONZE
@@ -63,6 +69,9 @@ model User {
   avatar    String?   @db.LongText
   signature String?   @db.VarChar(200)
   role      Role      @default(USER)
+  status    UserStatus @default(APPROVED)
+  remark    String?   @db.VarChar(500)
+  rejectReason String? @map("reject_reason") @db.VarChar(500)
   isActive      Boolean   @default(true) @map("is_active")
   aiDailyLimit  Int?      @map("ai_daily_limit")
   createdAt     DateTime  @default(now()) @map("created_at")

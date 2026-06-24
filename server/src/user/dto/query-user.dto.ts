@@ -25,4 +25,8 @@ export class QueryUserDto {
   @IsOptional()
   @Type(() => Boolean)
   isActive?: boolean;
+
+  @IsOptional()
+  @IsIn(["PENDING", "APPROVED", "REJECTED"])
+  status?: "PENDING" | "APPROVED" | "REJECTED";
 }
