@@ -9,8 +9,8 @@ import { localCompile, localRunOneTest } from "./localJudge";
 // ─── go-judge 状态映射 ───
 
 function mapGoJudgeStatus(raw: string, exitCode: number): string | null {
-  if (raw === "TimeLimitExceeded") return "TLE";
-  if (raw === "MemoryLimitExceeded") return "MLE";
+  if (raw === "Time Limit Exceeded") return "TLE";
+  if (raw === "Memory Limit Exceeded") return "MLE";
   if (exitCode !== 0) return "RE";
   return null; // 正常退出
 }
