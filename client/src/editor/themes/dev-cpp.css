@@ -1,0 +1,20 @@
+/**
+ * Dev-C++ 选中文本白字。
+ * Monaco 的 selection 默认只画背景层，selectionForeground 对语法着色 token 经常不生效。
+ * 通过 decoration 的 inlineClassName（dev-cpp-sel-fg）强制覆盖 mtk* 颜色。
+ */
+.monaco-editor .dev-cpp-sel-fg,
+.monaco-editor .dev-cpp-sel-fg span,
+html.monaco-theme-dev-cpp .monaco-editor .view-line span.inline-selected-text {
+  color: #ffffff !important;
+}
+
+/* 再兜一层：浏览器原生选区（部分环境会叠一层 native selection） */
+html.monaco-theme-dev-cpp .monaco-editor .view-lines ::selection {
+  color: #ffffff !important;
+  background-color: transparent;
+}
+html.monaco-theme-dev-cpp .monaco-editor .view-lines ::-moz-selection {
+  color: #ffffff !important;
+  background-color: transparent;
+}

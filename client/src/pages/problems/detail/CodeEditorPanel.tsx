@@ -4,6 +4,9 @@ import { IconSettings, IconDown, IconRight } from "@arco-design/web-react/icon";
 import Editor from "@monaco-editor/react";
 import { langMap, statusLabel, statusColor } from "./constants";
 import { submissionApi } from "../../../api/submission";
+import { applyEditorTheme, registerMonacoExtras } from "../../../editor/register";
+import { DEV_CPP_THEME_ID, DEV_CPP_THEME_LABEL } from "../../../editor/themes/dev-cpp";
+import "../../../editor/themes/dev-cpp.css";
 import TestArea from "./TestArea";
 
 interface CodeEditorPanelProps {
@@ -83,8 +86,56 @@ export default function CodeEditorPanel({
   }, []);
 
   const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const selDecoRef = useRef<string[]>([]);
   const fontSizeRef = useRef(editorFontSize);
   fontSizeRef.current = editorFontSize;
+
+  const resolvedTheme = editorTheme === "auto" ? systemTheme : editorTheme;
+  const resolvedThemeRef = useRef(resolvedTheme);
+  resolvedThemeRef.current = resolvedTheme;
+
+  /** Dev-C++：用 decoration 把选中区间强制染成白字（Monaco selectionForeground 对 token 无效） */
+  const syncSelectionWhiteFg = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    if (resolvedThemeRef.current !== DEV_CPP_THEME_ID) {
+      if (selDecoRef.current.length) {
+        selDecoRef.current = editor.deltaDecorations(selDecoRef.current, []);
+      }
+      return;
+    }
+
+    const selections = editor.getSelections?.() || [];
+    const decos = selections
+      .filter((s: any) => s && !s.isEmpty())
+      .map((s: any) => ({
+        range: s,
+        options: {
+          inlineClassName: "dev-cpp-sel-fg",
+          stickiness: 1, // NeverGrowsWhenTypingAtEdges
+        },
+      }));
+    selDecoRef.current = editor.deltaDecorations(selDecoRef.current, decos);
+  }, []);
+
+  // 主题切换或 defineTheme 更新后强制 setTheme，否则 Monaco 仍用旧 CSS
+  useEffect(() => {
+    if (!monacoRef.current) return;
+    applyEditorTheme(monacoRef.current, resolvedTheme);
+    syncSelectionWhiteFg();
+  }, [resolvedTheme, syncSelectionWhiteFg]);
+
+  // 供 CSS 选择器识别当前为 Dev-C++ 主题
+  useEffect(() => {
+    const root = document.documentElement;
+    const on = resolvedTheme === DEV_CPP_THEME_ID;
+    root.classList.toggle("monaco-theme-dev-cpp", on);
+    return () => {
+      root.classList.remove("monaco-theme-dev-cpp");
+    };
+  }, [resolvedTheme]);
 
   const clampFontSize = (v: number) => Math.min(48, Math.max(12, Math.round(v)));
 
@@ -198,7 +249,7 @@ export default function CodeEditorPanel({
               trigger="click"
               position="br"
               content={
-                <div style={{ width: 200 }}>
+                <div style={{ width: 240 }}>
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 13, marginBottom: 4, color: "var(--color-text-2)" }}>字体大小</div>
                     <InputNumber
@@ -231,10 +282,12 @@ export default function CodeEditorPanel({
                       value={editorTheme}
                       onChange={(v) => { setEditorTheme(v); localStorage.setItem("oj_editor_theme", v); }}
                       size="small"
+                      direction="vertical"
                     >
                       <Radio value="vs">亮色</Radio>
                       <Radio value="vs-dark">暗色</Radio>
                       <Radio value="auto">跟随网站</Radio>
+                      <Radio value={DEV_CPP_THEME_ID}>{DEV_CPP_THEME_LABEL}</Radio>
                     </Radio.Group>
                   </div>
                   <div>
@@ -312,9 +365,22 @@ export default function CodeEditorPanel({
           language={langMap[language]}
           value={code}
           onChange={(v) => setCode(v || "")}
-          theme={editorTheme === "auto" ? systemTheme : editorTheme}
+          theme={resolvedTheme}
+          beforeMount={(monaco) => {
+            registerMonacoExtras(monaco);
+          }}
           onMount={(editor, monaco) => {
             editorRef.current = editor;
+            monacoRef.current = monaco;
+            // 挂载时强制刷一次主题 + tokenizer（压过内置 cpp grammar）
+            applyEditorTheme(monaco, resolvedTheme);
+
+            // Dev-C++ 选中白字：监听选区变化，用 inline decoration 覆盖语法色
+            const subSel = editor.onDidChangeCursorSelection(() => {
+              syncSelectionWhiteFg();
+            });
+            syncSelectionWhiteFg();
+
             // Ctrl+S 保存代码到本地
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
@@ -342,11 +408,25 @@ export default function CodeEditorPanel({
                 localStorage.setItem("oj_editor_fontSize", String(next));
               };
               domNode.addEventListener("wheel", handler, { passive: false });
-              editor.onDidDispose(() => domNode.removeEventListener("wheel", handler));
+              editor.onDidDispose(() => {
+                subSel.dispose();
+                domNode.removeEventListener("wheel", handler);
+                selDecoRef.current = [];
+              });
+            } else {
+              editor.onDidDispose(() => {
+                subSel.dispose();
+                selDecoRef.current = [];
+              });
             }
           }}
           options={{
             fontSize: editorFontSize,
+            fontFamily: 'Consolas, "Courier New", monospace',
+            fontLigatures: false,
+            renderLineHighlight: "all",
+            // 关闭选中时把空格渲染成中间点 ·
+            renderWhitespace: "none",
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             automaticLayout: true,
@@ -354,6 +434,14 @@ export default function CodeEditorPanel({
             quickSuggestions: codeCompletion,
             suggestOnTriggerCharacters: codeCompletion,
             wordBasedSuggestions: codeCompletion,
+            // Dev-C++：关闭括号对着色，否则会盖掉 token 的 #FF0000
+            bracketPairColorization: {
+              enabled: resolvedTheme !== DEV_CPP_THEME_ID,
+            },
+            matchBrackets: resolvedTheme === DEV_CPP_THEME_ID ? "never" : "always",
+            // Dev-C++：关闭「选中/光标所在词」的其它出现位置浅色高亮
+            selectionHighlight: resolvedTheme !== DEV_CPP_THEME_ID,
+            occurrencesHighlight: (resolvedTheme === DEV_CPP_THEME_ID ? false : true) as any,
           }}
         />
       </div>
