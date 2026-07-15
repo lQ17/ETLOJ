@@ -42,6 +42,7 @@ async function judgeWithBackend(
   const testcaseResults: TestCaseResult[] = [];
   let passedCount = 0;
   let firstFailStatus = "";
+  // 提交级 timeUsed / memoryUsed 取所有测试点的最大值（OJ 常规语义，非总和）
   let maxTime = 0;
   let maxMemory = 0;
 
@@ -59,14 +60,14 @@ async function judgeWithBackend(
       if (stdout !== expected) caseStatus = "WA";
     }
 
+    // 每个已运行测试点都参与 max 统计（含后续失败点）
+    maxTime = Math.max(maxTime, r.time);
+    maxMemory = Math.max(maxMemory, getMemory(r));
+
     if (caseStatus === null) {
       passedCount++;
-      maxTime = Math.max(maxTime, r.time);
-      maxMemory = Math.max(maxMemory, getMemory(r));
     } else if (!firstFailStatus) {
       firstFailStatus = caseStatus;
-      maxTime = Math.max(maxTime, r.time);
-      maxMemory = Math.max(maxMemory, getMemory(r));
     }
 
     testcaseResults.push({
