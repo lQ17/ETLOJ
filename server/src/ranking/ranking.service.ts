@@ -7,6 +7,23 @@ import { QueryRankingDto } from "./dto/query-ranking.dto";
 export class RankingService {
   constructor(private prisma: PrismaService) {}
 
+  /** 按用户名关键字搜索参与排名的普通用户（模糊匹配） */
+  async searchUsers(keyword: string, limit = 10) {
+    const q = (keyword || "").trim();
+    if (!q) return [];
+
+    return this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: "USER",
+        username: { contains: q },
+      },
+      select: { id: true, username: true, avatar: true },
+      orderBy: { username: "asc" },
+      take: Math.min(Math.max(limit, 1), 20),
+    });
+  }
+
   async getRanking(query: QueryRankingDto) {
     const { mode = "ac", range = "all", startDate, endDate, page = 1, pageSize = 20 } = query;
 
@@ -87,7 +104,7 @@ export class RankingService {
       SELECT u.id, u.username, u.avatar, COUNT(DISTINCT s.problem_id) as value
       FROM users u
       INNER JOIN submissions s ON s.user_id = u.id AND s.status = 'AC'
-      WHERE u.is_active = 1 ${timeFilter}
+      WHERE u.is_active = 1 AND u.role = 'USER' ${timeFilter}
       GROUP BY u.id, u.username, u.avatar
       HAVING value > 0
       ORDER BY value DESC
@@ -102,7 +119,7 @@ export class RankingService {
         SELECT u.id
         FROM users u
         INNER JOIN submissions s ON s.user_id = u.id AND s.status = 'AC'
-        WHERE u.is_active = 1 ${timeFilter}
+        WHERE u.is_active = 1 AND u.role = 'USER' ${timeFilter}
         GROUP BY u.id
         HAVING COUNT(DISTINCT s.problem_id) > 0
       ) t
@@ -123,7 +140,7 @@ export class RankingService {
       ) fa ON fa.user_id = u.id
       INNER JOIN submissions s ON s.id = fa.first_ac_id
       INNER JOIN problems p ON p.id = fa.problem_id
-      WHERE u.is_active = 1 ${timeFilter}
+      WHERE u.is_active = 1 AND u.role = 'USER' ${timeFilter}
       GROUP BY u.id, u.username, u.avatar
       HAVING value > 0
       ORDER BY value DESC
@@ -145,7 +162,7 @@ export class RankingService {
         ) fa ON fa.user_id = u.id
         INNER JOIN submissions s ON s.id = fa.first_ac_id
         INNER JOIN problems p ON p.id = fa.problem_id
-        WHERE u.is_active = 1 ${timeFilter}
+        WHERE u.is_active = 1 AND u.role = 'USER' ${timeFilter}
         GROUP BY u.id
         HAVING COALESCE(SUM(p.score), 0) > 0
       ) t

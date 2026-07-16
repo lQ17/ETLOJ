@@ -10,4 +10,8 @@ export const rankingApi = {
     page?: number;
     pageSize?: number;
   }) => client.get("/ranking", { params }),
+
+  /** 按用户名关键字搜索参与排名的用户 */
+  searchUsers: (keyword: string) =>
+    client.get("/ranking/search", { params: { keyword } }),
 };

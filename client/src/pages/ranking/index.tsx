@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Typography, Radio, Space, DatePicker, Table, Avatar, Message, Card, Button,
+  Typography, Radio, Space, DatePicker, Table, Avatar, Message, Card, Button, Input, Spin,
 } from "@arco-design/web-react";
-import { IconUser } from "@arco-design/web-react/icon";
+import { IconUser, IconSearch } from "@arco-design/web-react/icon";
 import ReactECharts from "echarts-for-react";
 import { useNavigate } from "react-router-dom";
 import { rankingApi } from "../../api/ranking";
@@ -42,6 +42,12 @@ interface RankItem {
   value: number;
 }
 
+interface SearchUserItem {
+  id: number;
+  username: string;
+  avatar?: string | null;
+}
+
 export default function RankingPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -56,6 +62,63 @@ export default function RankingPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
+
+  // 用户名搜索
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchUserItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭搜索下拉
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const doSearch = useCallback(async (keyword: string) => {
+    const q = keyword.trim();
+    if (!q) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const res: any = await rankingApi.searchUsers(q);
+      setSearchResults(Array.isArray(res) ? res : res?.items || []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleSearchChange = (val: string) => {
+    setSearchKeyword(val);
+    setSearchOpen(true);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!val.trim()) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    searchTimerRef.current = setTimeout(() => doSearch(val), 300);
+  };
+
+  const handleSelectUser = (username: string) => {
+    setSearchOpen(false);
+    setSearchKeyword("");
+    setSearchResults([]);
+    navigate(`/profile/${username}`);
+  };
 
   const fetchData = useCallback(async (p = page, ps = pageSize, fetchTop = false) => {
     setLoading(true);
@@ -224,7 +287,80 @@ export default function RankingPage() {
   // ========== 渲染 ==========
   return (
     <div style={{ maxWidth: 960, margin: "0 auto" }}>
-      <Typography.Title heading={4} style={{ marginBottom: 20 }}>排名</Typography.Title>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
+        <Typography.Title heading={4} style={{ margin: 0, lineHeight: "32px" }}>排名</Typography.Title>
+        {/* 用户名搜索：标题右侧 */}
+        <div ref={searchWrapRef} style={{ position: "relative", width: 220, flexShrink: 0 }}>
+          <Input
+            allowClear
+            prefix={<IconSearch />}
+            placeholder="搜索用户名"
+            value={searchKeyword}
+            onChange={handleSearchChange}
+            onFocus={() => {
+              if (searchKeyword.trim() || searchResults.length > 0) setSearchOpen(true);
+            }}
+            style={{ width: "100%" }}
+          />
+          {searchOpen && searchKeyword.trim() && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: 4,
+                background: "var(--color-bg-popup, #fff)",
+                border: "1px solid var(--color-border-2, #e5e6eb)",
+                borderRadius: 4,
+                boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                zIndex: 100,
+                maxHeight: 280,
+                overflowY: "auto",
+              }}
+            >
+              {searchLoading ? (
+                <div style={{ padding: "12px 0", textAlign: "center" }}>
+                  <Spin size={16} />
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div style={{ padding: "10px 12px", color: "var(--color-text-3)", fontSize: 13 }}>
+                  无匹配用户
+                </div>
+              ) : (
+                searchResults.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectUser(item.username)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.background = "var(--color-fill-2, #f2f3f5)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                    }}
+                  >
+                    <Avatar size={22} shape="circle" style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
+                      {item.avatar
+                        ? <img src={item.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : (item.username?.[0]?.toUpperCase() || <IconUser />)
+                      }
+                    </Avatar>
+                    <span style={{ color: "var(--color-text-1)" }}>{item.username}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* 筛选区域 */}
       <Card bordered={false} style={{ marginBottom: 20 }}>
