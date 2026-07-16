@@ -1,4 +1,3 @@
-
 import { Button, Input, Modal } from "@arco-design/web-react";
 import { IconPlayArrow, IconExpand, IconShrink, IconDelete } from "@arco-design/web-react/icon";
 
@@ -13,6 +12,8 @@ interface TestAreaProps {
   onClear: () => void;
   isModalVisible: boolean;
   setIsModalVisible: (v: boolean) => void;
+  /** 填满父容器高度（用于可拖动分栏） */
+  fillHeight?: boolean;
 }
 
 function normalizeOutput(s: string) {
@@ -40,6 +41,7 @@ function TestColumns({
   gap,
   labelMargin,
   buttonMargin,
+  minHeight = 120,
 }: {
   testInput: string;
   setTestInput: (v: string) => void;
@@ -52,20 +54,22 @@ function TestColumns({
   gap: number;
   labelMargin: number;
   buttonMargin: number;
+  minHeight?: number;
 }) {
   return (
-    <div style={{ display: "flex", gap, flex: 1, minHeight: 120 }}>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin }}>
+    <div className="test-area-columns" style={{ display: "flex", gap, flex: 1, minHeight, minWidth: 0, overflow: "hidden" }}>
+      <div className="test-area-col" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin, flexShrink: 0 }}>
           自测输入
         </span>
         <Input.TextArea
           value={testInput}
           onChange={setTestInput}
           placeholder="输入测试数据..."
-          style={{ flex: 1, resize: "none", fontFamily: "Consolas, monospace", fontSize: 14 }}
+          className="test-area-textarea"
+          style={{ flex: 1, resize: "none", fontFamily: "Consolas, monospace", fontSize: 14, minHeight: 0 }}
         />
-        <div style={{ display: "flex", gap: 8, marginTop: buttonMargin }}>
+        <div style={{ display: "flex", gap: 8, marginTop: buttonMargin, flexShrink: 0 }}>
           <Button
             type="primary"
             status="success"
@@ -86,30 +90,33 @@ function TestColumns({
           </Button>
         </div>
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin }}>
+      <div className="test-area-col" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin, flexShrink: 0 }}>
           期望输出
         </span>
         <Input.TextArea
           value={testOutput}
           onChange={setTestOutput}
           placeholder="填写期望输出以便对比..."
-          style={{ flex: 1, resize: "none", fontFamily: "Consolas, monospace", fontSize: 14 }}
+          className="test-area-textarea"
+          style={{ flex: 1, resize: "none", fontFamily: "Consolas, monospace", fontSize: 14, minHeight: 0 }}
         />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin }}>
+      <div className="test-area-col" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
+        <span style={{ fontWeight: 600, fontSize: 13, color: "var(--color-text-2)", marginBottom: labelMargin, flexShrink: 0 }}>
           实际输出
         </span>
         <Input.TextArea
           value={actualOutput}
           placeholder='点击"测试运行"后显示结果...'
           readOnly
+          className="test-area-textarea"
           style={{
             flex: 1,
             resize: "none",
             fontFamily: "Consolas, monospace",
             fontSize: 14,
+            minHeight: 0,
             background: getActualOutputBg(testOutput, actualOutput),
             color: actualOutput.startsWith("[") ? "var(--color-error)" : undefined,
           }}
@@ -130,10 +137,18 @@ export default function TestArea({
   onClear,
   isModalVisible,
   setIsModalVisible,
+  fillHeight = false,
 }: TestAreaProps) {
   return (
-    <div style={{ position: "relative", marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+    <div
+      style={{
+        position: "relative",
+        ...(fillHeight
+          ? { flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }
+          : { marginTop: 12 }),
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, flexShrink: 0 }}>
         <Button
           type="text"
           size="mini"
@@ -156,6 +171,7 @@ export default function TestArea({
         gap={12}
         labelMargin={4}
         buttonMargin={8}
+        minHeight={fillHeight ? 0 : 120}
       />
 
       <Modal
@@ -163,10 +179,10 @@ export default function TestArea({
         visible={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
-        style={{ width: '80%', top: '20px' }}
+        style={{ width: "80%", top: "20px" }}
         closeIcon={<IconShrink />}
       >
-        <div style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', padding: "10px 0" }}>
+        <div style={{ height: "calc(100vh - 160px)", display: "flex", flexDirection: "column", padding: "10px 0" }}>
           <TestColumns
             testInput={testInput}
             setTestInput={setTestInput}

@@ -802,8 +802,83 @@ body[arco-theme="dark"] .wmde-markdown td {
   }
 }
 
+/* ===== 题目页可拖动分栏手柄 ===== */
+.panel-resize-handle {
+  flex-shrink: 0;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background 0.15s ease;
+  touch-action: none;
+}
+.panel-resize-handle::after {
+  content: "";
+  position: absolute;
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+.panel-resize-handle:hover::after,
+.panel-resize-handle.is-dragging::after {
+  background: rgb(var(--primary-6));
+  opacity: 0.55;
+}
+.panel-resize-handle-col {
+  width: 8px;
+  margin: 0 2px;
+  cursor: col-resize;
+  align-self: stretch;
+}
+.panel-resize-handle-col::after {
+  top: 20%;
+  bottom: 20%;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+}
+.panel-resize-handle-row {
+  height: 8px;
+  margin: 2px 0;
+  cursor: row-resize;
+  align-self: stretch;
+}
+.panel-resize-handle-row::after {
+  left: 20%;
+  right: 20%;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+}
+/* 拖动时禁止选中文字，避免闪烁 */
+.problem-split-view.is-resizing,
+.problem-split-right.is-resizing {
+  user-select: none;
+  cursor: inherit;
+}
+/* 测试区 TextArea 在 fillHeight 时撑满 */
+.test-area-col .arco-textarea-wrapper {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+}
+.test-area-col .arco-textarea-wrapper textarea,
+.test-area-col .test-area-textarea {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
 /* Problem Detail Responsive Overrides */
 @media (max-width: 1023px) {
+  /* 移动端隐藏拖动手柄，恢复自然堆叠布局 */
+  .panel-resize-handle,
+  .problem-h-resize-handle,
+  .problem-v-resize-handle {
+    display: none !important;
+  }
+
   .problem-detail-layout {
     flex-direction: column !important;
     height: auto !important;

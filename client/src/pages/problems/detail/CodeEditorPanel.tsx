@@ -7,6 +7,8 @@ import { submissionApi } from "../../../api/submission";
 import { applyEditorTheme, registerMonacoExtras } from "../../../editor/register";
 import { DEV_CPP_THEME_ID, DEV_CPP_THEME_LABEL } from "../../../editor/themes/dev-cpp";
 import "../../../editor/themes/dev-cpp.css";
+import ResizeHandle from "../../../components/ResizeHandle";
+import { usePanelResize } from "../../../hooks/usePanelResize";
 import TestArea from "./TestArea";
 
 interface CodeEditorPanelProps {
@@ -40,6 +42,8 @@ interface CodeEditorPanelProps {
   setEditorTheme: (v: string) => void;
   codeCompletion: boolean;
   setCodeCompletion: (v: boolean) => void;
+  /** 外部正在水平拖动时禁用 flex 过渡动画 */
+  disableTransition?: boolean;
 }
 
 export default function CodeEditorPanel({
@@ -72,9 +76,24 @@ export default function CodeEditorPanel({
   setEditorTheme,
   codeCompletion,
   setCodeCompletion,
+  disableTransition = false,
 }: CodeEditorPanelProps) {
   const [systemTheme, setSystemTheme] = useState(() => {
     return document.body.getAttribute("arco-theme") === "dark" ? "vs-dark" : "vs";
+  });
+
+  // 代码编辑区 / 测试数据区 上下高度比例（百分比为编辑区高度）
+  const verticalSplitRef = useRef<HTMLDivElement>(null);
+  const {
+    percent: editorHeightPercent,
+    dragging: resizingVertical,
+    startDrag: startVerticalDrag,
+    reset: resetVerticalSplit,
+  } = usePanelResize({
+    storageKey: "oj_editor_height",
+    defaultPercent: 62,
+    minPercent: 25,
+    maxPercent: 85,
   });
 
   useEffect(() => {
@@ -190,17 +209,21 @@ export default function CodeEditorPanel({
   }, []);
 
   return (
-    <div id="code-editor-panel" className={`problem-split-right ${codeCollapsed ? 'is-collapsed' : ''}`} style={{
-      flex: codeCollapsed ? "0 0 0px" : 1,
-      display: "flex",
-      flexDirection: "column",
-      minWidth: 0,
-      overflow: "hidden",
-      opacity: codeCollapsed ? 0 : 1,
-      pointerEvents: codeCollapsed ? "none" : "auto",
-      transition: "flex 0.3s ease, opacity 0.3s ease",
-    }}>
-      <Card size="small" style={{ marginBottom: 12 }}>
+    <div
+      id="code-editor-panel"
+      className={`problem-split-right ${codeCollapsed ? "is-collapsed" : ""}${resizingVertical ? " is-resizing" : ""}`}
+      style={{
+        flex: codeCollapsed ? "0 0 0px" : 1,
+        display: "flex",
+        flexDirection: "column",
+        minWidth: 0,
+        overflow: "hidden",
+        opacity: codeCollapsed ? 0 : 1,
+        pointerEvents: codeCollapsed ? "none" : "auto",
+        transition: disableTransition || resizingVertical ? "none" : "flex 0.3s ease, opacity 0.3s ease",
+      }}
+    >
+      <Card size="small" style={{ marginBottom: 8, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Select value={language} onChange={setLanguage} style={{ width: 120 }}>
             <Select.Option value="c">C</Select.Option>
@@ -358,107 +381,142 @@ export default function CodeEditorPanel({
         )}
       </Card>
 
-      {/* 代码编辑器 */}
-      <div style={{ flex: 2, border: "1px solid var(--color-border)", borderRadius: 4, overflow: "hidden", minHeight: 0 }}>
-        <Editor
-          height="100%"
-          language={langMap[language]}
-          value={code}
-          onChange={(v) => setCode(v || "")}
-          theme={resolvedTheme}
-          beforeMount={(monaco) => {
-            registerMonacoExtras(monaco);
+      {/* 编辑器 + 测试区 可拖动上下分栏 */}
+      <div
+        ref={verticalSplitRef}
+        className="problem-vertical-split"
+        style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}
+      >
+        {/* 代码编辑器 */}
+        <div
+          style={{
+            flex: `${editorHeightPercent} 1 0`,
+            border: "1px solid var(--color-border)",
+            borderRadius: 4,
+            overflow: "hidden",
+            minHeight: 80,
           }}
-          onMount={(editor, monaco) => {
-            editorRef.current = editor;
-            monacoRef.current = monaco;
-            // 挂载时强制刷一次主题 + tokenizer（压过内置 cpp grammar）
-            applyEditorTheme(monaco, resolvedTheme);
+        >
+          <Editor
+            height="100%"
+            language={langMap[language]}
+            value={code}
+            onChange={(v) => setCode(v || "")}
+            theme={resolvedTheme}
+            beforeMount={(monaco) => {
+              registerMonacoExtras(monaco);
+            }}
+            onMount={(editor, monaco) => {
+              editorRef.current = editor;
+              monacoRef.current = monaco;
+              // 挂载时强制刷一次主题 + tokenizer（压过内置 cpp grammar）
+              applyEditorTheme(monaco, resolvedTheme);
 
-            // Dev-C++ 选中白字：监听选区变化，用 inline decoration 覆盖语法色
-            const subSel = editor.onDidChangeCursorSelection(() => {
+              // Dev-C++ 选中白字：监听选区变化，用 inline decoration 覆盖语法色
+              const subSel = editor.onDidChangeCursorSelection(() => {
+                syncSelectionWhiteFg();
+              });
               syncSelectionWhiteFg();
-            });
-            syncSelectionWhiteFg();
 
-            // Ctrl+S 保存代码到本地
-            editor.addCommand(
-              monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-              () => {
-                if (!problem) return;
-                const codeValue = editor.getValue();
-                if (codeValue.length > 1024 * 1024) {
-                  Message.warning("代码过大，无法保存到浏览器本地");
-                  return;
-                }
-                const uid = user?.id || "anon";
-                localStorage.setItem(`oj_code_${problem.id}_${uid}`, codeValue);
-                Message.success("代码已保存到浏览器本地");
+              // Ctrl+S 保存代码到本地
+              editor.addCommand(
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+                () => {
+                  if (!problem) return;
+                  const codeValue = editor.getValue();
+                  if (codeValue.length > 1024 * 1024) {
+                    Message.warning("代码过大，无法保存到浏览器本地");
+                    return;
+                  }
+                  const uid = user?.id || "anon";
+                  localStorage.setItem(`oj_code_${problem.id}_${uid}`, codeValue);
+                  Message.success("代码已保存到浏览器本地");
+                },
+              );
+              // Ctrl+滚轮缩放字体
+              const domNode = editor.getDomNode();
+              if (domNode) {
+                const handler = (e: WheelEvent) => {
+                  if (!e.ctrlKey && !e.metaKey) return;
+                  e.preventDefault();
+                  const delta = e.deltaY > 0 ? -1 : 1;
+                  const next = clampFontSize(fontSizeRef.current + delta);
+                  setEditorFontSize(next);
+                  localStorage.setItem("oj_editor_fontSize", String(next));
+                };
+                domNode.addEventListener("wheel", handler, { passive: false });
+                editor.onDidDispose(() => {
+                  subSel.dispose();
+                  domNode.removeEventListener("wheel", handler);
+                  selDecoRef.current = [];
+                });
+              } else {
+                editor.onDidDispose(() => {
+                  subSel.dispose();
+                  selDecoRef.current = [];
+                });
+              }
+            }}
+            options={{
+              fontSize: editorFontSize,
+              fontFamily: 'Consolas, "Courier New", monospace',
+              fontLigatures: false,
+              renderLineHighlight: "all",
+              // 关闭选中时把空格渲染成中间点 ·
+              renderWhitespace: "none",
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: editorTabSize,
+              quickSuggestions: codeCompletion,
+              suggestOnTriggerCharacters: codeCompletion,
+              wordBasedSuggestions: codeCompletion,
+              // Dev-C++：关闭括号对着色，否则会盖掉 token 的 #FF0000
+              bracketPairColorization: {
+                enabled: resolvedTheme !== DEV_CPP_THEME_ID,
               },
-            );
-            // Ctrl+滚轮缩放字体
-            const domNode = editor.getDomNode();
-            if (domNode) {
-              const handler = (e: WheelEvent) => {
-                if (!e.ctrlKey && !e.metaKey) return;
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? -1 : 1;
-                const next = clampFontSize(fontSizeRef.current + delta);
-                setEditorFontSize(next);
-                localStorage.setItem("oj_editor_fontSize", String(next));
-              };
-              domNode.addEventListener("wheel", handler, { passive: false });
-              editor.onDidDispose(() => {
-                subSel.dispose();
-                domNode.removeEventListener("wheel", handler);
-                selDecoRef.current = [];
-              });
-            } else {
-              editor.onDidDispose(() => {
-                subSel.dispose();
-                selDecoRef.current = [];
-              });
-            }
-          }}
-          options={{
-            fontSize: editorFontSize,
-            fontFamily: 'Consolas, "Courier New", monospace',
-            fontLigatures: false,
-            renderLineHighlight: "all",
-            // 关闭选中时把空格渲染成中间点 ·
-            renderWhitespace: "none",
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            tabSize: editorTabSize,
-            quickSuggestions: codeCompletion,
-            suggestOnTriggerCharacters: codeCompletion,
-            wordBasedSuggestions: codeCompletion,
-            // Dev-C++：关闭括号对着色，否则会盖掉 token 的 #FF0000
-            bracketPairColorization: {
-              enabled: resolvedTheme !== DEV_CPP_THEME_ID,
-            },
-            matchBrackets: resolvedTheme === DEV_CPP_THEME_ID ? "never" : "always",
-            // Dev-C++：关闭「选中/光标所在词」的其它出现位置浅色高亮
-            selectionHighlight: resolvedTheme !== DEV_CPP_THEME_ID,
-            occurrencesHighlight: (resolvedTheme === DEV_CPP_THEME_ID ? false : true) as any,
-          }}
-        />
-      </div>
+              matchBrackets: resolvedTheme === DEV_CPP_THEME_ID ? "never" : "always",
+              // Dev-C++：关闭「选中/光标所在词」的其它出现位置浅色高亮
+              selectionHighlight: resolvedTheme !== DEV_CPP_THEME_ID,
+              occurrencesHighlight: (resolvedTheme === DEV_CPP_THEME_ID ? false : true) as any,
+            }}
+          />
+        </div>
 
-      {/* 输入输出测试区 */}
-      <TestArea
-        testInput={testInput}
-        setTestInput={setTestInput}
-        testOutput={testOutput}
-        setTestOutput={setTestOutput}
-        actualOutput={actualOutput}
-        testing={testing}
-        onTest={onTest}
-        onClear={onClear}
-        isModalVisible={isModalVisible}
-        setIsModalVisible={setIsModalVisible}
-      />
+        {/* 上下分栏拖动手柄 */}
+        <ResizeHandle
+          direction="row"
+          dragging={resizingVertical}
+          className="problem-v-resize-handle"
+          onPointerDown={(e) => startVerticalDrag(e, verticalSplitRef.current, "y")}
+          onDoubleClick={resetVerticalSplit}
+        />
+
+        {/* 输入输出测试区 */}
+        <div
+          style={{
+            flex: `${100 - editorHeightPercent} 1 0`,
+            minHeight: 100,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <TestArea
+            testInput={testInput}
+            setTestInput={setTestInput}
+            testOutput={testOutput}
+            setTestOutput={setTestOutput}
+            actualOutput={actualOutput}
+            testing={testing}
+            onTest={onTest}
+            onClear={onClear}
+            isModalVisible={isModalVisible}
+            setIsModalVisible={setIsModalVisible}
+            fillHeight
+          />
+        </div>
+      </div>
     </div>
   );
 }

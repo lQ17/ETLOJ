@@ -10,6 +10,8 @@ import { submissionApi } from "../../../api/submission";
 import { useAuthStore } from "../../../stores/auth";
 import confetti from "canvas-confetti";
 import ChatPanel from "../../../components/ChatPanel";
+import ResizeHandle from "../../../components/ResizeHandle";
+import { usePanelResize } from "../../../hooks/usePanelResize";
 import { defaultCode } from "./constants";
 import ProblemContent from "./ProblemContent";
 import CodeEditorPanel from "./CodeEditorPanel";
@@ -113,6 +115,20 @@ export default function ProblemDetailPage() {
     return localStorage.getItem("oj_editor_codeCompletion") === "true";
   });
   const [codeCollapsed, setCodeCollapsed] = useState(() => window.innerWidth < 1024);
+
+  // 题目区 / 代码区 左右宽度比例（百分比为左侧宽度）
+  const splitViewRef = useRef<HTMLDivElement>(null);
+  const {
+    percent: leftWidthPercent,
+    dragging: resizingHorizontal,
+    startDrag: startHorizontalDrag,
+    reset: resetHorizontalSplit,
+  } = usePanelResize({
+    storageKey: "oj_problem_left_width",
+    defaultPercent: 50,
+    minPercent: 25,
+    maxPercent: 75,
+  });
 
   // 二级导航
   const [activeTab, setActiveTab] = useState<"detail" | "solutions" | "ai">(() => {
@@ -387,15 +403,21 @@ export default function ProblemDetailPage() {
       <div className="problem-detail-content" style={{ flex: 1, display: "flex", overflow: "hidden", marginLeft: 16 }}>
         {/* 题目详情与问问AI（左右分栏共用代码编辑器） */}
         {(activeTab === "detail" || activeTab === "ai") && (
-          <div className="problem-split-view" data-tab={activeTab} style={{ display: "flex", gap: 24, width: "100%" }}>
+          <div
+            ref={splitViewRef}
+            className={`problem-split-view${resizingHorizontal ? " is-resizing" : ""}`}
+            data-tab={activeTab}
+            style={{ display: "flex", gap: 0, width: "100%", height: "100%", minWidth: 0, minHeight: 0 }}
+          >
             {/* 左侧：动态内容（题面 或 AI） */}
             <div className="problem-split-left" style={{
-              flex: codeCollapsed ? 1 : "0 0 50%",
+              flex: codeCollapsed ? 1 : `0 0 ${leftWidthPercent}%`,
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              paddingRight: 8,
-              transition: "flex 0.3s ease",
+              paddingRight: codeCollapsed ? 0 : 4,
+              minWidth: 0,
+              transition: resizingHorizontal ? "none" : "flex 0.3s ease",
             }}>
               {/* 题面区域 */}
               <div style={{
@@ -450,6 +472,17 @@ export default function ProblemDetailPage() {
               </div>
             </div>
 
+            {/* 左右分栏拖动手柄（IDE 收起时隐藏） */}
+            {!codeCollapsed && (
+              <ResizeHandle
+                direction="col"
+                dragging={resizingHorizontal}
+                className="problem-h-resize-handle"
+                onPointerDown={(e) => startHorizontalDrag(e, splitViewRef.current, "x")}
+                onDoubleClick={resetHorizontalSplit}
+              />
+            )}
+
             {/* 右侧：代码编辑器 + 测试区 */}
             <CodeEditorPanel
               code={code}
@@ -482,6 +515,7 @@ export default function ProblemDetailPage() {
               setEditorTheme={setEditorTheme}
               codeCompletion={codeCompletion}
               setCodeCompletion={setCodeCompletion}
+              disableTransition={resizingHorizontal}
             />
           </div>
         )}
