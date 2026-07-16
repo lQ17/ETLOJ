@@ -168,8 +168,8 @@ export default function ProblemDetailPage() {
             localStorage.setItem(`oj_language_${p.id}_${uid}`, stateLanguage);
           }
           Message.success("已成功载入该评测记录的代码");
-          // 重置 state，防止之后从其他地方切换回来时误触发
-          navigate(location.pathname, { replace: true, state: {} });
+          // 重置 state，防止之后从其他地方切换回来时误触发（保留 search，避免丢掉 back 等参数）
+          navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} });
         } else {
           // 恢复浏览器本地保存的代码
           const saved = localStorage.getItem(`oj_code_${p.id}_${uid}`);
@@ -386,7 +386,14 @@ export default function ProblemDetailPage() {
           type="text"
           size="small"
           icon={<IconLeft />}
-          onClick={() => navigate(backToListParams ? `/problems?${backToListParams}` : "/problems")}
+          onClick={() => {
+            // back 为题库列表完整 query（含 page），直接还原
+            if (backToListParams) {
+              navigate(`/problems?${backToListParams}`);
+            } else {
+              navigate("/problems");
+            }
+          }}
           style={{
             justifyContent: "flex-start",
             paddingLeft: 12,

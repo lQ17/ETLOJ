@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Table, Tag, Input, Select, Space, Typography, Button, Switch, Modal, Checkbox, Tooltip,
@@ -12,79 +12,128 @@ import DifficultyTag from "../../components/DifficultyTag";
 import { DIFFICULTY_VALUES, DIFFICULTY_CONFIG } from "../../constants/difficulty";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 
+function parsePage(raw: string | null): number {
+  const p = parseInt(raw || "1", 10);
+  return Number.isFinite(p) && p > 0 ? p : 1;
+}
+
+/** 从当前 URL 构建题库列表 query（用于同步 URL / 返回题库） */
+function buildListQuery(opts: {
+  page: number;
+  keyword: string;
+  difficulty?: string;
+  selectedTags: string[];
+  tagMode: "AND" | "OR";
+}): URLSearchParams {
+  const params = new URLSearchParams();
+  if (opts.keyword) params.set("keyword", opts.keyword);
+  if (opts.difficulty) params.set("difficulty", opts.difficulty);
+  if (opts.selectedTags.length > 0) {
+    params.set("tags", opts.selectedTags.join(","));
+    params.set("tagMode", opts.tagMode);
+  }
+  if (opts.page > 1) params.set("page", String(opts.page));
+  return params;
+}
+
 export default function ProblemListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
+
+  // URL 为唯一数据源：返回题库 / 浏览器后退时直接按 query 恢复
+  // 注意：用字符串 snapshot 作依赖，避免 URLSearchParams 引用变化导致重复请求
+  const page = parsePage(searchParams.get("page"));
+  const keyword = searchParams.get("keyword") || "";
+  const difficulty = searchParams.get("difficulty") || undefined;
+  const tagsKey = searchParams.get("tags") || "";
+  const selectedTags = useMemo(
+    () => (tagsKey ? tagsKey.split(",").filter(Boolean) : []),
+    [tagsKey],
+  );
+  const tagMode = (searchParams.get("tagMode") as "AND" | "OR") || "AND";
+
+  // 搜索框本地草稿：输入时不立刻改 URL，点搜索 / 回车再提交（避免每键重置页码）
+  const [keywordInput, setKeywordInput] = useState(keyword);
+  useEffect(() => {
+    setKeywordInput(keyword);
+  }, [keyword]);
+
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState(() => searchParams.get("keyword") || "");
-  const [difficulty, setDifficulty] = useState<string | undefined>(() => searchParams.get("difficulty") || undefined);
   const [loading, setLoading] = useState(false);
   const [statusMap, setStatusMap] = useState<Record<number, string>>({});
 
-  // 标签筛选
+  // 标签筛选弹窗
   const [allTags, setAllTags] = useState<any[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
-    const tags = searchParams.get("tags");
-    return tags ? tags.split(",") : [];
-  });
-  const [tagMode, setTagMode] = useState<"AND" | "OR">(() => (searchParams.get("tagMode") as "AND" | "OR") || "AND");
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [tagSearchKeyword, setTagSearchKeyword] = useState("");
   const [tempSelectedTags, setTempSelectedTags] = useState<string[]>([]);
   const [tempTagMode, setTempTagMode] = useState<"AND" | "OR">("AND");
-  
+
   const { isMobile, isTablet } = useMediaQuery();
 
-  // 加载标签列表
+  /** 写回 URL；筛选变更时由调用方传入 page: 1 */
+  const applyListParams = (next: {
+    page?: number;
+    keyword?: string;
+    /** 传 null 表示清除难度 */
+    difficulty?: string | null;
+    selectedTags?: string[];
+    tagMode?: "AND" | "OR";
+  }) => {
+    const params = buildListQuery({
+      page: next.page ?? page,
+      keyword: next.keyword ?? keyword,
+      difficulty: next.difficulty === null
+        ? undefined
+        : (next.difficulty !== undefined ? next.difficulty : difficulty),
+      selectedTags: next.selectedTags ?? selectedTags,
+      tagMode: next.tagMode ?? tagMode,
+    });
+    setSearchParams(params, { replace: true });
+  };
+
   useEffect(() => {
     tagApi.list().then((res: any) => setAllTags(res || [])).catch(() => {});
   }, []);
 
-  const fetchData = async (p = page) => {
-    setLoading(true);
-    try {
-      const params: any = {
-        page: p,
-        pageSize: 20,
-        keyword: keyword || undefined,
-        difficulty: difficulty || undefined,
-      };
-      if (selectedTags.length > 0) {
-        params.tags = selectedTags;
-        params.tagMode = tagMode;
-      }
-      const res: any = await problemApi.list(params);
-      setData(res.items);
-      setTotal(res.total);
-      if (user && res.items?.length > 0) {
-        const ids = res.items.map((item: any) => item.id);
-        try {
-          const status: any = await submissionApi.getStatus(ids);
-          setStatusMap(status);
-        } catch { /* ignore */ }
-      }
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 仅随 URL 中的列表状态拉数，避免 StrictMode / 本地 state 误把页码打回 1
   useEffect(() => {
-    fetchData(1);
-    setPage(1);
-    // Sync filter state to URL params for back navigation
-    const params: Record<string, string> = {};
-    if (keyword) params.keyword = keyword;
-    if (difficulty) params.difficulty = difficulty;
-    if (selectedTags.length > 0) {
-      params.tags = selectedTags.join(",");
-      params.tagMode = tagMode;
-    }
-    setSearchParams(params, { replace: true });
-  }, [keyword, difficulty, selectedTags, tagMode]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const params: any = {
+          page,
+          pageSize: 20,
+          keyword: keyword || undefined,
+          difficulty: difficulty || undefined,
+        };
+        if (selectedTags.length > 0) {
+          params.tags = selectedTags;
+          params.tagMode = tagMode;
+        }
+        const res: any = await problemApi.list(params);
+        if (cancelled) return;
+        setData(res.items);
+        setTotal(res.total);
+        if (user && res.items?.length > 0) {
+          const ids = res.items.map((item: any) => item.id);
+          try {
+            const status: any = await submissionApi.getStatus(ids);
+            if (!cancelled) setStatusMap(status);
+          } catch { /* ignore */ }
+        } else {
+          setStatusMap({});
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [page, keyword, difficulty, tagsKey, tagMode, user]);
 
   const openTagModal = () => {
     setTempSelectedTags([...selectedTags]);
@@ -94,9 +143,13 @@ export default function ProblemListPage() {
   };
 
   const handleTagModalOk = () => {
-    setSelectedTags(tempSelectedTags);
-    setTagMode(tempTagMode);
+    // 改标签筛选时回到第 1 页
+    applyListParams({ selectedTags: tempSelectedTags, tagMode: tempTagMode, page: 1 });
     setTagModalVisible(false);
+  };
+
+  const handleSearch = () => {
+    applyListParams({ keyword: keywordInput.trim(), page: 1 });
   };
 
   const statusIcon = (id: number) => {
@@ -131,14 +184,8 @@ export default function ProblemListPage() {
       title: "标题",
       dataIndex: "title",
       render: (title: string, record: any) => {
-        const params = new URLSearchParams();
-        if (keyword) params.set("keyword", keyword);
-        if (difficulty) params.set("difficulty", difficulty);
-        if (selectedTags.length > 0) {
-          params.set("tags", selectedTags.join(","));
-          params.set("tagMode", tagMode);
-        }
-        const qs = params.toString();
+        // 把当前列表 query 原样塞进 back，返回时可完整恢复（含 page）
+        const qs = searchParams.toString();
         const to = `/problems/${record.slug}${qs ? `?back=${encodeURIComponent(qs)}` : ""}`;
         return <Link to={to} style={{ color: "#3b82f6", textDecoration: "none" }}>{title}</Link>;
       },
@@ -157,9 +204,9 @@ export default function ProblemListPage() {
       title: "通过率",
       width: 100,
       render: (_: any, record: any) => {
-        const total = record.totalSubmissions || 0;
+        const t = record.totalSubmissions || 0;
         const ac = record.acceptedCount || 0;
-        return total > 0 ? `${Math.round((ac / total) * 100)}%` : "-";
+        return t > 0 ? `${Math.round((ac / t) * 100)}%` : "-";
       },
     }] : []),
     ...(!isMobile ? [{
@@ -185,21 +232,22 @@ export default function ProblemListPage() {
           placeholder="搜索题号或标题"
           allowClear
           style={{ width: 240 }}
-          value={keyword}
-          onChange={setKeyword}
-          onPressEnter={() => { setPage(1); fetchData(1); }}
+          value={keywordInput}
+          onChange={setKeywordInput}
+          onClear={() => applyListParams({ keyword: "", page: 1 })}
+          onPressEnter={handleSearch}
         />
         <Button
           type="primary"
           icon={<IconSearch />}
-          onClick={() => { setPage(1); fetchData(1); }}
+          onClick={handleSearch}
         />
         <Select
           placeholder="难度筛选"
           allowClear
           style={{ width: 140 }}
           value={difficulty}
-          onChange={(v) => setDifficulty(v || undefined)}
+          onChange={(v) => applyListParams({ difficulty: v || null, page: 1 })}
         >
           {DIFFICULTY_VALUES.map(d => (
             <Select.Option key={d} value={d}>{DIFFICULTY_CONFIG[d].label}</Select.Option>
@@ -212,7 +260,7 @@ export default function ProblemListPage() {
           <Button
             type="text"
             size="small"
-            onClick={() => { setSelectedTags([]); }}
+            onClick={() => applyListParams({ selectedTags: [], page: 1 })}
           >
             清除标签
           </Button>
@@ -238,8 +286,7 @@ export default function ProblemListPage() {
           pageSize: 20,
           total,
           onChange: (p) => {
-            setPage(p);
-            fetchData(p);
+            applyListParams({ page: p });
           },
         }}
       />
