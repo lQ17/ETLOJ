@@ -40,6 +40,13 @@ export class ProblemImportExportService {
     return path.join(this.problemsDir, slug);
   }
 
+  /** 确保 markdown 第一行为 `# {slug} {title}`（以 problem.json 为准） */
+  private ensureHeading(markdown: string, slug: string, title: string): string {
+    const heading = `# ${slug} ${title}`;
+    const stripped = markdown.replace(/^#[^\n]*\n?/, "");
+    return `${heading}\n${stripped}`;
+  }
+
   private getMarkdownPath(slug: string) {
     return path.join(this.getProblemDir(slug), "problem.md");
   }
@@ -132,11 +139,12 @@ export class ProblemImportExportService {
         const tcDir = this.getTestcasesDir(meta.slug);
         fs.mkdirSync(tcDir, { recursive: true });
 
-        // Write problem.md
+        // Write problem.md（第一行强制为 # {slug} {title}，以 problem.json 为准）
         const mdEntry = dirEntries.find(e => e.entryName.endsWith('problem.md'));
-        if (mdEntry) {
-          fs.writeFileSync(this.getMarkdownPath(meta.slug), mdEntry.getData().toString('utf-8'), 'utf-8');
-        }
+        const importTitle = meta.title || meta.slug;
+        let markdown = mdEntry ? mdEntry.getData().toString('utf-8') : '';
+        markdown = this.ensureHeading(markdown, meta.slug, importTitle);
+        fs.writeFileSync(this.getMarkdownPath(meta.slug), markdown, 'utf-8');
 
         // Write testcases
         for (const entry of dirEntries) {
