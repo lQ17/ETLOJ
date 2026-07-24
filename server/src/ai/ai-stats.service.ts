@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient } from 'redis';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiProviderService } from './ai-provider.service';
+import { beijingDateString } from './ai-date.util';
 
 @Injectable()
 export class AiStatsService {
@@ -34,7 +35,7 @@ export class AiStatsService {
       orderBy: { id: 'desc' }
     });
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = beijingDateString();
     const globalLimit = await this.providerService.getGlobalLimit();
     const result = await Promise.all(users.map(async (u) => {
       const used = Number(await this.redis.get(`ai:usage:${u.id}:${today}`) || '0');
@@ -57,7 +58,7 @@ export class AiStatsService {
 
   // ─── 统计面板 ───
   async getStats() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = beijingDateString();
 
     const callPrefix = `ai:stats:${today}:calls:`;
     const tokenPrefix = `ai:stats:${today}:tokens:`;

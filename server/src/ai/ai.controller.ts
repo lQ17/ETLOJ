@@ -1,8 +1,8 @@
 import {
   Controller, Post, Get, Patch, Delete,
-  Body, Query, Res, UseGuards, ParseIntPipe, Param
+  Body, Query, Res, Req, UseGuards, ParseIntPipe, Param
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AiService } from './ai.service';
 import { ChatDto } from './dto/chat.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -27,34 +27,52 @@ export class AiController {
     @Body() dto: ChatDto,
     @CurrentUser() user: { id: number; role: string },
     @Res() res: Response,
+    @Req() req: Request,
   ) {
-    // 兼容 AI SDK v3 的 parts 格式
-    for (const msg of dto.messages) {
-      if (!msg.content && msg.parts) {
-        msg.content = msg.parts
-          .filter(p => p.type === 'text' && p.text)
-          .map(p => p.text)
+    // 统一从 content / parts 提取文本并限长（AI SDK v3 走 parts）
+    const extractText = (msg: { content?: string; parts?: Array<{ type: string; text?: string }> }) => {
+      if (msg.parts && Array.isArray(msg.parts)) {
+        const fromParts = msg.parts
+          .filter((p) => p.type === 'text' && p.text)
+          .map((p) => p.text as string)
           .join('');
+        if (fromParts) return fromParts;
       }
-    }
-    // 验证 content 不为空且不超长
-    for (const msg of dto.messages) {
-      if (!msg.content) {
+      return msg.content || '';
+    };
+
+    // regenerate 时前端可能带上空的 assistant 占位，且服务端以 DB 历史为准
+    for (const msg of dto.messages || []) {
+      const text = extractText(msg);
+      if (!text.trim()) {
+        if (dto.regenerate || msg.role === 'assistant') {
+          msg.content = '';
+          continue;
+        }
         res.status(400).json({ message: '消息内容不能为空' });
         return;
       }
-      if (msg.content.length > 5000) {
+      if (text.length > 5000) {
         res.status(400).json({ message: '单条消息内容不能超过 5000 个字符' });
         return;
       }
+      // 规范化为 content，后续服务层可直接使用
+      msg.content = text.slice(0, 5000);
     }
     try {
-      await this.aiService.chat(user, dto, res);
+      await this.aiService.chat(user, dto, res, req);
     } catch (err: any) {
       if (!res.headersSent) {
         const status = err.getStatus?.() || err.status || 500;
-        // 只返回通用错误消息，不暴露外部服务细节
-        res.status(status).json({ message: 'AI 服务出错，请稍后重试' });
+        // 额度超限等业务错误透传 message；其余返回通用文案，不暴露外部服务细节
+        const isClientError = status >= 400 && status < 500;
+        let message = 'AI 服务出错，请稍后重试';
+        if (isClientError) {
+          const raw = err.getResponse?.() ?? err.message;
+          if (typeof raw === 'string') message = raw;
+          else if (raw?.message) message = Array.isArray(raw.message) ? raw.message[0] : raw.message;
+        }
+        res.status(status).json({ message });
       }
     }
   }
@@ -210,6 +228,6 @@ export class AiController {
   @Get('prompt-configs')
   @UseGuards(JwtAuthGuard)
   getPublicPromptConfigs() {
-    return this.aiService.getPromptConfigs();
+    return this.aiService.getPublicPromptConfigs();
   }
 }

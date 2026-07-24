@@ -10,7 +10,7 @@ export class AiPromptService {
     difficulty: string;
     markdown: string;
     currentCode?: string;
-    submissions: { status: string; score: number | null; createdAt: Date }[];
+    submissions: { status: string; score: number | null; createdAt: Date; language?: string; code?: string }[];
     language?: string;
     promptConfigId?: number;
   }): Promise<string> {
@@ -69,6 +69,22 @@ ${trimmedMarkdown}
       prompt += `\n### 学生状态：已通过 ✅\n学生已 AC，可以讨论优化思路、时间/空间复杂度分析、其他解法。\n`;
     } else if (totalAttempts > 0) {
       prompt += `\n### 学生状态：已提交 ${totalAttempts} 次，最近状态为 ${lastStatus}\n`;
+    }
+
+    // 最近非 AC 提交的代码摘要（最多 3 条，便于「分析错误」）
+    const recentFailed = ctx.submissions
+      .filter((sub) => sub.status !== 'AC' && sub.code?.trim())
+      .slice(0, 3);
+    if (recentFailed.length > 0) {
+      prompt += `\n### 最近提交详情\n`;
+      recentFailed.forEach((sub, i) => {
+        const code = (sub.code || '').length > 1500
+          ? (sub.code || '').slice(0, 1500) + '\n// ...(代码已截断)'
+          : (sub.code || '');
+        const lang = sub.language || ctx.language || '';
+        const scorePart = sub.score != null ? `，得分 ${sub.score}` : '';
+        prompt += `\n#### 提交 #${i + 1}：${sub.status}${scorePart}${lang ? `（${lang}）` : ''}\n\`\`\`${lang}\n${code}\n\`\`\`\n`;
+      });
     }
 
     if (ctx.language) {

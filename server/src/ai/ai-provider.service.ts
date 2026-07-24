@@ -139,6 +139,14 @@ export class AiProviderService {
     return this.prisma.aiPromptConfig.findMany({ orderBy: { id: 'asc' } });
   }
 
+  /** 登录用户可见：仅 id/name/isActive，不暴露完整 system prompt */
+  async getPublicPromptConfigs() {
+    return this.prisma.aiPromptConfig.findMany({
+      orderBy: { id: 'asc' },
+      select: { id: true, name: true, isActive: true },
+    });
+  }
+
   async addPromptConfig(dto: { name: string; role: string; codeRules: string; replyRules: string; isActive?: boolean }) {
     if (dto.isActive) {
       await this.prisma.aiPromptConfig.updateMany({ data: { isActive: false } });

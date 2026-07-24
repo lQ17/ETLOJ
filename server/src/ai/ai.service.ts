@@ -67,10 +67,11 @@ export class AiService {
 
   chat(
     user: { id: number; role: string },
-    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string; promptConfigId?: number },
+    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string; promptConfigId?: number; regenerate?: boolean },
     res: any,
+    req?: any,
   ) {
-    return this.conversationService.chat(user, dto, res);
+    return this.conversationService.chat(user, dto, res, req);
   }
 
   // ─── Stats / Quotas ───
@@ -95,6 +96,10 @@ export class AiService {
 
   getPromptConfigs() {
     return this.providerService.getPromptConfigs();
+  }
+
+  getPublicPromptConfigs() {
+    return this.providerService.getPublicPromptConfigs();
   }
 
   addPromptConfig(dto: { name: string; role: string; codeRules: string; replyRules: string; isActive?: boolean }) {

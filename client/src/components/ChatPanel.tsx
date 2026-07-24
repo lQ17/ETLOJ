@@ -24,6 +24,9 @@ SyntaxHighlighter.registerLanguage('python', python);
 SyntaxHighlighter.registerLanguage('javascript', javascript);
 SyntaxHighlighter.registerLanguage('typescript', typescript);
 
+/** 距底部小于此值视为「贴底」，流式输出时自动跟随 */
+const NEAR_BOTTOM_PX = 96;
+
 interface ChatPanelProps {
   problemId: number;
   currentCode: string;
@@ -89,7 +92,6 @@ function renderMessageParts(text: string, problemDifficulty: string, isStreaming
   const hasOpenThink = isStreaming && text.includes('<think>') && !text.includes('</think>');
 
   return parts.map((part, i) => {
-    // 完整的 think 块
     const thinkMatch = part.match(/^<think>([\s\S]*?)<\/think>$/);
     if (thinkMatch) {
       return (
@@ -100,7 +102,6 @@ function renderMessageParts(text: string, problemDifficulty: string, isStreaming
       );
     }
 
-    // 流式接收中未闭合的 think 块
     if (hasOpenThink && part.startsWith('<think>') && !part.includes('</think>')) {
       const thinking = part.replace(/^<think>\n?/, '');
       return (
@@ -111,7 +112,6 @@ function renderMessageParts(text: string, problemDifficulty: string, isStreaming
       );
     }
 
-    // 普通文本
     if (!part.trim()) return null;
     return (
       <ReactMarkdown
@@ -128,6 +128,11 @@ function renderMessageParts(text: string, problemDifficulty: string, isStreaming
 
 export default function ChatPanel({ problemId, currentCode, problemTitle, problemDifficulty, currentLanguage }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** 用户是否贴在底部；上滑查看历史时为 false，不再强行滚底 */
+  const stickToBottomRef = useRef(true);
+  /** 下一请求是否为「重新生成」（写入 transport body） */
+  const regenerateRef = useRef(false);
+
   const [remaining, setRemaining] = useState<{ remaining: number; limit: number; unlimited: boolean } | null>(null);
   const [input, setInput] = useState('');
   const [promptConfigs, setPromptConfigs] = useState<{ id: number; name: string; isActive: boolean }[]>([]);
@@ -136,7 +141,6 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     return document.body.getAttribute('arco-theme') === 'dark' ? 'dark' : 'light';
   });
 
-  // 监听 Arco Theme 深浅色模式变化，以便实时重绘代码块与气泡颜色
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const currentTheme = document.body.getAttribute('arco-theme') === 'dark' ? 'dark' : 'light';
@@ -151,17 +155,16 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     return () => observer.disconnect();
   }, []);
 
-  // 获取 token
   const token = localStorage.getItem('token') || '';
 
   const latestRef = useRef({ currentCode, currentLanguage, selectedPromptId } as any);
   latestRef.current = { currentCode, currentLanguage, selectedPromptId };
 
-  // v3 API: 使用 TextStreamChatTransport 匹配后端的 pipeTextStreamToResponse
   const {
     messages,
     setMessages,
     sendMessage,
+    regenerate,
     stop,
     status,
     error,
@@ -174,17 +177,21 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         currentCode: latestRef.current.currentCode,
         language: latestRef.current.currentLanguage,
         promptConfigId: latestRef.current.selectedPromptId,
+        regenerate: regenerateRef.current || undefined,
       }),
     }),
     onError: (err) => {
+      regenerateRef.current = false;
       Message.error(err.message || 'AI 服务暂时不可用');
     },
     onFinish: () => {
+      regenerateRef.current = false;
       loadRemaining();
     },
   });
 
   const isLoading = status === 'streaming' || status === 'submitted';
+  const quotaExhausted = remaining !== null && remaining.remaining === 0 && !remaining.unlimited;
 
   const loadRemaining = async () => {
     try {
@@ -204,6 +211,8 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             parts: [{ type: 'text' as const, text: msg.content }],
           }))
         );
+        // 载入历史后滚到底部
+        stickToBottomRef.current = true;
       }
     } catch (err) {
       console.error('Failed to load chat history', err);
@@ -220,17 +229,42 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     }).catch(() => {});
   }, [problemId]);
 
-  // 自动滚动到底部
+  // 智能滚动：仅在贴底时跟随；用户上滑阅读历史时不打断
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distance <= NEAR_BOTTOM_PX;
+  };
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    const el = scrollRef.current;
+    if (!el || !stickToBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, isLoading, error]);
 
   const doSend = (text: string) => {
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || quotaExhausted) return;
+    stickToBottomRef.current = true;
+    regenerateRef.current = false;
     sendMessage({ text });
     setInput('');
+  };
+
+  const handleRegenerate = async () => {
+    if (isLoading || quotaExhausted) return;
+    const hasUser = messages.some((m) => m.role === 'user');
+    if (!hasUser) {
+      Message.warning('没有可重新生成的对话');
+      return;
+    }
+    stickToBottomRef.current = true;
+    regenerateRef.current = true;
+    try {
+      await regenerate();
+    } catch {
+      regenerateRef.current = false;
+    }
   };
 
   const handleQuickAction = (message: string) => {
@@ -259,7 +293,6 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     }
   };
 
-  // 提取消息文本内容（v3 的 message 使用 parts 结构）
   const getMessageText = (m: typeof messages[number]): string => {
     if (m.parts && m.parts.length > 0) {
       return m.parts
@@ -269,6 +302,21 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     }
     return '';
   };
+
+  // 最后一条「有内容」的助手消息可显示重新生成
+  const lastAssistantId = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant' && getMessageText(messages[i])) {
+        return messages[i].id;
+      }
+    }
+    return null;
+  })();
+
+  const canRegenerate =
+    !isLoading &&
+    !quotaExhausted &&
+    messages.some((m) => m.role === 'user');
 
   return (
     <div style={{
@@ -321,6 +369,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
       <div
         ref={scrollRef}
         className="ai-chat-scroll"
+        onScroll={handleScroll}
         style={{
           flex: 1, overflow: 'auto', padding: 16,
           display: 'flex', flexDirection: 'column', gap: 16,
@@ -346,12 +395,15 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         {messages.map((m) => {
           const text = getMessageText(m);
           if (!text) return null;
+          const isLastAssistant = m.role === 'assistant' && m.id === lastAssistantId;
           return (
             <div
               key={m.id}
               style={{
                 display: 'flex',
-                justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+                flexDirection: 'column',
+                alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                gap: 4,
               }}
             >
               <div
@@ -370,6 +422,17 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
                   </div>
                 )}
               </div>
+              {isLastAssistant && canRegenerate && (
+                <Button
+                  type="text"
+                  size="mini"
+                  icon={<IconRefresh />}
+                  onClick={handleRegenerate}
+                  style={{ color: 'var(--color-text-3)', padding: '0 4px' }}
+                >
+                  重新生成
+                </Button>
+              )}
             </div>
           );
         })}
@@ -387,8 +450,20 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             padding: '10px 14px', borderRadius: 8,
             background: 'var(--color-danger-light-1)', color: 'var(--color-danger)',
             fontSize: 13, textAlign: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
           }}>
-            ⚠️ {error.message || 'AI 服务暂时不可用，请稍后重试'}
+            <span>⚠️ {error.message || 'AI 服务暂时不可用，请稍后重试'}</span>
+            {canRegenerate && (
+              <Button
+                size="mini"
+                type="outline"
+                status="danger"
+                icon={<IconRefresh />}
+                onClick={handleRegenerate}
+              >
+                重试
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -403,7 +478,6 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         background: 'var(--color-fill-1)',
         flexShrink: 0,
       }}>
-        {/* 状态指示器与基本信息 */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -429,8 +503,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
           )}
         </div>
 
-        {/* 快捷按钮行 */}
-        <div 
+        <div
           className="ai-chat-quick-actions"
           style={{
             display: 'flex',
@@ -451,7 +524,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
                 type="secondary"
                 shape="round"
                 icon={action.icon}
-                disabled={isLoading}
+                disabled={isLoading || quotaExhausted}
                 style={{
                   flexShrink: 0,
                   fontSize: 12,
@@ -482,7 +555,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
           value={input}
           onChange={setInput}
           onKeyDown={handleKeyDown}
-          placeholder={remaining && remaining.remaining === 0 && !remaining.unlimited
+          placeholder={quotaExhausted
             ? '今日使用次数已用完，明天再来吧...'
             : '描述你遇到的问题...（Shift+Enter 换行）'}
           autoSize={{ minRows: 1, maxRows: 4 }}
@@ -490,7 +563,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             flex: 1, resize: 'none', borderRadius: 12,
             fontFamily: 'inherit', fontSize: 14,
           }}
-          disabled={remaining !== null && remaining.remaining === 0 && !remaining.unlimited}
+          disabled={quotaExhausted}
         />
         {isLoading ? (
           <Button
@@ -508,7 +581,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             shape="circle"
             htmlType="submit"
             icon={<IconSend />}
-            disabled={!input.trim() || (remaining !== null && remaining.remaining === 0 && !remaining.unlimited)}
+            disabled={!input.trim() || quotaExhausted}
             style={{ flexShrink: 0 }}
           />
         )}
