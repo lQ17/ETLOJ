@@ -1,10 +1,11 @@
 import { Tabs, Typography } from "@arco-design/web-react";
-import { IconApps, IconList, IconFile, IconSound, IconUser, IconRobot } from "@arco-design/web-react/icon";
+import { IconApps, IconList, IconFile, IconSound, IconUser, IconRobot, IconMessage } from "@arco-design/web-react/icon";
 import AdminProblemsPage from "./problems";
 import AdminListsPage from "./lists";
 import AdminUsersPage from "./users";
 import AdminSolutionsPage from "./solutions";
 import AdminAnnouncementsPage from "./announcements";
+import AdminFeedbackPage from "./feedback";
 import { useAuthStore } from "../../stores/auth";
 
 import AdminAiPage from "./ai";
@@ -51,6 +52,15 @@ export default function AdminPage() {
         >
           <div style={{ paddingLeft: 32 }}>
             <AdminSolutionsPage />
+          </div>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane
+          key="feedback"
+          title={<div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15 }}><IconMessage /> 课堂反馈</div>}
+        >
+          <div style={{ paddingLeft: 32 }}>
+            <AdminFeedbackPage />
           </div>
         </Tabs.TabPane>
 

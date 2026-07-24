@@ -12,6 +12,7 @@ import { SolutionModule } from "./solution/solution.module";
 import { AnnouncementModule } from "./announcement/announcement.module";
 import { StatsModule } from "./stats/stats.module";
 import { AiModule } from "./ai/ai.module";
+import { FeedbackModule } from "./feedback/feedback.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { AiModule } from "./ai/ai.module";
     AnnouncementModule,
     StatsModule,
     AiModule,
+    FeedbackModule,
   ],
 })
 export class AppModule {}

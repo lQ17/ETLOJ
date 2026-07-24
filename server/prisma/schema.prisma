@@ -85,6 +85,8 @@ model User {
   announcements Announcement[]
   aiConversations AiConversation[]
   aiUsageLogs AiUsageLog[]
+  feedbacksAsStudent ClassFeedback[] @relation("FeedbackStudent")
+  feedbacksAsCreator ClassFeedback[] @relation("FeedbackCreator")
 
   @@map("users")
 }
@@ -383,4 +385,32 @@ model AiUsageLog {
   @@index([modelName])
   @@index([createdAt])
   @@map("ai_usage_logs")
+}
+
+
+model ClassFeedback {
+  id          Int       @id @default(autoincrement())
+  publicToken String    @unique @map("public_token") @db.VarChar(16)
+  title       String    @db.VarChar(200)
+  studentId   Int       @map("student_id")
+  creatorId   Int       @map("creator_id")
+  // 勾选题目快照：[{ problemId, slug, title, difficulty, status, score, submitCount }]
+  items       Json
+  // 创建时的全站累计快照：{ solvedCount, totalSubmissions, totalScore }
+  lifetime    Json?
+  note        String?   @db.VarChar(500)
+  // 海报右上角显示日期 YYYY-MM-DD（与做题查询时间窗独立）
+  displayDate String?   @map("display_date") @db.VarChar(10)
+  rangeStart  DateTime? @map("range_start")
+  rangeEnd    DateTime? @map("range_end")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  student User @relation("FeedbackStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  creator User @relation("FeedbackCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+
+  @@index([studentId])
+  @@index([creatorId])
+  @@index([createdAt])
+  @@map("class_feedbacks")
 }

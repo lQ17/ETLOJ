@@ -20,6 +20,10 @@ const RecordsPage = lazy(() => import("./pages/records"));
 const ProfilePage = lazy(() => import("./pages/profile"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const VisualizationPage = lazy(() => import("./pages/visualization"));
+const FeedbackPublicPage = lazy(() => import("./pages/feedback/public"));
+const FeedbackTokenEntryPage = lazy(() =>
+  import("./pages/feedback/public").then((m) => ({ default: m.FeedbackTokenEntryPage })),
+);
 
 const { Content } = Layout;
 
@@ -123,6 +127,8 @@ function App() {
               <Route path="/ranking" element={<RankingPage />} />
               <Route path="/visualization" element={<VisualizationPage />} />
               <Route path="/announcements" element={<AnnouncementsPage />} />
+              <Route path="/f" element={<FeedbackTokenEntryPage />} />
+              <Route path="/f/:token" element={<FeedbackPublicPage />} />
               <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
               <Route path="/profile/:username" element={<ProfilePage />} />
               <Route path="/settings/*" element={<AuthGuard><SettingsPage /></AuthGuard>} />

@@ -21,7 +21,7 @@ export class UserController {
   }
 
   @Get()
-  @Roles("ADMIN")
+  @Roles("ADMIN", "TEACHER")
   findAll(@Query() query: QueryUserDto) {
     return this.userService.findAll(query);
   }

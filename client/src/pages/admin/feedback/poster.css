@@ -1,0 +1,529 @@
+/* ========== 课堂反馈海报（窄竖版，适配手机全宽查看） ========== */
+/* 屏幕上：宽度自适应；导出 PNG 时由 exportPoster 强制 480 固定宽 */
+
+.fb-poster {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  max-height: none;
+  box-sizing: border-box;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  background: linear-gradient(165deg, #f0f5ff 0%, #ffffff 38%, #f7f8fa 100%);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(22, 93, 255, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  color: #1d2129;
+  position: relative;
+}
+
+/* 导出 / 管理端预览：固定 480，布局与 PNG 一致 */
+.fb-poster--fixed {
+  width: 480px;
+  max-width: 480px;
+  flex-shrink: 0;
+}
+
+.fb-poster::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 80% 40% at 100% 0%, rgba(22, 93, 255, 0.1), transparent 55%),
+    radial-gradient(ellipse 60% 30% at 0% 100%, rgba(0, 180, 42, 0.06), transparent 50%);
+  pointer-events: none;
+}
+
+.fb-poster-inner {
+  position: relative;
+  padding: 28px 22px 24px;
+  z-index: 1;
+}
+
+/* ---- 顶栏 ---- */
+.fb-poster-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.fb-poster-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fb-poster-brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #165dff 0%, #4080ff 100%);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -0.5px;
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.35);
+  flex-shrink: 0;
+}
+
+/* 可上传 Logo：固定方框，contain 显示 PNG */
+.fb-poster-brand-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #fff;
+  border: 1px solid rgba(22, 93, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.12);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fb-poster-brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.fb-poster-brand-meta {
+  min-width: 0;
+}
+
+.fb-poster-brand-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4e5969;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.fb-poster-brand-sub {
+  font-size: 11px;
+  color: #86909c;
+  margin-top: 2px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.fb-poster-date-chip {
+  background: rgba(22, 93, 255, 0.08);
+  color: #165dff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- 标题 ---- */
+.fb-poster-title {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0 0 18px;
+  letter-spacing: -0.02em;
+  color: #0c1a33;
+  word-break: break-word;
+}
+
+/* ---- 学生卡 ---- */
+.fb-poster-student {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(22, 93, 255, 0.08);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  margin-bottom: 18px;
+}
+
+.fb-poster-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #e8f0ff, #d6e4ff);
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(22, 93, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: #165dff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.fb-poster-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fb-poster-student-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.fb-poster-student-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 2px;
+  color: #1d2129;
+}
+
+.fb-poster-student-handle {
+  font-size: 12px;
+  color: #86909c;
+  margin: 0;
+}
+
+/* ---- 统计三格：有最低宽度，放不下则自动换行（1~3 列） ---- */
+.fb-poster-stats {
+  display: grid;
+  /* 单格至少约 140px，装得下「本节 / 累计」对照；窄屏自动 2 行或 3 行 */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.fb-poster-stat {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 8px 10px;
+  text-align: center;
+  border: 1px solid #f2f3f5;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
+  min-height: 68px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 数字行 / 标签行：各自内部用字体基线对齐 */
+.fb-poster-stat-values,
+.fb-poster-stat-labels {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: baseline;
+  justify-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.fb-poster-stat.has-lifetime .fb-poster-stat-values,
+.fb-poster-stat.has-lifetime .fb-poster-stat-labels {
+  grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr);
+}
+
+.fb-poster-stat-slash {
+  width: 10px;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1;
+  color: #e5e6eb;
+  text-align: center;
+  user-select: none;
+  transform: skewX(-12deg);
+  align-self: center;
+}
+
+.fb-poster-stat-slash-gap {
+  width: 10px;
+}
+
+.fb-poster-stat-value {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fb-poster-stat-value.is-ac {
+  color: #00b42a;
+}
+
+.fb-poster-stat-value.is-try {
+  color: #ff7d00;
+}
+
+.fb-poster-stat-value.is-total {
+  color: #165dff;
+}
+
+.fb-poster-stat-value.is-lifetime {
+  font-size: 15px;
+  font-weight: 600;
+  color: #c9cdd4;
+}
+
+.fb-poster-stat-label {
+  display: block;
+  max-width: 100%;
+  font-size: 10px;
+  color: #4e5969;
+  font-weight: 600;
+  /* 允许极窄时换行，避免撑破格子 */
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.fb-poster-stat-label.is-lifetime {
+  color: #c9cdd4;
+  font-weight: 500;
+  font-size: 10px;
+}
+
+/* 固定宽海报（导出 / 后台预览）：三格强制一行，标签不换行 */
+.fb-poster--fixed .fb-poster-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fb-poster--fixed .fb-poster-stat-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- 题目列表 ---- */
+.fb-poster-section-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4e5969;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fb-poster-section-label::before {
+  content: "";
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+  background: #165dff;
+}
+
+.fb-poster-items {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #f2f3f5;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.fb-poster-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px;
+  border-bottom: 1px solid #f7f8fa;
+}
+
+.fb-poster-item:last-child {
+  border-bottom: none;
+}
+
+.fb-poster-item-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fb-poster-item-mark.is-ac {
+  background: rgba(0, 180, 42, 0.12);
+  color: #00b42a;
+}
+
+.fb-poster-item-mark.is-other {
+  background: rgba(255, 125, 0, 0.12);
+  color: #ff7d00;
+}
+
+.fb-poster-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fb-poster-item-slug {
+  font-size: 11px;
+  font-weight: 600;
+  color: #86909c;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
+}
+
+.fb-poster-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fb-poster-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.fb-poster-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+.fb-poster-score {
+  font-size: 11px;
+  color: #86909c;
+  font-variant-numeric: tabular-nums;
+}
+
+.fb-poster-more {
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #86909c;
+  background: #fafafa;
+  border-top: 1px solid #f2f3f5;
+}
+
+/* ---- 评语 ---- */
+.fb-poster-note {
+  background: linear-gradient(135deg, rgba(22, 93, 255, 0.06), rgba(22, 93, 255, 0.02));
+  border: 1px dashed rgba(22, 93, 255, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.fb-poster-note-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #165dff;
+  margin-bottom: 4px;
+}
+
+.fb-poster-note-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #4e5969;
+  margin: 0;
+}
+
+
+/* ---- 预览容器（Modal / 创建页）：滚动在容器上，海报本身完整布局 ---- */
+.fb-poster-preview-host {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px;
+  background: var(--color-fill-1, #f7f8fa);
+  border-radius: 12px;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(70vh, 860px);
+  /* 避免子项被 flex 压缩导致高度/宽度错乱 */
+  min-height: 0;
+}
+
+.fb-poster-preview-host .fb-poster {
+  flex: 0 0 auto;
+  /* 预览时阴影完整可见一点内边距 */
+  margin: 4px;
+}
+
+.fb-poster-preview-host--page {
+  max-height: none;
+  overflow-y: visible;
+  padding: 20px;
+  border: 1px dashed var(--color-border-2, #e5e6eb);
+  border-radius: 16px;
+}
+
+/* Modal 内容区不要再二次裁切 */
+.fb-poster-preview-modal .arco-modal-content {
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-poster-preview-modal .arco-modal-body {
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+
+/* 极窄手机：再收一点内边距 */
+@media (max-width: 380px) {
+  .fb-poster:not(.fb-poster--fixed) .fb-poster-inner {
+    padding: 20px 14px 18px;
+  }
+
+  .fb-poster:not(.fb-poster--fixed) .fb-poster-title {
+    font-size: 22px;
+  }
+
+  .fb-poster:not(.fb-poster--fixed) .fb-poster-stat-value {
+    font-size: 20px;
+  }
+
+  .fb-poster:not(.fb-poster--fixed) .fb-poster-stats {
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  }
+}
+
+/* ---- 公开短链页可点交互（导出/管理端不启用） ---- */
+.fb-poster-avatar.is-clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.fb-poster-avatar.is-clickable:hover {
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.28);
+  transform: scale(1.03);
+}
+.fb-poster-item.is-clickable {
+  cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.fb-poster-item.is-clickable:hover {
+  background: rgba(22, 93, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(22, 93, 255, 0.12);
+}
