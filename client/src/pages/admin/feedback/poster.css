@@ -527,3 +527,45 @@
   background: rgba(22, 93, 255, 0.06);
   box-shadow: inset 0 0 0 1px rgba(22, 93, 255, 0.12);
 }
+
+/* ========== 公开短链页：宽屏留白卡片 / 窄屏贴边 ========== */
+.fb-public-page {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.fb-public-page .fb-public-poster.fb-poster,
+.fb-public-page .fb-poster.fb-public-poster {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* 窄屏：贴边全宽、无圆角阴影，仅海报 */
+@media (max-width: 767px) {
+  .fb-public-page {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .fb-public-page .fb-public-poster.fb-poster,
+  .fb-public-page .fb-poster.fb-public-poster {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: calc(100vh - 64px);
+  }
+
+  .page-main-content.is-feedback-share {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+}

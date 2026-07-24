@@ -800,6 +800,9 @@ body[arco-theme="dark"] .wmde-markdown td {
   .page-main-content.is-detail-page {
     padding: 16px 8px !important;
   }
+  .page-main-content.is-feedback-share {
+    padding: 0 !important;
+  }
 }
 
 /* ===== 题目页可拖动分栏手柄 ===== */

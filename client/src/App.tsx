@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Layout, Spin } from "@arco-design/web-react";
 import AppHeader from "./components/AppHeader";
@@ -47,6 +47,33 @@ function App() {
   const location = useLocation();
   const isDetailPage = /^\/problems\/[^/]+/.test(location.pathname);
   const isVisualizationPage = location.pathname === "/visualization";
+  /** 公开反馈短链页（/f/:token） */
+  const isFeedbackSharePage = /^\/f\/[^/]+/.test(location.pathname);
+  /** 窄屏：短链页贴边无页脚；宽屏：正常留白 + 页脚 */
+  const [isNarrowViewport, setIsNarrowViewport] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
+  );
+  const feedbackCompact = isFeedbackSharePage && isNarrowViewport;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsNarrowViewport(e.matches);
+    };
+    onChange(mq);
+    if (mq.addEventListener) {
+      mq.addEventListener("change", onChange as (e: MediaQueryListEvent) => void);
+    } else {
+      mq.addListener(onChange as (this: MediaQueryList, ev: MediaQueryListEvent) => void);
+    }
+    return () => {
+      if (mq.removeEventListener) {
+        mq.removeEventListener("change", onChange as (e: MediaQueryListEvent) => void);
+      } else {
+        mq.removeListener(onChange as (this: MediaQueryList, ev: MediaQueryListEvent) => void);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     initFromStorage();
@@ -107,10 +134,20 @@ function App() {
       <ScrollToTop />
       <AppHeader />
       <Content
-        className={`page-main-content ${isDetailPage ? "is-detail-page" : ""}`}
+        className={`page-main-content ${isDetailPage ? "is-detail-page" : ""} ${feedbackCompact ? "is-feedback-share" : ""}`}
         style={{
-          maxWidth: isVisualizationPage ? "90%" : (isDetailPage ? "100%" : 1200),
-          padding: isDetailPage ? "24px 32px" : "96px 32px",
+          maxWidth: feedbackCompact
+            ? "100%"
+            : isVisualizationPage
+              ? "90%"
+              : isDetailPage
+                ? "100%"
+                : 1200,
+          padding: feedbackCompact
+            ? "0"
+            : isDetailPage
+              ? "24px 32px"
+              : "96px 32px",
         }}
       >
         <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin /></div>}>
@@ -136,7 +173,7 @@ function App() {
           </div>
         </Suspense>
       </Content>
-      {!isDetailPage && <AppFooter />}
+      {!isDetailPage && !feedbackCompact && <AppFooter />}
     </Layout>
   );
 }

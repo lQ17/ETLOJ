@@ -214,48 +214,18 @@ export default function FeedbackPublicPage() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 520,
-        margin: "0 auto",
-        width: "100%",
-        padding: "0 8px",
-        boxSizing: "border-box",
-      }}
-    >
-      <div style={{ marginBottom: 20 }}>
-        <Title heading={5} style={{ margin: "0 0 4px" }}>
-          课堂学习记录
-        </Title>
-        <Text type="secondary" style={{ fontSize: 13 }}>
-          公开分享 · 可查看本时段提交代码
-        </Text>
-      </div>
-      <div
-        style={{
-          display: "block",
-          width: "100%",
-          padding: 12,
-          background: "var(--color-fill-1)",
-          borderRadius: 16,
-          boxSizing: "border-box",
+    <div className="fb-public-page">
+      <PosterCard
+        data={posterData}
+        interactive
+        className="fb-public-poster"
+        onAvatarClick={() => {
+          if (posterData.studentHandle) {
+            navigate(`/profile/${encodeURIComponent(posterData.studentHandle)}`);
+          }
         }}
-      >
-        {/* 公开页不固定宽度：数据概况可随屏宽自动换行 */}
-        <PosterCard
-          data={posterData}
-          interactive
-          onAvatarClick={() => {
-            if (posterData.studentHandle) {
-              navigate(`/profile/${encodeURIComponent(posterData.studentHandle)}`);
-            }
-          }}
-          onItemClick={openProblemSubmissions}
-        />
-      </div>
-      <Paragraph type="secondary" style={{ marginTop: 16, fontSize: 12, textAlign: "center" }}>
-        短码 {token}
-      </Paragraph>
+        onItemClick={openProblemSubmissions}
+      />
 
       <Modal
         title={
