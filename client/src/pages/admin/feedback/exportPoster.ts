@@ -25,7 +25,6 @@ export async function exportPosterToPng(
     requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
   );
 
-  const width = Math.ceil(source.scrollWidth || source.offsetWidth);
   const height = Math.ceil(source.scrollHeight || source.offsetHeight);
 
   // 离屏容器：不受任何祖先 overflow 影响
