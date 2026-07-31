@@ -7,6 +7,8 @@ export interface FeedbackItemPayload {
   difficulty: string;
   status: string;
   score?: number | null;
+  problemScore?: number;
+  earnedScore?: number;
   submitCount: number;
 }
 

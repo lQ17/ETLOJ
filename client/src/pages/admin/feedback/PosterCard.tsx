@@ -177,7 +177,7 @@ export default function PosterCard({
           </div>
           <div className={`fb-poster-stat${data.lifetime ? " has-lifetime" : ""}`}>
             <div className="fb-poster-stat-values">
-              <span className="fb-poster-stat-value is-total">{stats.totalCount}</span>
+              <span className="fb-poster-stat-value is-total">{stats.earnedScore}</span>
               {data.lifetime ? (
                 <>
                   <span className="fb-poster-stat-slash" aria-hidden>

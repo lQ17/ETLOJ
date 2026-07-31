@@ -8,6 +8,8 @@ export interface FeedbackItem {
   status: string;
   /** 最好得分 0–100，可空 */
   score: number | null;
+  problemScore?: number;
+  earnedScore?: number;
   submitCount: number;
 }
 
@@ -51,11 +53,13 @@ export interface FeedbackStats {
   /** 各题提交次数之和 */
   totalAttempts: number;
   totalCount: number;
+  earnedScore: number;
 }
 
 export function computeFeedbackStats(items: FeedbackItem[]): FeedbackStats {
   const acCount = items.filter((i) => i.status === "AC").length;
   const totalCount = items.length;
   const totalAttempts = items.reduce((sum, i) => sum + (i.submitCount || 0), 0);
-  return { acCount, totalAttempts, totalCount };
+  const earnedScore = items.reduce((sum, i) => sum + (i.earnedScore || 0), 0);
+  return { acCount, totalAttempts, totalCount, earnedScore };
 }

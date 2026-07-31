@@ -56,6 +56,8 @@ function toPosterData(row: FeedbackListItem, logoUrl?: string | null): FeedbackP
       difficulty: i.difficulty,
       status: i.status,
       score: i.score ?? null,
+      problemScore: i.problemScore,
+      earnedScore: i.earnedScore,
       submitCount: i.submitCount,
     })),
     lifetime: (row.lifetime as FeedbackLifetimePayload) || undefined,

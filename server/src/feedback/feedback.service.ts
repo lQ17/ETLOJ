@@ -31,6 +31,8 @@ export type FeedbackItemSnapshot = {
   difficulty: string;
   status: string;
   score: number | null;
+  problemScore: number;
+  earnedScore: number;
   submitCount: number;
 };
 
@@ -142,6 +144,24 @@ export class FeedbackService {
     throw new BadRequestException('无法生成唯一短码，请重试');
   }
 
+  private async getFirstAcIds(userId: number, problemIds: number[]) {
+    if (problemIds.length === 0) return new Map<number, number>();
+    const rows = await this.prisma.submission.groupBy({
+      by: ['problemId'],
+      where: {
+        userId,
+        problemId: { in: problemIds },
+        status: SubmissionStatus.AC,
+      },
+      _min: { id: true },
+    });
+    return new Map(
+      rows
+        .filter((row) => row._min.id != null)
+        .map((row) => [row.problemId, row._min.id as number]),
+    );
+  }
+
   /** 与个人主页一致的全站累计 */
   async getLifetimeStats(userId: number): Promise<FeedbackLifetimeSnapshot> {
     const acGroups = await this.prisma.submission.groupBy({
@@ -196,6 +216,7 @@ export class FeedbackService {
         status: { notIn: [SubmissionStatus.PENDING, SubmissionStatus.JUDGING] },
       },
       select: {
+        id: true,
         problemId: true,
         status: true,
         score: true,
@@ -205,11 +226,17 @@ export class FeedbackService {
             slug: true,
             title: true,
             difficulty: true,
+            score: true,
           },
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+
+    const firstAcIds = await this.getFirstAcIds(
+      userId,
+      Array.from(new Set(submissions.map((s) => s.problemId))),
+    );
 
     type Agg = {
       problemId: number;
@@ -218,8 +245,11 @@ export class FeedbackService {
       difficulty: string;
       status: string;
       score: number | null;
+      problemScore: number;
+      earnedScore: number;
       submitCount: number;
       hasAc: boolean;
+      firstAcInRange: boolean;
     };
 
     const map = new Map<number, Agg>();
@@ -233,13 +263,23 @@ export class FeedbackService {
           difficulty: s.problem.difficulty,
           status: s.status,
           score: s.score ?? null,
+          problemScore: s.problem.score,
+          earnedScore:
+            s.status === SubmissionStatus.AC && firstAcIds.get(s.problemId) === s.id
+              ? s.problem.score
+              : 0,
           submitCount: 1,
           hasAc: s.status === SubmissionStatus.AC,
+          firstAcInRange:
+            s.status === SubmissionStatus.AC && firstAcIds.get(s.problemId) === s.id,
         });
         continue;
       }
       existing.submitCount += 1;
       if (s.status === SubmissionStatus.AC) existing.hasAc = true;
+      if (s.status === SubmissionStatus.AC && firstAcIds.get(s.problemId) === s.id) {
+        existing.firstAcInRange = true;
+      }
       const curRank = STATUS_RANK[existing.status] ?? 0;
       const newRank = STATUS_RANK[s.status] ?? 0;
       if (newRank > curRank) {
@@ -251,13 +291,15 @@ export class FeedbackService {
         }
       }
       if (existing.hasAc && existing.status === SubmissionStatus.AC) {
-        existing.score = existing.score != null ? Math.max(existing.score, 100) : 100;
+        existing.earnedScore = existing.firstAcInRange ? existing.problemScore : 0;
       }
     }
 
-    const items = Array.from(map.values()).sort((a, b) =>
+    const items = Array.from(map.values())
+      .map(({ firstAcInRange: _firstAcInRange, hasAc: _hasAc, ...item }) => item)
+      .sort((a, b) =>
       a.slug.localeCompare(b.slug, 'zh-CN'),
-    );
+      );
 
     const lifetime = await this.getLifetimeStats(userId);
 
@@ -273,7 +315,39 @@ export class FeedbackService {
     };
   }
 
-  private normalizeItems(items: FeedbackItemDto[]): FeedbackItemSnapshot[] {
+  private async normalizeItems(
+    studentId: number,
+    items: FeedbackItemDto[],
+    rangeStart?: Date | null,
+    rangeEnd?: Date | null,
+  ): Promise<FeedbackItemSnapshot[]> {
+    const problemIds = Array.from(new Set(items.map((i) => i.problemId)));
+    const [problems, firstAcIds] = await Promise.all([
+      this.prisma.problem.findMany({
+        where: { id: { in: problemIds } },
+        select: { id: true, score: true },
+      }),
+      this.getFirstAcIds(studentId, problemIds),
+    ]);
+    const problemScores = new Map(problems.map((p) => [p.id, p.score]));
+    const firstAcInRange =
+      rangeStart && rangeEnd
+        ? new Set(
+            (
+              await this.prisma.submission.findMany({
+                where: {
+                  userId: studentId,
+                  problemId: { in: problemIds },
+                  status: SubmissionStatus.AC,
+                  id: { in: Array.from(firstAcIds.values()) },
+                  createdAt: { gte: rangeStart, lte: rangeEnd },
+                },
+                select: { problemId: true },
+              })
+            ).map((row) => row.problemId),
+          )
+        : new Set<number>();
+
     return items.map((i) => ({
       problemId: i.problemId,
       slug: i.slug,
@@ -281,6 +355,11 @@ export class FeedbackService {
       difficulty: i.difficulty,
       status: i.status,
       score: i.score ?? null,
+      problemScore: problemScores.get(i.problemId) ?? 0,
+      earnedScore:
+        i.status === SubmissionStatus.AC && firstAcInRange.has(i.problemId)
+          ? problemScores.get(i.problemId) ?? 0
+          : 0,
       submitCount: i.submitCount,
     }));
   }
@@ -297,8 +376,7 @@ export class FeedbackService {
     const summary = await this.previewSummary(studentId, rangeStart, rangeEnd);
     const idSet = new Set(problemIds);
     const items = summary.items
-      .filter((i) => idSet.has(i.problemId))
-      .map(({ hasAc: _h, ...rest }) => rest);
+      .filter((i) => idSet.has(i.problemId));
     if (items.length === 0) {
       throw new BadRequestException('所选题目在时间窗内无有效提交');
     }
@@ -317,7 +395,12 @@ export class FeedbackService {
 
     let items: FeedbackItemSnapshot[];
     if (dto.items && dto.items.length > 0) {
-      items = this.normalizeItems(dto.items);
+      items = await this.normalizeItems(
+        dto.studentId,
+        dto.items,
+        rangeStart,
+        rangeEnd,
+      );
     } else if (dto.problemIds && dto.problemIds.length > 0) {
       items = await this.resolveItemsFromIds(
         dto.studentId,
