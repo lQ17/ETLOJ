@@ -360,10 +360,12 @@ export default function FeedbackPublicPage() {
                   language={highlightLang(selected.language)}
                   style={vs}
                   showLineNumbers
-                  wrapLongLines
-                  PreTag="div"
+                  // 代码需要保留原始缩进；窄屏通过代码区域横向滚动查看长行。
+                  wrapLongLines={false}
+                  PreTag="pre"
                   customStyle={{
                     margin: 0,
+                    maxWidth: "100%",
                     maxHeight: 360,
                     overflow: "auto",
                     background: "#ffffff",
@@ -375,6 +377,7 @@ export default function FeedbackPublicPage() {
                     style: {
                       fontSize: 14,
                       fontFamily: '"Consolas", "Monaco", "Courier New", monospace',
+                      whiteSpace: "pre",
                     },
                   }}
                   lineNumberStyle={{
