@@ -109,7 +109,7 @@ export class ProblemService {
   }
 
   async findAll(query: QueryProblemDto, isAdmin = false) {
-    const { page = 1, pageSize = 20, difficulty, keyword, tag, tags, tagMode = "OR" } = query;
+    const { page = 1, pageSize = 20, difficulty, keyword, content, tag, tags, tagMode = "OR" } = query;
     const where: any = {};
 
     if (!isAdmin) {
@@ -140,6 +140,27 @@ export class ProblemService {
         // OR 模式：题目包含任一选中标签
         where.problemTags = { some: { tag: { name: { in: tags } } } };
       }
+    }
+
+    // 题面保存在 Markdown 文件中。内容搜索只在用户明确提供 content 时执行，
+    // 避免普通列表查询扫描整个题库；扫描上限也防止误用拖慢服务端。
+    const contentNeedle = content?.trim().toLocaleLowerCase();
+    if (contentNeedle) {
+      const candidates = await this.prisma.problem.findMany({
+        where,
+        select: { id: true, slug: true },
+        take: 10000,
+      });
+      const matchedIds: number[] = [];
+      for (const candidate of candidates) {
+        try {
+          const markdown = fs.readFileSync(this.getMarkdownPath(candidate.slug), "utf-8");
+          if (markdown.toLocaleLowerCase().includes(contentNeedle)) matchedIds.push(candidate.id);
+        } catch {
+          // 缺失题面文件的题目不匹配内容搜索。
+        }
+      }
+      where.id = { in: matchedIds };
     }
 
     const pageNum = Number(page) || 1;
@@ -187,6 +208,11 @@ export class ProblemService {
       problemTags: undefined,
       totalSubmissions: p._count.submissions,
       acceptedCount: acMap.get(p.id) || 0,
+      stats: {
+        totalSubmissions: p._count.submissions,
+        acceptedSubmissions: acMap.get(p.id) || 0,
+        acceptanceRate: p._count.submissions === 0 ? 0 : (acMap.get(p.id) || 0) / p._count.submissions,
+      },
       _count: undefined,
     }));
 
@@ -202,11 +228,15 @@ export class ProblemService {
       markdown = "题面文件未找到";
     }
 
-    // 获取关联的标签
-    const problemTags = await this.prisma.problemTag.findMany({
-      where: { problemId: problem.id },
-      select: { tag: { select: { id: true, name: true } } },
-    });
+    // 详情接口只返回面向客户端的字段，避免泄露服务器内部文件路径。
+    const [problemTags, totalSubmissions, acceptedSubmissions] = await Promise.all([
+      this.prisma.problemTag.findMany({
+        where: { problemId: problem.id },
+        select: { tag: { select: { id: true, name: true } } },
+      }),
+      this.prisma.submission.count({ where: { problemId: problem.id } }),
+      this.prisma.submission.count({ where: { problemId: problem.id, status: "AC" } }),
+    ]);
 
     // 获取测试用例数量（不加载内容）
     const tcDir = this.getTestcasesDir(problem.slug);
@@ -216,12 +246,19 @@ export class ProblemService {
       testcaseCount = files.filter(f => f.endsWith(".in")).length;
     }
 
+    const { filePath: _filePath, tags: _legacyTags, ...publicProblem } = problem;
+
     return {
-      ...problem,
+      ...publicProblem,
       markdown,
       tagIds: problemTags.map(pt => pt.tag.id),
       tags: problemTags.map(pt => pt.tag.name),
       testcaseCount,
+      stats: {
+        totalSubmissions,
+        acceptedSubmissions,
+        acceptanceRate: totalSubmissions === 0 ? 0 : acceptedSubmissions / totalSubmissions,
+      },
     };
   }
 

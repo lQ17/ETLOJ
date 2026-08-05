@@ -1,4 +1,4 @@
-import { IsOptional, IsIn, IsString, IsInt, IsArray, Min } from "class-validator";
+import { IsOptional, IsIn, IsString, IsInt, IsArray, Min, Max } from "class-validator";
 import { Type, Transform } from "class-transformer";
 import { DIFFICULTY_VALUES } from "../difficulty.constants";
 
@@ -13,6 +13,7 @@ export class QueryProblemDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(100)
   pageSize?: number = 20;
 
   @IsOptional()
@@ -22,6 +23,10 @@ export class QueryProblemDto {
   @IsOptional()
   @IsString()
   keyword?: string;
+
+  @IsOptional()
+  @IsString()
+  content?: string;
 
   @IsOptional()
   @IsString()
