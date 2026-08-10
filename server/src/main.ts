@@ -4,6 +4,7 @@ import { WsAdapter } from "@nestjs/platform-ws";
 import { AppModule } from "./app.module";
 import { McpService } from "./mcp/mcp.service";
 import { mountMcpEndpoint } from "./mcp/mcp.http";
+import { McpOAuthService } from "./mcp/auth/mcp-oauth.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -29,7 +30,7 @@ async function bootstrap() {
 
   // Mount MCP directly on Express so the Nest global /api prefix does not apply.
   const expressApp = app.getHttpAdapter().getInstance();
-  mountMcpEndpoint(expressApp, app.get(McpService));
+  mountMcpEndpoint(expressApp, app.get(McpService), app.get(McpOAuthService));
 
   app.useGlobalPipes(
     new ValidationPipe({

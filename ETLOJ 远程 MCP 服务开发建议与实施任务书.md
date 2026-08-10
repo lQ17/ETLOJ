@@ -1,4 +1,4 @@
-# ETLOJ Remote MCP Phase 1 实施任务书
+# ETLOJ Remote MCP Phase 1 实施与 Phase 2 联合规划
 
 > 当前有效主文档。原始规划、候选方案和详细设计讨论见《ETLOJ 远程 MCP 服务开发建议与实施任务书（历史设计稿）》。
 
@@ -12,25 +12,37 @@ Phase 1 代码开发：已完成
 标准 MCP Client 本地协议验证：已完成
 生产服务器部署：已完成
 公网真实题库验收：已完成
-Phase 2 OAuth 与用户能力：未开始
+Phase 2 代码开发与自动化测试：已完成
+Phase 2 生产部署与公网验收：已完成
 ```
 
-当前实现范围仅为：
+当前实现范围为：
 
 ```text
-Public Read-Only Remote MCP
+Anonymous Public Read-Only Remote MCP
+Authorized Personal Learning Progress MCP
 ```
 
-提供四个工具：
+匿名入口提供六个工具：
 
 ```text
 search_problems
 get_problem
 get_problem_markdown
 list_tags
+list_problem_lists
+get_problem_list
 ```
 
-`list_tags` 完成生产部署和真实题库验收前，不得将该新增工具描述为已经验收。
+授权入口额外提供三个个人工具：
+
+```text
+get_my_problem_status
+list_my_submissions
+get_submission
+```
+
+Phase 2 已按“先公开题单安全查询，再 Authorization，最后个人只读工具”的顺序完成，并于 2026-08-10 通过生产真实数据验收。
 
 ---
 
@@ -48,12 +60,10 @@ list_tags
 - 增加 Nginx `/mcp` 反向代理配置。
 - 更新 README 和部署输出。
 
-### 未实现
+### 未实现（明确排除）
 
 ```text
-OAuth / MCP Authorization
 用户登录 Tool
-读取个人提交
 提交代码
 运行代码
 管理员或教师 MCP
@@ -688,36 +698,195 @@ tools/list：get_problem、get_problem_markdown、list_tags、search_problems
 
 ---
 
-## 11. Phase 2 TODO
+## 11. Phase 2 联合任务 TODO
 
-Phase 2 必须先实现正式 MCP Authorization，不得增加接收用户名和密码的登录 Tool。
+Phase 2 作为一个联合任务交付以下两部分：
 
-计划 scopes：
+```text
+A. 公开题单 MCP（匿名、公开、只读）
+B. MCP Authorization + 个人学习进度（登录、私有、只读）
+```
+
+本阶段不实现提交代码和运行代码。`submit_solution`、`run_code`、`submissions:write` 与 `code:run` 延后到后续阶段，避免在 Authorization 首次落地时同时引入判题资源消耗和真实写入副作用。
+
+### 11.1 公开题单工具
+
+新增工具：
+
+```text
+list_problem_lists
+get_problem_list
+```
+
+建议接口：
+
+```ts
+list_problem_lists({
+  keyword?: string;   // trim 后 1～100 字符
+  page?: number;      // integer，默认 1，最小 1
+  pageSize?: number;  // integer，默认 20，范围 1～50
+})
+
+get_problem_list({
+  listId: number;     // positive safe integer
+})
+```
+
+`list_problem_lists` 输出字段白名单：
+
+```text
+id
+title
+description
+problemCount（仅统计公开题）
+createdAt（如产品确有展示需要）
+```
+
+`get_problem_list` 输出题单元数据及排序后的公开题目：
+
+```text
+id
+title
+description
+items[]:
+  order
+  id
+  slug
+  title
+  difficulty
+  score
+  tags（需要时通过公开题查询补齐）
+```
+
+公开题单安全不变量：
+
+1. 仅返回 `isPublic=true` 的题单；私有题单与不存在题单统一返回 `Problem list not found.`。
+2. 题单详情只返回公开题目，隐藏题不得出现在 items、problemCount 或任何派生统计中。
+3. 当前 `ProblemListService.findOne()` 会读取题单内全部题目，`findAllPublic()` 的 `_count.items` 也会统计全部关联项；MCP 不得直接把这两个结果原样输出。实施时必须增加经过公开性过滤的 Service 查询或等价的安全聚合，并为隐藏题关联编写测试。
+4. 保留题单原始排序；过滤隐藏题后顺序连续展示，不暴露被过滤位置或数量。
+5. 不输出 creatorId、私有题单信息、内部关联表 ID 或其他未列入白名单的字段。
+6. 两个工具均保持 `readOnlyHint=true`、`destructiveHint=false`、`idempotentHint=true`、`openWorldHint=false`。
+
+### 11.2 MCP Authorization
+
+个人工具开始编码前，必须先完成正式 MCP Authorization，不得增加接收用户名和密码的登录 Tool，也不得把现有网页 JWT 当作 Tool 参数传入。
+
+实施前先依据届时使用的 MCP SDK 与规范确认并记录：
+
+```text
+Authorization Server / Resource Server 边界
+客户端发现与授权流程
+access token 校验、过期与撤销
+scope 到 Tool 的映射
+匿名公共工具与登录工具的 endpoint / tools/list 呈现策略
+HTTP 401、授权不足和 Tool 错误的协议行为
+```
+
+本阶段计划 scopes：
 
 ```text
 problems:read
 submissions:read
-submissions:write
-code:run
 ```
 
-候选工具：
+#### 11.2.1 Phase 2 实施采用的规范与版本依据（2026-08-10）
+
+实现依据为当前正式的 [MCP Authorization 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) 与项目锁定的 `@modelcontextprotocol/server` / `node` / `client` `2.0.0`。SDK v2 官方文档明确将 MCP Server 定位为 Resource Server，使用 `verifyBearerToken` / `bearerAuthChallengeResponse` / RFC 9728 metadata，并将验证后的 `AuthInfo` 传入 `ctx.http.authInfo`；Authorization Server 由同源 ETLOJ OAuth 模块独立实现，不使用已冻结的 v1 Authorization Server helper。
+
+采用协议：
+
+```text
+Authorization Server issuer: https://etloj.space
+Public Resource Server:       https://etloj.space/mcp
+Protected Resource Server:    https://etloj.space/mcp/private
+Protected Resource Metadata:  /.well-known/oauth-protected-resource/mcp/private
+Authorization Server Metadata:/.well-known/oauth-authorization-server
+Grant: Authorization Code + PKCE S256
+Client registration: RFC 7591 Dynamic Client Registration（公开客户端，兼容标准 MCP Client）
+Resource binding: RFC 8707 resource=https://etloj.space/mcp/private
+Authorization response issuer: RFC 9207 iss
+Token storage: Redis 中仅以 SHA-256 token 摘要作为 key
+Access token: 不透明随机令牌，1 小时过期
+Refresh token: 不透明随机令牌，30 天过期，每次刷新强制轮换
+Revocation: RFC 7009 风格撤销端点，撤销后 Resource Server 即时拒绝
+```
+
+endpoint / `tools/list` 策略：
+
+1. `/mcp` 保持完全匿名，只呈现四个原有公开题库工具和两个公开题单工具；现有匿名客户端无需迁移。
+2. `/mcp/private` 在 MCP handshake 前执行 Bearer 验证，未登录、无效、过期或已撤销 token 返回带 `resource_metadata` 的 HTTP 401。
+3. `/mcp/private` 的已认证 `tools/list` 呈现六个公开工具和三个个人工具；Tool schema 均不含 `userId`。
+4. `tools/call` 在 HTTP 边界根据 Tool 名逐项要求 `problems:read` 或 `submissions:read`，scope 不足返回带所需 scope 的 HTTP 403；Tool handler 内再次校验 scope 与认证上下文。
+5. 用户身份只从 Redis token 记录和当前数据库用户状态生成的 `AuthInfo.extra.userId` 获取；网页 JWT 只用于同源授权确认页识别资源所有者，绝不作为 MCP access token 或 Tool 参数。
+6. 私有/不存在题单、隐藏/不存在题目、他人/不存在提交分别使用同类统一安全错误，不在错误或日志中记录 token、授权码、刷新令牌、源代码或提交正文。
+
+### 11.3 个人学习进度工具
+
+Authorization 验收后再新增：
 
 ```text
 get_my_problem_status
 list_my_submissions
 get_submission
-submit_solution
-run_code
 ```
 
-授权不变量：
+范围建议：
 
-1. 所有 userId 必须来自认证 token/context。
-2. Agent 不得传入或选择 userId。
-3. `submit_solution` 和 `run_code` 必须明确标记真实副作用。
-4. 不得记录完整源代码。
-5. Judge 内部接口和 `x-judge-secret` 永远不得暴露为 MCP Tool。
+- `get_my_problem_status`：批量查询当前用户对指定公开题目的 `AC` / `ATTEMPTED` / `UNATTEMPTED` 状态。
+- `list_my_submissions`：按公开题目、状态和时间分页查询当前用户自己的提交摘要，不返回其他用户数据。
+- `get_submission`：读取当前用户自己的单次提交详情；是否返回完整源代码必须由 `submissions:read` 的授权说明、产品界面提示和隐私评审共同确认，默认优先最小化输出。
+- Agent 可结合公开题单、公开题库和个人状态制定学习计划；服务端不需要在本阶段实现独立推荐算法。
+
+个人数据授权不变量：
+
+1. 所有 userId 必须来自已验证的认证 token/context。
+2. Agent 不得传入、覆盖或选择 userId，Tool schema 中不得出现 userId。
+3. 个人工具必须逐个校验所需 scope，不能只判断“已登录”。
+4. 普通用户只能读取自己的提交；教师和管理员也不得通过这些 `my` 工具选择其他用户。
+5. 不得在访问日志、错误日志或审计日志中记录 access token、完整源代码或提交详情正文。
+6. 未授权、token 失效、scope 不足和资源不存在必须有稳定且不泄露隐私的错误语义。
+7. Judge 内部接口和 `x-judge-secret` 永远不得暴露为 MCP Tool。
+
+### 11.4 实施顺序
+
+同一任务内按以下顺序执行，不得因联合交付而跳过 Authorization 门禁：
+
+1. 为 `ProblemListService` 增加 MCP 所需的公开题单安全查询，或建立等价的专用只读查询层。
+2. 实现并测试 `list_problem_lists`、`get_problem_list`，完成匿名调用和隐藏数据隔离验收。
+3. 完成 MCP Authorization 设计记录、实现和标准客户端协议测试。
+4. 实现三个个人学习进度只读工具，并验证 userId/context/scope 不变量。
+5. 执行 MCP 单元测试、HTTP 集成测试、既有题单/提交 API 回归测试和生产构建。
+6. 部署后分别以匿名客户端和已授权客户端完成公网真实数据验收。
+
+### 11.5 Phase 2 完成标准
+
+- [x] 匿名客户端可调用六个公开只读工具：现有四个题库工具 + 两个公开题单工具。
+- [x] 私有题单、隐藏题及其数量不会通过题单工具泄露。
+- [x] 标准 MCP Client 能完成正式授权，token 不通过 Tool 参数传递。
+- [x] 未授权客户端不能调用任何个人学习进度工具。
+- [x] 已授权客户端只能读取 token 对应用户的数据，且 scope 校验生效。
+- [x] 三个个人工具均有 schema、字段白名单、安全错误、日志和测试。
+- [x] 匿名与登录两条调用路径均完成 HTTP 集成测试和生产真实数据验收。
+- [x] 首页 MCP 教程在 Authorization 上线后同步补充登录接入说明。
+- [x] `submit_solution` 和 `run_code` 未混入本阶段交付。
+
+### 11.6 Phase 2 完成记录（2026-08-10）
+
+实现与自动化验证：
+
+- `ProblemListService` 使用 MCP 专用查询，数据库条件同时限制公开题单与公开题目；过滤后重新连续编号，不返回关联表 ID、creatorId 或隐藏题派生数量。
+- `/mcp` 回归六个匿名工具；`/mcp/private` 经 Bearer 校验后呈现九个工具。HTTP 集成测试覆盖 initialize、tools/list、tools/call、缺失/无效/过期 token、scope 不足与认证上下文身份不可被参数覆盖。
+- OAuth 单元测试覆盖 DCR、Authorization Code + PKCE S256、resource 绑定、一次性授权码、refresh token 轮换、scope 缩减与撤销。
+- 提交查询把 `userId` 固定在数据库 where 条件中，教师/管理员角色没有越权分支；提交详情仅返回 `codeSize`，不返回源码正文。
+- Server Jest 全量 6 suites / 26 tests 通过，Server build 通过，新增 MCP/Auth/测试文件的 ESLint 通过；CLI 3 tests 与 build 通过，Judge `tsc --noEmit` 通过，Client production build 通过。本次涉及的 Client 文件单独 ESLint 通过。仓库全量 Server ESLint 仍有既有的 1442 errors / 29 warnings，全量 Client ESLint 仍有既有的 388 errors / 26 warnings；未自动修复或改写这些任务范围外文件，也未把全量 lint 描述为通过。
+
+生产部署与验收：
+
+- 回滚备份：`/opt/etloj/backups/mcp-phase2-before-20260810-171759`。服务器未执行 npm install/build，未修改 `.env`、Prisma schema、密钥、题目数据、Judge 或 go-judge；前端部署前已清理旧 hash 文件。
+- Nginx 已保留并版本化生产 TLS 配置，加入 `/mcp` 与 OAuth discovery 代理；`nginx -t` 通过，HTTP 301 跳转、HTTPS 证书校验和 HSTS 正常。
+- 公网匿名标准 MCP Client 实测服务版本 `0.3.0`，发现六个工具；真实数据为 47 个公开标签、2040 道公开题、9 个公开题单，题目详情/Markdown、题单详情及输入上界拒绝均通过。
+- 公网授权标准 MCP Client 完成真实 DCR、PKCE 授权码、token、tools/list 与 tools/call 流程；发现九个工具，个人状态、当前账号 139 条提交摘要、最小化详情、伪造 userId 无效、scope 不足 403、撤销后 401 均通过。验收产生的 access/refresh token 已撤销且未输出。
+- Nginx、后端、Judge、go-judge、MariaDB、Redis 均为 active；go-judge 保持 v1.9.0；可用内存 1120 MB。既有首页与题单 API 返回 200，匿名个人提交 API 返回 401。部署后后端 error journal 为空，MCP 日志未匹配 Bearer/access token 泄漏模式。
 
 ---
 
@@ -726,21 +895,22 @@ run_code
 后续 Agent 开始工作前应：
 
 1. 先检查当前 git diff，保留用户已有修改。
-2. 阅读实际 `ProblemService` 和 MCP 实现，不以历史设计稿中的候选代码覆盖当前接口。
+2. 阅读实际 `ProblemService`、`ProblemListService`、提交/认证模块和 MCP 实现，不以历史设计稿中的候选代码覆盖当前接口。
 3. 修改 Tool 时同步更新 schema、白名单、单元测试和 HTTP 集成测试。
 4. 任何个人数据或副作用能力必须等待 OAuth/Authorization 完成。
-5. 完成修改后至少执行：
+5. Phase 2 必须保留匿名公开工具的既有行为，并分别测试匿名、已登录但 scope 不足、已获正确 scope 三种客户端状态。
+6. 完成修改后至少执行：
 
 ```bash
 cd server
-npm test -- --runInBand src/mcp
+npm test -- --runInBand src/mcp src/problem-list
 npm run build
 ```
 
-6. 涉及 Nginx 时必须在部署机执行：
+7. 涉及 Nginx 或 Authorization 路由/元数据时必须在部署机执行：
 
 ```bash
 nginx -t
 ```
 
-7. 不得把未执行的生产操作描述为已完成。
+8. 不得把未执行的生产操作描述为已完成。

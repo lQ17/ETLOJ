@@ -49,6 +49,89 @@ export class ProblemListService {
     return { items, total, page, pageSize };
   }
 
+  /** MCP 专用公开题单查询：字段与计数均显式排除隐藏题。 */
+  async findAllPublicForMcp(page = 1, pageSize = 20, keyword?: string) {
+    const where = {
+      isPublic: true,
+      ...(keyword ? { title: { contains: keyword } } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.problemList.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          createdAt: true,
+          _count: {
+            select: { items: { where: { problem: { isPublic: true } } } },
+          },
+        },
+      }),
+      this.prisma.problemList.count({ where }),
+    ]);
+
+    return {
+      items: items.map(({ _count, ...item }) => ({
+        ...item,
+        problemCount: _count.items,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** MCP 专用公开题单详情：私有与不存在统一 NotFound，隐藏题不参与任何输出。 */
+  async findOnePublicForMcp(id: number) {
+    const list = await this.prisma.problemList.findFirst({
+      where: { id, isPublic: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        items: {
+          where: { problem: { isPublic: true } },
+          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+          select: {
+            problem: {
+              select: {
+                id: true,
+                slug: true,
+                title: true,
+                difficulty: true,
+                score: true,
+                problemTags: {
+                  select: { tag: { select: { name: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!list) throw new NotFoundException("Problem list not found.");
+
+    return {
+      id: list.id,
+      title: list.title,
+      description: list.description,
+      problemCount: list.items.length,
+      items: list.items.map(({ problem }, index) => ({
+        order: index + 1,
+        id: problem.id,
+        slug: problem.slug,
+        title: problem.title,
+        difficulty: problem.difficulty,
+        score: problem.score,
+        tags: problem.problemTags.map(({ tag }) => tag.name),
+      })),
+    };
+  }
+
   async findAllByUser(userId: number, page = 1, pageSize = 20) {
     const where = { creatorId: userId };
     const [items, total] = await Promise.all([

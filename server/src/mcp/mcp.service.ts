@@ -1,9 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { McpServer } from '@modelcontextprotocol/server';
 import { ProblemService } from '../problem/problem.service';
+import { ProblemListService } from '../problem-list/problem-list.service';
 import { TagService } from '../tag/tag.service';
+import { SubmissionService } from '../submission/submission.service';
 import { registerProblemTools } from './tools/problem.tools';
+import { registerProblemListTools } from './tools/problem-list.tools';
 import { registerTagTools } from './tools/tag.tools';
+import { registerPersonalTools } from './tools/personal.tools';
 
 interface RateLimitEntry {
   count: number;
@@ -25,17 +29,22 @@ export class McpService {
 
   constructor(
     private readonly problemService: ProblemService,
+    private readonly problemListService: ProblemListService,
+    private readonly submissionService: SubmissionService,
     private readonly tagService: TagService,
   ) {}
 
-  createServer(): McpServer {
+  createServer(includePersonalTools = false): McpServer {
     const server = new McpServer({
       name: 'etloj',
-      version: '0.2.0',
+      version: '0.3.0',
     });
 
     registerProblemTools(server, this.problemService, this.logger);
+    registerProblemListTools(server, this.problemListService, this.logger);
     registerTagTools(server, this.tagService, this.logger);
+    if (includePersonalTools)
+      registerPersonalTools(server, this.submissionService, this.logger);
     return server;
   }
 

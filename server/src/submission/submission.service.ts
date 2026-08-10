@@ -263,6 +263,96 @@ export class SubmissionService {
     return result;
   }
 
+  /** MCP 专用：仅接受公开题目，并为每个输入题目返回完整三态。 */
+  async getMyPublicProblemStatus(userId: number, problemIds: number[]) {
+    const uniqueIds = [...new Set(problemIds)];
+    const publicProblems = await this.prisma.problem.findMany({
+      where: { id: { in: uniqueIds }, isPublic: true },
+      select: { id: true, slug: true, title: true },
+      orderBy: { id: 'asc' },
+    });
+    if (publicProblems.length !== uniqueIds.length) {
+      throw new NotFoundException('Problem not found.');
+    }
+    const submissions = await this.prisma.submission.findMany({
+      where: { userId, problemId: { in: uniqueIds } },
+      select: { problemId: true, status: true },
+    });
+    const attempted = new Set(submissions.map((item) => item.problemId));
+    const accepted = new Set(submissions.filter((item) => item.status === 'AC').map((item) => item.problemId));
+    const problemMap = new Map(publicProblems.map((problem) => [problem.id, problem]));
+    return uniqueIds.map((id) => ({
+      ...problemMap.get(id)!,
+      status: accepted.has(id) ? 'AC' : attempted.has(id) ? 'ATTEMPTED' : 'UNATTEMPTED',
+    }));
+  }
+
+  /** MCP 专用个人提交摘要：userId 固定来自认证上下文，且只查询公开题目。 */
+  async listMyPublicSubmissions(
+    userId: number,
+    query: {
+      page: number;
+      pageSize: number;
+      problemId?: number;
+      status?: SubmissionStatus;
+      language?: string;
+      from?: Date;
+      to?: Date;
+    },
+  ) {
+    const where = {
+      userId,
+      problem: { isPublic: true },
+      ...(query.problemId ? { problemId: query.problemId } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.language ? { language: query.language } : {}),
+      ...(query.from || query.to
+        ? { createdAt: { ...(query.from ? { gte: query.from } : {}), ...(query.to ? { lte: query.to } : {}) } }
+        : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.submission.findMany({
+        where,
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          language: true,
+          status: true,
+          score: true,
+          timeUsed: true,
+          memoryUsed: true,
+          createdAt: true,
+          problem: { select: { id: true, slug: true, title: true } },
+        },
+      }),
+      this.prisma.submission.count({ where }),
+    ]);
+    return { items, total, page: query.page, pageSize: query.pageSize };
+  }
+
+  /** MCP 专用个人提交详情：所有权在查询条件中强制，源代码只派生大小、不返回正文。 */
+  async getMyPublicSubmission(userId: number, id: number) {
+    const submission = await this.prisma.submission.findFirst({
+      where: { id, userId, problem: { isPublic: true } },
+      select: {
+        id: true,
+        code: true,
+        language: true,
+        status: true,
+        score: true,
+        timeUsed: true,
+        memoryUsed: true,
+        createdAt: true,
+        problem: { select: { id: true, slug: true, title: true } },
+      },
+    });
+    if (!submission) throw new NotFoundException('Submission not found.');
+    const { code, ...safe } = submission;
+    return { ...safe, codeSize: Buffer.byteLength(code, 'utf8') };
+  }
+
   async getByUserAndProblem(userId: number, problemId: number) {
     return this.prisma.submission.findMany({
       where: { userId, problemId },

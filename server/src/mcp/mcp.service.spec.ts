@@ -1,6 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { ProblemService } from '../problem/problem.service';
+import { ProblemListService } from '../problem-list/problem-list.service';
+import { SubmissionService } from '../submission/submission.service';
 import { TagService } from '../tag/tag.service';
 import { McpService } from './mcp.service';
 
@@ -27,6 +29,17 @@ describe('McpService problem tools', () => {
     Pick<ProblemService, 'findAll' | 'findOne' | 'getMarkdown'>
   >;
   let tagService: jest.Mocked<Pick<TagService, 'findPublicTags'>>;
+  let problemListService: jest.Mocked<
+    Pick<ProblemListService, 'findAllPublicForMcp' | 'findOnePublicForMcp'>
+  >;
+  let submissionService: jest.Mocked<
+    Pick<
+      SubmissionService,
+      | 'getMyPublicProblemStatus'
+      | 'listMyPublicSubmissions'
+      | 'getMyPublicSubmission'
+    >
+  >;
   let client: Client;
 
   beforeEach(async () => {
@@ -46,9 +59,49 @@ describe('McpService problem tools', () => {
         { name: 'simulation', problemCount: 1 },
       ]),
     };
+    problemListService = {
+      findAllPublicForMcp: jest.fn().mockResolvedValue({
+        items: [
+          {
+            id: 3,
+            title: 'Starter',
+            description: null,
+            problemCount: 1,
+            createdAt: new Date('2026-08-10T00:00:00Z'),
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      }),
+      findOnePublicForMcp: jest.fn().mockResolvedValue({
+        id: 3,
+        title: 'Starter',
+        description: null,
+        problemCount: 1,
+        items: [
+          {
+            order: 1,
+            id: 1,
+            slug: 'prefix-sum-basic',
+            title: 'Prefix Sum Basic',
+            difficulty: 'BRONZE',
+            score: 20,
+            tags: ['prefix-sum'],
+          },
+        ],
+      }),
+    };
+    submissionService = {
+      getMyPublicProblemStatus: jest.fn(),
+      listMyPublicSubmissions: jest.fn(),
+      getMyPublicSubmission: jest.fn(),
+    };
 
     const server = new McpService(
       problemService as unknown as ProblemService,
+      problemListService as unknown as ProblemListService,
+      submissionService as unknown as SubmissionService,
       tagService as unknown as TagService,
     ).createServer();
     const [clientTransport, serverTransport] =
@@ -62,11 +115,13 @@ describe('McpService problem tools', () => {
     await client.close();
   });
 
-  it('lists exactly the four public read-only tools', async () => {
+  it('lists exactly the six public read-only tools', async () => {
     const result = await client.listTools();
     expect(result.tools.map((tool) => tool.name).sort()).toEqual([
       'get_problem',
+      'get_problem_list',
       'get_problem_markdown',
+      'list_problem_lists',
       'list_tags',
       'search_problems',
     ]);
@@ -77,6 +132,29 @@ describe('McpService problem tools', () => {
       idempotentHint: true,
       openWorldHint: false,
     });
+  });
+
+  it('lists and reads public problem lists through the dedicated safe service', async () => {
+    const listed = await client.callTool({
+      name: 'list_problem_lists',
+      arguments: { keyword: ' Starter ', page: 1, pageSize: 10 },
+    });
+    expect(problemListService.findAllPublicForMcp).toHaveBeenCalledWith(
+      1,
+      10,
+      'Starter',
+    );
+    expect(listed.structuredContent).toEqual(
+      expect.objectContaining({ total: 1 }),
+    );
+    const detail = await client.callTool({
+      name: 'get_problem_list',
+      arguments: { listId: 3 },
+    });
+    expect(problemListService.findOnePublicForMcp).toHaveBeenCalledWith(3);
+    expect(detail.structuredContent).toEqual(
+      expect.objectContaining({ problemCount: 1 }),
+    );
   });
 
   it('lists only public tag statistics with a field whitelist', async () => {

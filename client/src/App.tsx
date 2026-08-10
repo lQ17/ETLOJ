@@ -20,16 +20,26 @@ const RecordsPage = lazy(() => import("./pages/records"));
 const ProfilePage = lazy(() => import("./pages/profile"));
 const SettingsPage = lazy(() => import("./pages/settings"));
 const VisualizationPage = lazy(() => import("./pages/visualization"));
+const McpAuthorizePage = lazy(() => import("./pages/mcp-authorize"));
 const FeedbackPublicPage = lazy(() => import("./pages/feedback/public"));
 const FeedbackTokenEntryPage = lazy(() =>
-  import("./pages/feedback/public").then((m) => ({ default: m.FeedbackTokenEntryPage })),
+  import("./pages/feedback/public").then((m) => ({
+    default: m.FeedbackTokenEntryPage,
+  })),
 );
 
 const { Content } = Layout;
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  if (!user) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!user)
+    return (
+      <Navigate
+        to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
+        replace
+      />
+    );
   return <>{children}</>;
 }
 
@@ -51,7 +61,9 @@ function App() {
   const isFeedbackSharePage = /^\/f\/[^/]+/.test(location.pathname);
   /** 窄屏：短链页贴边无页脚；宽屏：正常留白 + 页脚 */
   const [isNarrowViewport, setIsNarrowViewport] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches,
   );
   const feedbackCompact = isFeedbackSharePage && isNarrowViewport;
 
@@ -62,15 +74,25 @@ function App() {
     };
     onChange(mq);
     if (mq.addEventListener) {
-      mq.addEventListener("change", onChange as (e: MediaQueryListEvent) => void);
+      mq.addEventListener(
+        "change",
+        onChange as (e: MediaQueryListEvent) => void,
+      );
     } else {
-      mq.addListener(onChange as (this: MediaQueryList, ev: MediaQueryListEvent) => void);
+      mq.addListener(
+        onChange as (this: MediaQueryList, ev: MediaQueryListEvent) => void,
+      );
     }
     return () => {
       if (mq.removeEventListener) {
-        mq.removeEventListener("change", onChange as (e: MediaQueryListEvent) => void);
+        mq.removeEventListener(
+          "change",
+          onChange as (e: MediaQueryListEvent) => void,
+        );
       } else {
-        mq.removeListener(onChange as (this: MediaQueryList, ev: MediaQueryListEvent) => void);
+        mq.removeListener(
+          onChange as (this: MediaQueryList, ev: MediaQueryListEvent) => void,
+        );
       }
     };
   }, []);
@@ -91,14 +113,18 @@ function App() {
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-    const handleSystemThemeChange = (e: MediaQueryListEvent | MediaQueryList) => {
-      const followSystem = localStorage.getItem("theme_follow_system") !== "false";
+    const handleSystemThemeChange = (
+      e: MediaQueryListEvent | MediaQueryList,
+    ) => {
+      const followSystem =
+        localStorage.getItem("theme_follow_system") !== "false";
       if (followSystem) {
         applyTheme(e.matches ? "dark" : "light");
       }
     };
 
-    const followSystem = localStorage.getItem("theme_follow_system") !== "false";
+    const followSystem =
+      localStorage.getItem("theme_follow_system") !== "false";
     if (followSystem) {
       applyTheme(mediaQuery.matches ? "dark" : "light");
     } else {
@@ -119,11 +145,18 @@ function App() {
         mediaQuery.removeListener(handleSystemThemeChange);
       }
     };
-  }, []);
+  }, [initFromStorage]);
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <Spin />
       </div>
     );
@@ -150,7 +183,15 @@ function App() {
               : "96px 32px",
         }}
       >
-        <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spin /></div>}>
+        <Suspense
+          fallback={
+            <div
+              style={{ display: "flex", justifyContent: "center", padding: 80 }}
+            >
+              <Spin />
+            </div>
+          }
+        >
           <div key={location.pathname} className="page-transition-wrapper">
             <Routes>
               <Route path="/" element={<HomePage />} />
@@ -163,12 +204,34 @@ function App() {
               <Route path="/records" element={<RecordsPage />} />
               <Route path="/ranking" element={<RankingPage />} />
               <Route path="/visualization" element={<VisualizationPage />} />
+              <Route
+                path="/mcp-authorize"
+                element={
+                  <AuthGuard>
+                    <McpAuthorizePage />
+                  </AuthGuard>
+                }
+              />
               <Route path="/announcements" element={<AnnouncementsPage />} />
               <Route path="/f" element={<FeedbackTokenEntryPage />} />
               <Route path="/f/:token" element={<FeedbackPublicPage />} />
-              <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
+              <Route
+                path="/admin"
+                element={
+                  <AdminGuard>
+                    <AdminPage />
+                  </AdminGuard>
+                }
+              />
               <Route path="/profile/:username" element={<ProfilePage />} />
-              <Route path="/settings/*" element={<AuthGuard><SettingsPage /></AuthGuard>} />
+              <Route
+                path="/settings/*"
+                element={
+                  <AuthGuard>
+                    <SettingsPage />
+                  </AuthGuard>
+                }
+              />
             </Routes>
           </div>
         </Suspense>

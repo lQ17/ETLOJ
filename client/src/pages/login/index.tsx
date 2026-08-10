@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Form, Input, Button, Card, Message, Modal } from "@arco-design/web-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  Message,
+  Modal,
+} from "@arco-design/web-react";
 import { IconUser, IconLock, IconEmail } from "@arco-design/web-react/icon";
 import { Turnstile } from "@marsidev/react-turnstile";
 import logoWithText from "../../assets/images/logo-with-text.png";
@@ -8,25 +15,46 @@ import { useAuthStore } from "../../stores/auth";
 import { authApi } from "../../api/auth";
 import "./login.css";
 
+interface ReapplyUser {
+  username: string;
+  password: string;
+  email: string;
+  remark: string;
+}
+
+interface LoginError {
+  code?: string;
+  username?: string;
+  email?: string;
+  remark?: string;
+  message?: string;
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const login = useAuthStore((s) => s.login);
   const [loading, setLoading] = useState(false);
 
   // 重新申请 Modal 状态
   const [reapplyVisible, setReapplyVisible] = useState(false);
   const [reapplyLoading, setReapplyLoading] = useState(false);
-  const [reapplyUser, setReapplyUser] = useState<any>(null);
+  const [reapplyUser, setReapplyUser] = useState<ReapplyUser | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [reapplyForm] = Form.useForm();
 
-  const handleSubmit = async (values: { account: string; password: string }) => {
+  const handleSubmit = async (values: {
+    account: string;
+    password: string;
+  }) => {
     setLoading(true);
     try {
       await login(values.account, values.password);
       Message.success("登录成功");
-      navigate("/");
-    } catch (err: any) {
+      const next = searchParams.get("next");
+      navigate(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
+    } catch (error: unknown) {
+      const err = error as LoginError;
       if (err?.code === "REGISTRATION_REJECTED") {
         const defaultUser = {
           username: err.username || values.account,
@@ -51,6 +79,7 @@ export default function LoginPage() {
 
   const handleReapplySubmit = async () => {
     try {
+      if (!reapplyUser) return;
       const values = await reapplyForm.validate();
       if (!turnstileToken) {
         Message.warning("请完成人机验证");
@@ -66,7 +95,8 @@ export default function LoginPage() {
       });
       Message.success("申请重新提交成功，请等待管理员审核");
       setReapplyVisible(false);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as LoginError;
       Message.error(err?.message || "重新提交失败");
     } finally {
       setReapplyLoading(false);
@@ -85,40 +115,57 @@ export default function LoginPage() {
         <div className="login-brand-section">
           {/* Brand Logo */}
           <div className="login-logo-container">
-            <img src={logoWithText} alt="ETLOJ" style={{ height: 46, objectFit: "contain" }} />
+            <img
+              src={logoWithText}
+              alt="ETLOJ"
+              style={{ height: 46, objectFit: "contain" }}
+            />
           </div>
           <h1 className="login-title">欢迎回来</h1>
           <p className="login-subtitle">继续你的算法进阶之旅</p>
         </div>
 
         <Card bordered={false} className="login-glass-card">
-          <Form layout="vertical" onSubmit={handleSubmit} className="login-form" style={{ marginTop: 4 }}>
-            <Form.Item field="account" label="账号" rules={[{ required: true, message: "请输入账号" }]}>
-              <Input 
-                className="login-input-wrapper" 
-                prefix={<IconUser />} 
-                placeholder="用户名 / 邮箱 / 手机号" 
-                size="large" 
-                maxLength={100} 
-                minLength={1} 
+          <Form
+            layout="vertical"
+            onSubmit={handleSubmit}
+            className="login-form"
+            style={{ marginTop: 4 }}
+          >
+            <Form.Item
+              field="account"
+              label="账号"
+              rules={[{ required: true, message: "请输入账号" }]}
+            >
+              <Input
+                className="login-input-wrapper"
+                prefix={<IconUser />}
+                placeholder="用户名 / 邮箱 / 手机号"
+                size="large"
+                maxLength={100}
+                minLength={1}
               />
             </Form.Item>
-            <Form.Item field="password" label="密码" rules={[{ required: true, message: "请输入密码" }]}>
-              <Input.Password 
-                className="login-input-wrapper" 
-                prefix={<IconLock />} 
-                placeholder="请输入密码" 
-                size="large" 
-                maxLength={100} 
-                minLength={1} 
+            <Form.Item
+              field="password"
+              label="密码"
+              rules={[{ required: true, message: "请输入密码" }]}
+            >
+              <Input.Password
+                className="login-input-wrapper"
+                prefix={<IconLock />}
+                placeholder="请输入密码"
+                size="large"
+                maxLength={100}
+                minLength={1}
               />
             </Form.Item>
             <Form.Item style={{ marginTop: 28, marginBottom: 4 }}>
-              <Button 
-                type="primary" 
-                htmlType="submit" 
-                long 
-                loading={loading} 
+              <Button
+                type="primary"
+                htmlType="submit"
+                long
+                loading={loading}
                 size="large"
                 className="login-submit-btn"
               >
@@ -130,12 +177,21 @@ export default function LoginPage() {
 
         {/* Footer Support Info */}
         <div className="login-footer-info">
-          还没有账号？<span onClick={() => navigate("/register")} style={{ color: "var(--color-text-1)", cursor: "pointer", textDecoration: "underline", marginRight: 16 }}>立即注册</span>
+          还没有账号？
+          <span
+            onClick={() => navigate("/register")}
+            style={{
+              color: "var(--color-text-1)",
+              cursor: "pointer",
+              textDecoration: "underline",
+              marginRight: 16,
+            }}
+          >
+            立即注册
+          </span>
           遇到问题？<a href="mailto:qingx.yang@outlook.com">联系管理员</a>
         </div>
-        <div className="login-footer-copyright">
-          © ETLOJ - Easy To Learn OJ
-        </div>
+        <div className="login-footer-copyright">© ETLOJ - Easy To Learn OJ</div>
       </div>
 
       <Modal
@@ -148,20 +204,45 @@ export default function LoginPage() {
         cancelText="取消"
         style={{ width: 440 }}
       >
-        <div style={{ marginBottom: 16, color: "var(--color-text-2)", fontSize: 13, lineHeight: 1.6 }}>
+        <div
+          style={{
+            marginBottom: 16,
+            color: "var(--color-text-2)",
+            fontSize: 13,
+            lineHeight: 1.6,
+          }}
+        >
           您的注册申请已被拒绝。您可以直接修改邮箱和申请理由重新提交审核，原用户名和密码保持不变，无需重新注册。
         </div>
         <Form form={reapplyForm} layout="vertical">
-          <Form.Item field="email" label="邮箱" rules={[{ required: true, message: "请输入邮箱" }, { type: "email", message: "请输入有效的邮箱" }]}>
-            <Input className="login-input-wrapper" prefix={<IconEmail />} placeholder="请输入新的常用邮箱" />
+          <Form.Item
+            field="email"
+            label="邮箱"
+            rules={[
+              { required: true, message: "请输入邮箱" },
+              { type: "email", message: "请输入有效的邮箱" },
+            ]}
+          >
+            <Input
+              className="login-input-wrapper"
+              prefix={<IconEmail />}
+              placeholder="请输入新的常用邮箱"
+            />
           </Form.Item>
           <Form.Item field="remark" label="申请说明/重新提交理由">
-            <Input.TextArea className="login-input-wrapper" placeholder="重新陈述申请原因，如补填班级学号信息" autoSize={{ minRows: 2, maxRows: 4 }} />
+            <Input.TextArea
+              className="login-input-wrapper"
+              placeholder="重新陈述申请原因，如补填班级学号信息"
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
           </Form.Item>
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+          <div
+            style={{ display: "flex", justifyContent: "center", marginTop: 12 }}
+          >
             <Turnstile
               siteKey={
-                (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+                window.location.hostname === "localhost" ||
+                window.location.hostname === "127.0.0.1"
                   ? "1x00000000000000000000AA"
                   : "0x4AAAAAADqLQ4ZrU-Lb81-a"
               }
@@ -175,4 +256,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
