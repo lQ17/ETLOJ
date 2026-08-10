@@ -2,6 +2,8 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { WsAdapter } from "@nestjs/platform-ws";
 import { AppModule } from "./app.module";
+import { McpService } from "./mcp/mcp.service";
+import { mountMcpEndpoint } from "./mcp/mcp.http";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,6 +26,10 @@ async function bootstrap() {
   const express = require('express');
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  // Mount MCP directly on Express so the Nest global /api prefix does not apply.
+  const expressApp = app.getHttpAdapter().getInstance();
+  mountMcpEndpoint(expressApp, app.get(McpService));
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -40,7 +40,7 @@ ETLOJ 是一个面向学校与社团的在线算法评测平台，致力于通�
 
 ### 环境要求
 
-- Node.js >= 18
+- Node.js >= 20（Remote MCP SDK v2 要求）
 - MySQL 8.x
 - Redis 7.x
 - go-judge（可选，判题需要）
@@ -75,7 +75,53 @@ npm run start
 
 - 前端：http://localhost:5173
 - 后端 API：http://localhost:3000/api
+- Remote MCP：http://localhost:3000/mcp
 - 初始管理员：`admin` / `admin123`
+
+## Remote MCP（Phase 1）
+
+ETLOJ 在独立的 `/mcp` 路径提供基于 Streamable HTTP 的公开只读 MCP 服务。MCP 层通过 NestJS 依赖注入直接调用 `ProblemService`，不会通过 CLI 或本机 HTTP API 转发请求。
+
+当前工具：
+
+| Tool | 输入 | 输出 | 业务服务 |
+|------|------|------|----------|
+| `search_problems` | `keyword?`、`difficulty?`、`tags?`、`tagMode?`、`page?`、`pageSize?` | 公开题目分页列表，同时提供文本和 `structuredContent` | `ProblemService.findAll(query, false)` |
+| `get_problem` | `problem`（数字 ID 或 slug） | 公开题目的题面、标签、难度和限制 | `ProblemService.findOne(problem, false)` |
+| `get_problem_markdown` | `problem`（数字 ID 或 slug） | 原始 Markdown | `ProblemService.getMarkdown(problem)` |
+
+安全边界：匿名 MCP 只能访问公开题目；隐藏题与不存在的题统一返回 `Problem not found.`。输入 schema 限制关键词长度、标签数量、标识符长度和最大 `pageSize=50`，HTTP 入口默认按客户端 IP 限制为每分钟 60 次请求，并使用官方 Host 校验防护 DNS rebinding。工具输出采用字段白名单，不包含题目文件路径、测试数据或内部异常。
+
+可选环境变量：
+
+```env
+# 逗号分隔，不含端口；部署到其他域名时必须加入该域名
+MCP_ALLOWED_HOSTS=etloj.space,localhost,127.0.0.1,[::1]
+MCP_RATE_LIMIT_MAX=60
+MCP_RATE_LIMIT_WINDOW_MS=60000
+```
+
+生产部署：
+
+```bash
+cd /opt/etloj/server
+npm ci
+npm run build
+sudo systemctl restart etloj-server
+
+sudo cp /opt/etloj/nginx/default.conf /etc/nginx/sites-available/etloj
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+公网 MCP URL：`https://etloj.space/mcp`。可用官方 MCP Inspector，或运行本仓库的 HTTP 集成测试验证真实的 `initialize`、`tools/list` 和 `tools/call`：
+
+```bash
+cd server
+npm test -- --runInBand src/mcp
+```
+
+Phase 2 尚未实现：OAuth、`submissions:read`、`submissions:write` 和 `code:run`。
 
 ## 项目结构
 

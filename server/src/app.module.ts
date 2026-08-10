@@ -13,6 +13,7 @@ import { AnnouncementModule } from "./announcement/announcement.module";
 import { StatsModule } from "./stats/stats.module";
 import { AiModule } from "./ai/ai.module";
 import { FeedbackModule } from "./feedback/feedback.module";
+import { McpModule } from "./mcp/mcp.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { FeedbackModule } from "./feedback/feedback.module";
     StatsModule,
     AiModule,
     FeedbackModule,
+    McpModule,
   ],
 })
 export class AppModule {}
