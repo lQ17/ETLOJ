@@ -5,6 +5,7 @@ import {
 import express from 'express';
 import type { Server } from 'node:http';
 import { ProblemService } from '../problem/problem.service';
+import { TagService } from '../tag/tag.service';
 import { mountMcpEndpoint } from './mcp.http';
 import { McpService } from './mcp.service';
 
@@ -37,10 +38,15 @@ describe('Remote MCP HTTP endpoint', () => {
       findOne: jest.fn().mockResolvedValue(problem),
       getMarkdown: jest.fn().mockResolvedValue(problem.markdown),
     } as unknown as ProblemService;
+    const tagService = {
+      findPublicTags: jest
+        .fn()
+        .mockResolvedValue([{ name: 'sample', problemCount: 1 }]),
+    } as unknown as TagService;
 
     const app = express();
     app.use(express.json());
-    mountMcpEndpoint(app, new McpService(problemService));
+    mountMcpEndpoint(app, new McpService(problemService, tagService));
     httpServer = await new Promise<Server>((resolve) => {
       const server = app.listen(0, '127.0.0.1', () => resolve(server));
     });
@@ -67,13 +73,17 @@ describe('Remote MCP HTTP endpoint', () => {
       expect.objectContaining({ name: 'etloj' }),
     );
     const tools = await client.listTools();
-    expect(tools.tools).toHaveLength(3);
+    expect(tools.tools).toHaveLength(4);
   });
 
   it('calls all Phase 1 tools over Streamable HTTP', async () => {
     const search = await client.callTool({
       name: 'search_problems',
       arguments: {},
+    });
+    const tags = await client.callTool({
+      name: 'list_tags',
+      arguments: { keyword: 'sample' },
     });
     const detail = await client.callTool({
       name: 'get_problem',
@@ -85,6 +95,10 @@ describe('Remote MCP HTTP endpoint', () => {
     });
 
     expect(search.isError).not.toBe(true);
+    expect(tags.structuredContent).toEqual({
+      items: [{ name: 'sample', problemCount: 1 }],
+      total: 1,
+    });
     expect(detail.structuredContent).toEqual(
       expect.objectContaining({ slug: 'sample-public' }),
     );

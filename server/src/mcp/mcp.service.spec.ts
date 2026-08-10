@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { ProblemService } from '../problem/problem.service';
+import { TagService } from '../tag/tag.service';
 import { McpService } from './mcp.service';
 
 describe('McpService problem tools', () => {
@@ -25,6 +26,7 @@ describe('McpService problem tools', () => {
   let problemService: jest.Mocked<
     Pick<ProblemService, 'findAll' | 'findOne' | 'getMarkdown'>
   >;
+  let tagService: jest.Mocked<Pick<TagService, 'findPublicTags'>>;
   let client: Client;
 
   beforeEach(async () => {
@@ -38,9 +40,16 @@ describe('McpService problem tools', () => {
       findOne: jest.fn().mockResolvedValue(publicProblem),
       getMarkdown: jest.fn().mockResolvedValue(publicProblem.markdown),
     };
+    tagService = {
+      findPublicTags: jest.fn().mockResolvedValue([
+        { name: 'prefix-sum', problemCount: 3 },
+        { name: 'simulation', problemCount: 1 },
+      ]),
+    };
 
     const server = new McpService(
       problemService as unknown as ProblemService,
+      tagService as unknown as TagService,
     ).createServer();
     const [clientTransport, serverTransport] =
       InMemoryTransport.createLinkedPair();
@@ -53,13 +62,49 @@ describe('McpService problem tools', () => {
     await client.close();
   });
 
-  it('lists exactly the three Phase 1 tools', async () => {
+  it('lists exactly the four public read-only tools', async () => {
     const result = await client.listTools();
     expect(result.tools.map((tool) => tool.name).sort()).toEqual([
       'get_problem',
       'get_problem_markdown',
+      'list_tags',
       'search_problems',
     ]);
+    const listTags = result.tools.find((tool) => tool.name === 'list_tags');
+    expect(listTags?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+  });
+
+  it('lists only public tag statistics with a field whitelist', async () => {
+    const result = await client.callTool({
+      name: 'list_tags',
+      arguments: { keyword: ' prefix ' },
+    });
+
+    expect(tagService.findPublicTags).toHaveBeenCalledWith('prefix');
+    expect(result.structuredContent).toEqual({
+      items: [
+        { name: 'prefix-sum', problemCount: 3 },
+        { name: 'simulation', problemCount: 1 },
+      ],
+      total: 2,
+    });
+    expect(JSON.stringify(result)).not.toContain('description');
+    expect(JSON.stringify(result)).not.toContain('createdAt');
+  });
+
+  it('rejects list_tags keywords above the public limit', async () => {
+    const result = await client.callTool({
+      name: 'list_tags',
+      arguments: { keyword: 'x'.repeat(51) },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(tagService.findPublicTags).not.toHaveBeenCalled();
   });
 
   it('searches only as a non-admin and returns structured content', async () => {

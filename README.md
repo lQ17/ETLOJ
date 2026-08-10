@@ -86,11 +86,12 @@ ETLOJ 在独立的 `/mcp` 路径提供基于 Streamable HTTP 的公开只读 MCP
 
 | Tool | 输入 | 输出 | 业务服务 |
 |------|------|------|----------|
+| `list_tags` | `keyword?` | 仅由公开题目使用的完整标签列表及公开题目数量 | `TagService.findPublicTags(keyword)` |
 | `search_problems` | `keyword?`、`difficulty?`、`tags?`、`tagMode?`、`page?`、`pageSize?` | 公开题目分页列表，同时提供文本和 `structuredContent` | `ProblemService.findAll(query, false)` |
 | `get_problem` | `problem`（数字 ID 或 slug） | 公开题目的题面、标签、难度和限制 | `ProblemService.findOne(problem, false)` |
 | `get_problem_markdown` | `problem`（数字 ID 或 slug） | 原始 Markdown | `ProblemService.getMarkdown(problem)` |
 
-安全边界：匿名 MCP 只能访问公开题目；隐藏题与不存在的题统一返回 `Problem not found.`。输入 schema 限制关键词长度、标签数量、标识符长度和最大 `pageSize=50`，HTTP 入口默认按客户端 IP 限制为每分钟 60 次请求，并使用官方 Host 校验防护 DNS rebinding。工具输出采用字段白名单，不包含题目文件路径、测试数据或内部异常。
+安全边界：匿名 MCP 只能访问公开题目；`list_tags` 的标签可见性和题目数量均只依据公开题目，隐藏题不会影响输出；隐藏题与不存在的题统一返回 `Problem not found.`。输入 schema 限制关键词长度、标签数量、标识符长度和最大 `pageSize=50`，HTTP 入口默认按客户端 IP 限制为每分钟 60 次请求，并使用官方 Host 校验防护 DNS rebinding。工具输出采用字段白名单，不包含题目文件路径、测试数据或内部异常。
 
 可选环境变量：
 

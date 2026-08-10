@@ -21,15 +21,16 @@ Phase 2 OAuth 与用户能力：未开始
 Public Read-Only Remote MCP
 ```
 
-提供三个工具：
+提供四个工具：
 
 ```text
 search_problems
 get_problem
 get_problem_markdown
+list_tags
 ```
 
-不得将生产部署、公网连接或真实生产题库描述为已经验收。
+`list_tags` 完成生产部署和真实题库验收前，不得将该新增工具描述为已经验收。
 
 ---
 
@@ -37,10 +38,10 @@ get_problem_markdown
 
 ### 已完成
 
-- 复用 NestJS `ProblemService`。
+- 复用 NestJS `ProblemService` 和 `TagService`。
 - 使用 MCP TypeScript SDK v2.0.0。
 - 提供独立 `/mcp` Streamable HTTP endpoint。
-- 实现三个公开只读题目工具。
+- 实现四个公开只读题库工具。
 - 限制匿名用户只能访问公开题。
 - 提供字段白名单、安全错误、日志和基础限流。
 - 增加 MCP tools 单元测试和 HTTP 集成测试。
@@ -184,7 +185,7 @@ SDK v2 的 `createMcpHandler` 为每个 HTTP 请求创建新的 `McpServer`，�
 
 ```text
 name: etloj
-version: 0.1.0
+version: 0.2.0
 ```
 
 同一 endpoint 支持 SDK v2 的现代协议探测，并保留 2025-era stateless `initialize` 兼容路径。
@@ -347,6 +348,44 @@ ProblemService.getMarkdown(idOrSlug)
 
 Markdown 不经过 HTML 中转。
 
+### 5.4 list_tags
+
+用途：获取公开题库实际使用的完整标签列表，供 Agent 在调用 `search_problems` 前选择标签。
+
+Description：
+
+```text
+List tags used by public ETLOJ problems, with public problem counts.
+```
+
+Input：
+
+```ts
+{
+  keyword?: string; // trim 后 1～50 字符
+}
+```
+
+Service：
+
+```ts
+TagService.findPublicTags(keyword)
+```
+
+结构化输出：
+
+```ts
+{
+  items: Array<{
+    name: string;
+    problemCount: number;
+  }>;
+  total: number;
+}
+```
+
+标签的出现条件和 `problemCount` 均显式限制为 `Problem.isPublic=true`；仅被隐藏题使用的标签不返回。
+
 ---
 
 ## 6. 安全不变量
@@ -427,14 +466,15 @@ server/src/mcp/
 ├── mcp.service.spec.ts
 ├── mcp.http.spec.ts
 └── tools/
-    └── problem.tools.ts
+    ├── problem.tools.ts
+    └── tag.tools.ts
 ```
 
 职责：
 
 ```text
 mcp.module.ts
-  NestJS DI，依赖 ProblemModule
+  NestJS DI，依赖 ProblemModule 和 TagModule
 
 mcp.service.ts
   创建 McpServer，保存基础 rate-limit 状态
@@ -444,6 +484,9 @@ mcp.http.ts
 
 problem.tools.ts
   schema、工具注册、Service 调用、输出白名单、日志和安全错误
+
+tag.tools.ts
+  list_tags schema、公开 TagService 调用、输出白名单、日志和安全错误
 ```
 
 本次相关修改文件：
@@ -467,15 +510,15 @@ server/src/mcp/*
 
 ```bash
 cd server
-npm test -- --runInBand src/mcp
+npm test -- --runInBand src/mcp src/tag/tag.service.spec.ts
 npm run build
 ```
 
 结果：
 
 ```text
-MCP Test Suites: 2 passed, 2 total
-MCP Tests:       7 passed, 7 total
+MCP + Tag Suites: 3 passed, 3 total
+MCP + Tag Tests:  11 passed, 11 total
 Server build:    passed
 MCP ESLint:      passed
 ```
@@ -485,6 +528,7 @@ MCP ESLint:      passed
 ```text
 initialize
 tools/list
+tools/call list_tags
 tools/call search_problems
 tools/call get_problem
 tools/call get_problem_markdown
@@ -493,13 +537,16 @@ tools/call get_problem_markdown
 测试覆盖：
 
 ```text
-只列出三个 Phase 1 tools
+只列出四个公开只读 tools
+list_tags 只调用 TagService.findPublicTags
+list_tags keyword=51 被 schema 拒绝
+公开标签查询的出现条件和计数条件均使用 isPublic=true
 search_problems 使用 isAdmin=false
 get_problem 使用 isAdmin=false
 隐藏题错误不泄露内部信息
 pageSize=51 被 schema 拒绝
 Streamable HTTP 路由和协议握手
-三个工具的 HTTP 调用
+四个工具的 HTTP 调用
 ```
 
 注意：HTTP 集成测试使用真实 MCP HTTP transport 和官方 SDK Client，但 `ProblemService` 使用测试替身，不等同于生产数据库验收。
