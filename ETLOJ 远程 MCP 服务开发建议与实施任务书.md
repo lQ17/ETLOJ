@@ -10,8 +10,8 @@
 Phase 1 代码开发：已完成
 本地自动化测试：已完成
 标准 MCP Client 本地协议验证：已完成
-生产服务器部署：待执行
-公网真实题库验收：待执行
+生产服务器部署：已完成
+公网真实题库验收：已完成
 Phase 2 OAuth 与用户能力：未开始
 ```
 
@@ -555,27 +555,46 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-当前 Windows 开发环境未安装 Nginx，因此没有执行 `nginx -t`。该步骤必须在生产服务器完成。
+当前 Windows 开发环境未安装 Nginx；`nginx -t` 已在生产服务器执行并通过。
 
 ---
 
 ## 10. 生产验收清单
 
-- [ ] 在生产服务器执行 `nginx -t`。
-- [ ] 重启 `etloj-server`。
-- [ ] reload Nginx。
-- [ ] 使用标准 MCP Client 或 Inspector 连接 `https://etloj.space/mcp`。
-- [ ] 验证 `initialize` / `server/discover`。
-- [ ] 验证 `tools/list` 只返回三个 Phase 1 工具。
-- [ ] 使用真实公开题调用 `search_problems`。
-- [ ] 使用真实数字 ID 和 slug 调用 `get_problem`。
-- [ ] 使用真实公开题调用 `get_problem_markdown`。
-- [ ] 使用真实隐藏题确认返回 Not Found。
-- [ ] 确认响应不包含文件路径、测试数据或 stack trace。
-- [ ] 连续调用搜索，观察限流、内存和数据库状态。
-- [ ] 检查生产日志不包含敏感信息。
+- [x] 在生产服务器执行 `nginx -t`。
+- [x] 重启 `etloj-server`。
+- [x] reload Nginx。
+- [x] 使用标准 MCP Client 或 Inspector 连接 `https://etloj.space/mcp`。
+- [x] 验证 `initialize` / `server/discover`。
+- [x] 验证 `tools/list` 只返回三个 Phase 1 工具。
+- [x] 使用真实公开题调用 `search_problems`。
+- [x] 使用真实数字 ID 和 slug 调用 `get_problem`。
+- [x] 使用真实公开题调用 `get_problem_markdown`。
+- [x] 使用真实隐藏题确认返回 Not Found。
+- [x] 确认响应不包含文件路径、测试数据或 stack trace。
+- [x] 连续调用并观察限流、内存和数据库状态。
+- [x] 检查生产日志不包含敏感信息。
 
-完成上述清单前，只能声明 Phase 1 代码完成，不能声明公网服务已经验收。
+验收记录（2026-08-10）：
+
+```text
+部署提交：4bd43ef feat(mcp): add public read-only remote service
+公网地址：https://etloj.space/mcp
+服务信息：etloj 0.1.0
+tools/list：仅 search_problems、get_problem、get_problem_markdown
+真实公开题库：search_problems 返回 2040 道公开题
+真实题目验收：数字 ID、slug、原始 Markdown 均调用成功
+隐藏题验收：详情和 Markdown 均统一返回 Problem not found.，未泄露标识
+响应白名单：未发现 filePath、测试数据、标准答案或 stack trace
+限流：同一 IP 的窗口内第 60 次连续请求返回 HTTP 429
+运行状态：Nginx、后端、Judge、go-judge、MariaDB、Redis 均为 active
+后端内存：约 76 MiB
+回归检查：首页和既有公告 API 均返回 HTTP 200
+日志检查：包含 tool、requestId、durationMs、success/failure、anonymous actor，未发现敏感信息
+生产回滚备份：/opt/etloj/backups/mcp-phase1-before-4bd43ef
+```
+
+Phase 1 已完成生产部署和公网真实题库验收。
 
 ---
 
