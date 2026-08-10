@@ -1049,13 +1049,415 @@ html, body, #root {
 }
 
 /* 首页响应式网格覆盖 */
+
+/* ===== 首页 MCP 接入指南 ===== */
+.mcp-guide {
+  margin-bottom: 96px;
+  padding: 40px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-xl);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(22, 93, 255, 0.09), transparent 32%),
+    var(--color-surface-soft);
+}
+.mcp-guide-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+.mcp-guide-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+  color: #165dff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mcp-guide-title.arco-typography {
+  margin: 0 0 10px;
+  font-size: 32px;
+}
+.mcp-guide-subtitle.arco-typography {
+  max-width: 650px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.mcp-guide-status {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--rounded-pill);
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mcp-guide-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+.mcp-guide-agent-install {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid rgba(22, 93, 255, 0.24);
+  border-radius: var(--rounded-lg);
+  background: linear-gradient(120deg, rgba(22, 93, 255, 0.11), rgba(22, 93, 255, 0.035));
+}
+.mcp-guide-agent-install-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #165dff;
+  color: #ffffff;
+  font-size: 20px;
+  box-shadow: 0 7px 18px rgba(22, 93, 255, 0.2);
+}
+.mcp-guide-agent-install-content {
+  min-width: 0;
+}
+.mcp-guide-agent-install-label {
+  margin-bottom: 3px;
+  color: #165dff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.mcp-guide-agent-install-content strong {
+  display: block;
+  color: var(--color-ink);
+  font-size: 15px;
+}
+.mcp-guide-agent-install-content p {
+  margin: 7px 0 0;
+  color: var(--color-body);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.mcp-guide-agent-install-copy {
+  flex-shrink: 0;
+}
+.mcp-guide-connect-grid,
+.mcp-guide-examples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.mcp-guide-card,
+.mcp-guide-example {
+  min-width: 0;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-lg);
+  background: var(--color-canvas);
+}
+.mcp-guide-card {
+  padding: 24px;
+}
+.mcp-guide-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  color: var(--color-ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+.mcp-guide-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(22, 93, 255, 0.1);
+  color: #165dff;
+}
+.mcp-guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.mcp-guide-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.mcp-guide-steps li > span {
+  display: inline-flex;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-surface-soft);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.mcp-guide-steps strong,
+.mcp-guide-steps small {
+  display: block;
+}
+.mcp-guide-steps strong {
+  margin-bottom: 3px;
+  color: var(--color-ink);
+  font-size: 14px;
+}
+.mcp-guide-steps small {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.mcp-guide-url-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px 9px 14px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 8px;
+  background: var(--color-surface-soft);
+}
+.mcp-guide-url-row code {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mcp-guide-code-wrap {
+  position: relative;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  background: var(--color-surface-dark);
+  overflow: hidden;
+}
+.mcp-guide-code-wrap pre {
+  min-height: 142px;
+  margin: 0;
+  padding: 18px;
+  color: #e5e7eb;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+.mcp-guide-copy-config.arco-btn-text {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #d1d5db;
+  background: rgba(255, 255, 255, 0.08);
+}
+.mcp-guide-note.arco-typography {
+  display: block;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.mcp-guide-tools-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mcp-guide-tools-toggle span {
+  font-size: 18px;
+  font-weight: 400;
+}
+.mcp-guide-tools {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mcp-guide-tool {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.mcp-guide-tool code {
+  color: #165dff;
+  font-weight: 600;
+}
+.mcp-guide-examples-heading {
+  margin: 32px 0 16px;
+}
+.mcp-guide-examples-heading .arco-typography:first-child {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.mcp-guide-examples-heading .arco-typography:last-child {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.mcp-guide-example {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px;
+}
+.mcp-guide-example-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.mcp-guide-example-meta span {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(22, 93, 255, 0.1);
+  color: #165dff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.mcp-guide-example-meta strong {
+  color: var(--color-ink);
+  font-size: 14px;
+}
+.mcp-guide-example blockquote {
+  flex: 1;
+  margin: 16px 0 12px;
+  color: var(--color-body);
+  font-size: 14px;
+  line-height: 1.75;
+}
+.mcp-guide-example .arco-btn {
+  margin-left: -12px;
+}
+.mcp-guide-agent-tip {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(22, 93, 255, 0.2);
+  border-radius: var(--rounded-lg);
+  background: rgba(22, 93, 255, 0.06);
+}
+.mcp-guide-tip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--color-canvas);
+  color: #165dff;
+  font-size: 18px;
+}
+.mcp-guide-agent-tip strong {
+  color: var(--color-ink);
+  font-size: 14px;
+}
+.mcp-guide-agent-tip p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.mcp-guide-tip-copy {
+  flex-shrink: 0;
+}
+body[arco-theme="dark"] .mcp-guide {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(52, 145, 250, 0.12), transparent 32%),
+    var(--color-surface-soft);
+}
+body[arco-theme="dark"] .mcp-guide-status {
+  color: #34d399;
+}
+body[arco-theme="dark"] .mcp-guide-eyebrow,
+body[arco-theme="dark"] .mcp-guide-agent-install-label,
+body[arco-theme="dark"] .mcp-guide-card-icon,
+body[arco-theme="dark"] .mcp-guide-tool code,
+body[arco-theme="dark"] .mcp-guide-example-meta span,
+body[arco-theme="dark"] .mcp-guide-tip-icon {
+  color: #60a5fa;
+}
+
 @media (max-width: 1023px) {
   .home-hero-grid,
-  .home-stats-grid {
+  .home-stats-grid,
+  .mcp-guide-connect-grid,
+  .mcp-guide-examples {
     grid-template-columns: 1fr !important;
+  }
+  .mcp-guide-heading {
+    flex-direction: column;
   }
 }
 @media (max-width: 767px) {
+  .mcp-guide {
+    margin-bottom: 64px;
+    padding: 24px 16px;
+  }
+  .mcp-guide-title.arco-typography {
+    font-size: 25px;
+  }
+  .mcp-guide-heading {
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .mcp-guide-card {
+    padding: 18px;
+  }
+  .mcp-guide-tool {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+  .mcp-guide-agent-tip {
+    grid-template-columns: auto 1fr;
+  }
+  .mcp-guide-agent-install {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+  }
+  .mcp-guide-agent-install-copy {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .mcp-guide-tip-copy {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
   .home-ai-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 24px 16px !important;

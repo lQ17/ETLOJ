@@ -4,6 +4,7 @@ import { IconArrowRight, IconClockCircle, IconDashboard, IconNotification } from
 import { useNavigate } from "react-router-dom";
 import { announcementApi } from "../../api/announcement";
 import { statsApi } from "../../api/stats";
+import McpGuide from "./McpGuide";
 
 const { Title, Paragraph } = Typography;
 
@@ -157,6 +158,8 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      <McpGuide />
 
       <div className="home-stats-grid" style={{
         display: "grid",
