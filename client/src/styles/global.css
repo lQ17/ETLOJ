@@ -1249,43 +1249,93 @@ html, body, #root {
   white-space: nowrap;
 }
 .mcp-guide-code-wrap {
-  position: relative;
   margin-bottom: 12px;
-  border: 1px solid #d8e2ef;
-  border-radius: 10px;
-  background: #f8fafc;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid #dfe1e5;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.07),
+    0 1px 2px rgba(15, 23, 42, 0.05);
   overflow: hidden;
+}
+.mcp-guide-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f3f3f3;
+}
+.mcp-guide-code-file {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #3b3b3b;
+  font-family: "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mcp-guide-code-file svg {
+  color: #d97706;
+  font-size: 15px;
+}
+.mcp-guide-code-badge {
+  padding: 2px 6px;
+  border: 1px solid #d6d9df;
+  border-radius: 4px;
+  color: #6b7280;
+  background: #fafafa;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 .mcp-guide-code-wrap pre {
   min-height: 142px;
   margin: 0;
-  padding: 18px;
-  color: #334155;
-  font-family: Consolas, monospace;
+  padding: 14px 0 16px;
+  color: #1f1f1f;
+  background: #ffffff;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.65;
   overflow-x: auto;
 }
+.mcp-guide-code-line {
+  display: flex;
+  min-width: max-content;
+  padding-right: 18px;
+}
+.mcp-guide-code-line:hover {
+  background: #f5f9ff;
+}
+.mcp-guide-code-line-number {
+  width: 40px;
+  flex: 0 0 40px;
+  padding-right: 12px;
+  color: #a0a0a0;
+  text-align: right;
+  user-select: none;
+}
+.mcp-guide-code-line-content {
+  white-space: pre;
+}
 .mcp-guide-code-wrap .mcp-code-key {
-  color: #6d28d9;
-  font-weight: 600;
+  color: #0451a5;
 }
 .mcp-guide-code-wrap .mcp-code-string {
-  color: #047857;
+  color: #a31515;
 }
 .mcp-guide-code-wrap .mcp-code-punctuation {
-  color: #475569;
-  font-weight: 600;
+  color: #616161;
 }
 .mcp-guide-copy-config.arco-btn-text {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  color: #334155;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid #d8e2ef;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: #4b5563;
+  border-radius: 6px;
+}
+.mcp-guide-copy-config.arco-btn-text:hover {
+  color: #005fb8;
+  background: #e8e8e8;
 }
 .mcp-guide-note.arco-typography {
   display: block;

@@ -23,14 +23,13 @@ const MCP_CONFIG = `{
   }
 }`;
 
-const MCP_CONFIG_TOKENS = MCP_CONFIG.split(
-  /("(?:\\.|[^"\\])*"|[{}[\],:])/g,
-).filter(Boolean);
-
-function HighlightedMcpConfig() {
-  return MCP_CONFIG_TOKENS.map((token, index) => {
+function HighlightedJsonLine({ line }: { line: string }) {
+  const tokens = line
+    .split(/("(?:\\.|[^"\\])*"|[{}[\],:])/g)
+    .filter(Boolean);
+  return tokens.map((token, index) => {
     if (/^"/.test(token)) {
-      const nextToken = MCP_CONFIG_TOKENS
+      const nextToken = tokens
         .slice(index + 1)
         .find((candidate) => candidate.trim());
       return (
@@ -196,21 +195,37 @@ export default function McpGuide() {
             常见配置示例
           </div>
           <div className="mcp-guide-code-wrap">
+            <div className="mcp-guide-code-toolbar">
+              <div className="mcp-guide-code-file">
+                <IconCode />
+                <span>settings.json</span>
+                <span className="mcp-guide-code-badge">JSON</span>
+              </div>
+              <Button
+                className="mcp-guide-copy-config"
+                type="text"
+                size="small"
+                icon={<IconCopy />}
+                aria-label="复制 MCP 配置"
+                onClick={() => copyText(MCP_CONFIG, "配置已复制")}
+              >
+                复制
+              </Button>
+            </div>
             <pre>
               <code aria-label="ETLOJ MCP JSON 配置示例">
-                <HighlightedMcpConfig />
+                {MCP_CONFIG.split("\n").map((line, index) => (
+                  <span className="mcp-guide-code-line" key={index}>
+                    <span className="mcp-guide-code-line-number">
+                      {index + 1}
+                    </span>
+                    <span className="mcp-guide-code-line-content">
+                      <HighlightedJsonLine line={line} />
+                    </span>
+                  </span>
+                ))}
               </code>
             </pre>
-            <Button
-              className="mcp-guide-copy-config"
-              type="text"
-              size="small"
-              icon={<IconCopy />}
-              aria-label="复制 MCP 配置"
-              onClick={() => copyText(MCP_CONFIG, "配置已复制")}
-            >
-              复制配置
-            </Button>
           </div>
           <Text className="mcp-guide-note">
             公开地址无需 API Key。个人地址要求客户端支持 MCP OAuth；连接后会打开
