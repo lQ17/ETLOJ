@@ -606,7 +606,9 @@ sudo systemctl reload nginx
 
 ---
 
-## 10. 生产验收清单
+## 10. 生产验收记录
+
+### 初始 Phase 1（etloj 0.1.0）
 
 - [x] 在生产服务器执行 `nginx -t`。
 - [x] 重启 `etloj-server`。
@@ -642,6 +644,47 @@ tools/list：仅 search_problems、get_problem、get_problem_markdown
 ```
 
 Phase 1 已完成生产部署和公网真实题库验收。
+
+### `list_tags` 扩展（etloj 0.2.0）
+
+- [x] 本地执行 MCP、HTTP 和 TagService 测试，共 3 套 11 项。
+- [x] 本地完成 NestJS 构建和相关 ESLint。
+- [x] 仅上传本地 `dist` 构建产物，部署包不包含任何 `.env`。
+- [x] 使用标准 MCP Client 连接 `https://etloj.space/mcp`。
+- [x] 验证 `tools/list` 只返回四个公开只读工具。
+- [x] 验证 `list_tags` 的四项只读 annotations。
+- [x] 验证无参数完整列表和 `keyword` 过滤。
+- [x] 验证 51 字符 keyword 被 schema 拒绝。
+- [x] 验证同时返回 `content` 和 `structuredContent`。
+- [x] 验证结构化标签字段仅包含 `name` 和 `problemCount`。
+- [x] 使用独立 Prisma 只读聚合与 MCP 结果逐项比对。
+- [x] 验证隐藏题标签关联不会影响 `problemCount`。
+- [x] 验证标签的 `problemCount` 与 `search_problems` 结果总数一致。
+- [x] 检查生产服务、内存、既有页面/API 和 MCP 日志。
+
+验收记录（2026-08-10）：
+
+```text
+部署提交：06fb03f feat(mcp): add public tag listing
+公网地址：https://etloj.space/mcp
+服务信息：etloj 0.2.0
+tools/list：get_problem、get_problem_markdown、list_tags、search_problems
+公开标签数量：47
+独立审计：MCP 标签名称和公开题数量与 Prisma 只读聚合逐项一致
+隐藏题关联：生产库存在 1 条隐藏题标签关联，涉及 1 个公开/隐藏混合标签
+侧信道验收：上述隐藏关联未计入 problemCount；当前无仅隐藏题标签
+字段白名单：name、problemCount
+输入验收：无参数、keyword 过滤成功；51 字符 keyword 被拒绝
+联动验收：抽样标签的 problemCount 与 search_problems total 一致
+双格式输出：content 和 structuredContent 均存在
+运行状态：Nginx、后端、Judge、go-judge、MariaDB、Redis 均为 active
+后端内存：约 65 MiB
+回归检查：首页和既有 /api/tags 均返回 HTTP 200
+日志检查：list_tags 记录 requestId、durationMs、success、anonymous actor
+生产回滚备份：/opt/etloj/backups/list-tags-before-06fb03f
+```
+
+`list_tags` 已完成生产部署和真实题库验收。
 
 ---
 
