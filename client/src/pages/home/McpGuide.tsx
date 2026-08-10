@@ -23,6 +23,38 @@ const MCP_CONFIG = `{
   }
 }`;
 
+const MCP_CONFIG_TOKENS = MCP_CONFIG.split(
+  /("(?:\\.|[^"\\])*"|[{}[\],:])/g,
+).filter(Boolean);
+
+function HighlightedMcpConfig() {
+  return MCP_CONFIG_TOKENS.map((token, index) => {
+    if (/^"/.test(token)) {
+      const nextToken = MCP_CONFIG_TOKENS
+        .slice(index + 1)
+        .find((candidate) => candidate.trim());
+      return (
+        <span
+          key={index}
+          className={
+            nextToken === ":" ? "mcp-code-key" : "mcp-code-string"
+          }
+        >
+          {token}
+        </span>
+      );
+    }
+    if (/^[{}[\],:]$/.test(token)) {
+      return (
+        <span key={index} className="mcp-code-punctuation">
+          {token}
+        </span>
+      );
+    }
+    return token;
+  });
+}
+
 const AGENT_INSTALL_PROMPT =
   "请帮我将 ETLOJ Remote MCP 接入当前 Agent 客户端。公开只读地址是 https://etloj.space/mcp；如需读取我的学习进度，请使用支持 OAuth 的登录地址 https://etloj.space/mcp/private。传输方式使用 Streamable HTTP。请完成连接和工具验证，并在浏览器授权时提醒我确认。";
 
@@ -165,7 +197,9 @@ export default function McpGuide() {
           </div>
           <div className="mcp-guide-code-wrap">
             <pre>
-              <code>{MCP_CONFIG}</code>
+              <code aria-label="ETLOJ MCP JSON 配置示例">
+                <HighlightedMcpConfig />
+              </code>
             </pre>
             <Button
               className="mcp-guide-copy-config"
