@@ -1,4 +1,5 @@
 import type { Ref } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import type { FeedbackItem, FeedbackPosterData } from "./types";
 import { computeFeedbackStats } from "./types";
 import "./poster.css";
@@ -27,6 +28,8 @@ export interface PosterCardProps {
    * 公开页手机端不要开，以便数据概况自动换行。
    */
   fixedWidth?: boolean;
+  /** 在海报底部展示公开详情二维码；公开详情页自身不应开启。 */
+  showShareQr?: boolean;
   /**
    * 公开短链页开启：头像可跳转主页、题目可查看提交代码。
    * 管理端预览 / 导出保持 false，避免误点与导出态污染。
@@ -48,6 +51,7 @@ export default function PosterCard({
   posterRef,
   className,
   fixedWidth = false,
+  showShareQr = false,
   interactive = false,
   onAvatarClick,
   onItemClick,
@@ -267,6 +271,27 @@ export default function PosterCard({
           <div className="fb-poster-note">
             <div className="fb-poster-note-label">老师寄语</div>
             <p className="fb-poster-note-text">{data.note}</p>
+          </div>
+        )}
+
+        {showShareQr && data.detailUrl && (
+          <div className="fb-poster-share">
+            <div className="fb-poster-share-qr" aria-label="学习反馈详情二维码">
+              <QRCodeSVG
+                value={data.detailUrl}
+                size={112}
+                level="M"
+                marginSize={2}
+                bgColor="#ffffff"
+                fgColor="#0c1a33"
+              />
+            </div>
+            <div className="fb-poster-share-copy">
+              <div className="fb-poster-share-title">长按扫描二维码进入页面</div>
+              <div className="fb-poster-share-description">
+                页面中可以点击题目名，查看具体代码记录；点击头像，可查看学生个人主页
+              </div>
+            </div>
           </div>
         )}
       </div>

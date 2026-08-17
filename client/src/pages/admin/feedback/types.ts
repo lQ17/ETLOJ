@@ -38,9 +38,9 @@ export interface FeedbackPosterData {
   items: FeedbackItem[];
   /** 累计解题 / 总提交 / 总分（个人主页同款） */
   lifetime?: FeedbackLifetimeStats;
-  /** 公开访问 token（入库，分享链接用；海报不展示） */
+  /** 公开访问 token（入库，分享链接用） */
   publicToken?: string;
-  /** 详情完整 URL（导出时现拼，不入库；海报不展示） */
+  /** 详情完整 URL（导出时现拼，不入库；用于生成海报二维码） */
   detailUrl?: string;
   /** 站点品牌文案 */
   brand?: string;

@@ -63,6 +63,7 @@ function toPosterData(row: FeedbackListItem, logoUrl?: string | null): FeedbackP
     lifetime: (row.lifetime as FeedbackLifetimePayload) || undefined,
     brand: "威科姆编程中心",
     publicToken: row.publicToken,
+    detailUrl: publicUrl(row.publicToken),
     logoUrl: logoUrl || undefined,
   };
 }
@@ -299,7 +300,12 @@ export default function FeedbackList({ onCreate }: FeedbackListProps) {
               只渲染一份海报：导出走 exportPosterToPng 离屏克隆，
               不要再挂 fixed 第二份，否则 Modal 内布局/滚动宽度会错乱。
             */}
-            <PosterCard data={toPosterData(preview, logoUrl)} fixedWidth posterRef={posterRef} />
+            <PosterCard
+              data={toPosterData(preview, logoUrl)}
+              fixedWidth
+              showShareQr
+              posterRef={posterRef}
+            />
           </div>
         )}
       </Modal>

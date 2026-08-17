@@ -235,6 +235,7 @@ export default function CreateFeedback({ onCreated, onCancel }: CreateFeedbackPr
       lifetime,
       brand: "威科姆编程中心",
       publicToken: created?.publicToken,
+      detailUrl: created?.publicToken ? publicUrl(created.publicToken) : undefined,
       logoUrl: logoUrl || undefined,
     };
   }, [studentMeta, selectedItems, title, note, displayDate, lifetime, created, logoUrl]);
@@ -266,6 +267,7 @@ export default function CreateFeedback({ onCreated, onCancel }: CreateFeedbackPr
       lifetime: (created.lifetime as FeedbackLifetimePayload) || lifetime,
       brand: "威科姆编程中心",
       publicToken: created.publicToken,
+      detailUrl: publicUrl(created.publicToken),
       logoUrl: logoUrl || undefined,
     };
   }, [created, studentMeta, lifetime, logoUrl]);
@@ -402,7 +404,7 @@ export default function CreateFeedback({ onCreated, onCancel }: CreateFeedbackPr
             创建课堂反馈
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            选学生 → 显示日期 / 做题范围 → 勾选题目 → 生成快照 / 下载海报 / 复制公开链接
+            选学生 → 显示日期 / 做题范围 → 勾选题目 → 生成带详情二维码的反馈海报
           </Text>
         </div>
         {onCancel && (
@@ -617,6 +619,7 @@ export default function CreateFeedback({ onCreated, onCancel }: CreateFeedbackPr
             <PosterCard
               data={displayPoster}
               fixedWidth
+              showShareQr={!!created}
               posterRef={created ? posterRef : undefined}
             />
           </div>
