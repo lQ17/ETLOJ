@@ -441,7 +441,10 @@ export class McpOAuthService
 
   private assertResource(resource: string): void {
     if (resource !== this.resourceUrl)
-      throw this.oauthRequestError('invalid_target');
+      throw this.oauthRequestError(
+        'invalid_target',
+        `Missing or invalid resource parameter; expected ${this.resourceUrl}.`,
+      );
   }
 
   private async getClient(clientId: string): Promise<OAuthClientRecord | null> {

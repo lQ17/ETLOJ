@@ -179,11 +179,19 @@ describe('McpOAuthService OAuth 2.1 flow', () => {
     await expect(
       service.validateAuthorizationRequest({ ...base, scope: 'admin:read' }),
     ).rejects.toEqual(expect.any(BadRequestException));
-    await expect(
-      service.validateAuthorizationRequest({
-        ...base,
-        resource: 'https://etloj.space/mcp',
-      }),
-    ).rejects.toEqual(expect.any(BadRequestException));
+    for (const resource of [undefined, 'https://etloj.space/mcp']) {
+      await expect(
+        service.validateAuthorizationRequest({
+          ...base,
+          resource,
+        } as typeof base),
+      ).rejects.toMatchObject({
+        response: {
+          error: 'invalid_target',
+          error_description:
+            'Missing or invalid resource parameter; expected https://etloj.space/mcp/private.',
+        },
+      });
+    }
   });
 });

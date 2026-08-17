@@ -27,7 +27,7 @@ export class McpOAuthController {
     @Res() response: Response,
   ) {
     await this.oauth.validateAuthorizationRequest(query);
-    const consent = new URL('/mcp-authorize', this.oauth.publicBaseUrl);
+    const consent = new URL('/oauth/mcp/authorize', this.oauth.publicBaseUrl);
     for (const [key, value] of Object.entries(query)) {
       if (typeof value === 'string') consent.searchParams.set(key, value);
     }

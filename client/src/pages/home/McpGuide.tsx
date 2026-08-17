@@ -231,6 +231,16 @@ export default function McpGuide() {
             公开地址无需 API Key。个人地址要求客户端支持 MCP OAuth；连接后会打开
             ETLOJ 登录与授权页，令牌无需手工复制。
           </Text>
+          <Text className="mcp-guide-note">
+            私有地址的 OAuth 请求必须携带资源参数{" "}
+            <code>resource={PRIVATE_MCP_URL}</code>。支持 MCP OAuth discovery
+            的客户端会自动添加；请勿把公开地址作为该参数的值。
+          </Text>
+          <Text className="mcp-guide-note">
+            如果客户端一直显示“授权中”，请查看连接器日志并手动打开其中的授权
+            URL，或清除旧 OAuth 缓存后重新连接。部分托管 GUI 可能无法自动弹出
+            浏览器，客户端应向用户展示可复制的授权链接。
+          </Text>
           <button
             type="button"
             className="mcp-guide-tools-toggle"

@@ -205,6 +205,15 @@ function App() {
               <Route path="/ranking" element={<RankingPage />} />
               <Route path="/visualization" element={<VisualizationPage />} />
               <Route
+                path="/oauth/mcp/authorize"
+                element={
+                  <AuthGuard>
+                    <McpAuthorizePage />
+                  </AuthGuard>
+                }
+              />
+              {/* 兼容修复前已生成或缓存的授权确认页地址。 */}
+              <Route
                 path="/mcp-authorize"
                 element={
                   <AuthGuard>
