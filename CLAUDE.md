@@ -9,6 +9,7 @@
 - `judge/`：独立 Node.js 判题服务，生产环境调用 go-judge 沙箱
 - `nginx/`：生产 Nginx 配置
 - `deploy/`：systemd unit 模板
+- `docker/`、`docker-compose.yml`：供独立 Linux 主机自托管的可选容器方案，不用于 ETLOJ 官方生产机
 
 用户可见文案以中文为主；代码、日志和内部注释可使用中英文。
 
