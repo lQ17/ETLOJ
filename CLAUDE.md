@@ -1,176 +1,200 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件只记录 ETLOJ 特有的架构约束、易错点和生产部署要求。常规的 NestJS、React、TypeScript 开发惯例不在此重复。
 
-## Project Overview
+## 项目结构
 
-ETLOJ is an online judge platform with three independent components:
+- `server/`：NestJS 11 后端，Prisma 5 + MariaDB + Redis，全局 API 前缀 `/api`
+- `client/`：React 18 + Vite + Arco Design + Monaco Editor
+- `judge/`：独立 Node.js 判题服务，生产环境调用 go-judge 沙箱
+- `nginx/`：生产 Nginx 配置
+- `deploy/`：systemd unit 模板
 
-- **server/** — NestJS backend (Prisma 5 + MySQL + Redis), global API prefix `/api`
-- **client/** — React 18 frontend (Vite + Arco Design + Monaco Editor)
-- **judge/** — Standalone Node.js judge service (single file `src/index.ts`)
+用户可见文案以中文为主；代码、日志和内部注释可使用中英文。
 
-All user-facing text, error messages, and comments are in Chinese.
-
-## Development Commands
+## 常用命令
 
 ```bash
-# Server (port 3000)
-cd server && npm install
-npm run start:dev          # dev with watch
-npx prisma db push         # sync schema to DB (no migration system)
-npm run seed               # create admin user + sample problem
+# server（默认 3000）
+cd server
+npm install
+npm run start:dev
+npm test
+npm run build
 
-# Client (port 5173, proxies /api -> localhost:3000)
-cd client && npm install
+# client（默认 5173）
+cd client
+npm install
 npm run dev
+npm run build
 
-# Judge service (requires running Redis)
-cd judge && npm install
-set JUDGE_MODE=local && set SERVER_URL=http://localhost:3000 && npx tsx src/index.ts  # Windows local mode
-JUDGE_MODE=local SERVER_URL=http://localhost:3000 npx tsx src/index.ts                # Linux/Mac
+# judge（本地模式无沙箱、无准确内存统计）
+cd judge
+npm install
+npm test
+npm run typecheck
+npm run build
+
+# Windows 本地启动 judge
+set JUDGE_MODE=local && set SERVER_URL=http://127.0.0.1:3000 && npx tsx src/index.ts
 ```
 
-**Prisma on Windows**: Stop the dev server before running `prisma generate` or `prisma db push` — the running process locks the native DLL and causes EPERM errors.
+Windows 上执行 `prisma generate` 或 `prisma db push` 前先停止开发服务器，否则 Prisma 原生 DLL 可能因文件锁报 EPERM。
 
-## Architecture
+## 提交与判题
 
-### Submission/Judging Flow (end-to-end)
+### 正式提交
 
-1. Client posts code to `POST /api/submissions` (JWT auth)
-2. Server creates Submission (status=PENDING), loads testcases from filesystem, pushes JSON task to Redis list `judge:queue`
-3. Judge service `brPop`s the task, compiles & runs all testcases (no short-circuit), calculates `score = round(passedCount / totalCount * 100)`
-4. Judge POSTs result to `/api/submissions/callback` with `x-judge-secret` header
-5. Server updates Submission with status/timeUsed/memoryUsed/score
-6. Client polls `GET /api/submissions/:id` for result display
+1. 客户端向 `POST /api/submissions` 提交代码（JWT）。
+2. Server 创建 `PENDING` Submission，从文件系统加载测试点，将任务 `LPUSH` 到 `judge:queue`。
+3. Judge 使用 `BRPOPLPUSH` 将任务原子移动到 `judge:queue:processing`，再编译并运行全部测试点。
+4. Judge 使用 `x-judge-secret` 回调 `POST /api/submissions/callback`。
+5. 回调成功后，Judge 才从 processing 队列确认删除任务；进程重启时会把遗留 processing 任务恢复到待判队列。
+6. 400、404、422 等永久回调失败进入 `judge:queue:dead`；临时网络或 5xx 错误持续退避重试，不能静默丢弃结果。
+7. Server 更新数据库并通过 `/ws/submissions` 推送结果；客户端同时保留 1.5 秒 HTTP 轮询作为竞态和断线兜底。
 
-### Test-Run Flow (Self-test)
+以下约束不可破坏：
 
-1. Client posts code and custom input to `POST /api/submissions/run`
-2. Server generates `runId`, pushes JSON task to Redis list `judge:run`, and synchronously polls Redis key `judge:run:result:{runId}`
-3. Judge service `brPop`s from `judge:run` (alongside `judge:queue`), compiles & runs once, then sets the result directly to the Redis key
-4. Server returns the result directly to the client (no database record created)
+- `judge:queue` 和 `judge:run` 是两个无限阻塞队列，必须使用两个独立 Redis 连接。
+- 正式任务只有在回调被 Server 接受后才能从 `judge:queue:processing` 删除。
+- 修改消费循环后必须测试：连续两次正式提交、运行代码任务、两类任务并发、回调失败和进程重启恢复。
 
-### Backend Patterns (NestJS)
+### 运行代码
 
-- **Modules**: AuthModule, UserModule, ProblemModule, SubmissionModule, RankingModule, ProblemListModule, TagModule, SolutionModule, AnnouncementModule, AiModule — each with controller, service, dto/
-- **Problem import/export**: `POST /problems/export` (zip by slugs), `POST /problems/export-all`, `POST /problems/import` (multipart zip upload) — ADMIN/TEACHER only；导入时自动匹配数据库已有标签创建 `ProblemTag` 关联，未匹配的标签忽略
-- **PrismaModule** is `@Global()` — inject `PrismaService` anywhere without importing
-- **Auth**: JWT + Passport (`jwt.strategy.ts`), `JwtAuthGuard`, `RolesGuard` + `@Roles()` decorator, `@CurrentUser()` param decorator
-- **Global validation**: `ValidationPipe` with `whitelist: true, transform: true`
-- **Body limit**: `express.json({ limit: '5mb' })` configured in `main.ts` for Base64 avatar uploads
-- **Difficulty normalization**: `ProblemService.normalizeDifficulty()` 将任意字符串（小写、中文、旧版 EASY/MEDIUM/HARD）映射为合法的 `Difficulty` 枚举值，兜底返回 IRON；`create()` 和 `importProblems()` 均通过此函数处理难度字段
-- **Problem routing**: All `:id` params accept both numeric ID and slug string — `parseIdOrSlug()` helper in controllers, `resolveProblem()` in service
-- **Route priority**: In controllers with both `me/*` and `:id` routes, `me/*` MUST be defined before `:id` — NestJS matches top-to-bottom and `:id` captures "me" as a param
-- **Profile module**: `ProfileController` (public, no auth guards) serves `GET /api/profile/:username` and `/api/profile/:username/stats`
-- **Ranking module**: `GET /api/ranking` with params `mode`(ac/score), `range`(all/6m/1m/1w/yesterday/today/custom), `startDate`, `endDate`, `page`, `pageSize` — uses `$queryRawUnsafe` for complex aggregation
-- **ProblemList module**: `GET/POST/PATCH/DELETE /api/problem-lists` — 题单系统，公共题单（ADMIN/TEACHER 管理）和个人题单（用户自管）；`/mine` 路由必须在 `/:id` 之前；题目增删使用 slug（题号）而非数字 ID
-- **Tag module**: `GET /tags`（公开）、`POST/PATCH/DELETE /tags`（ADMIN/TEACHER）— 独立标签管理；题目通过 `ProblemTag` 多对多关联表关联标签；`Problem.tags` JSON 字段保留用于导入导出兼容；`GET /problems` 支持 `tags`（字符串数组）+ `tagMode`（AND/OR）多标签筛选
-- **Solution module**: `GET /solutions?problemId=X`（公开，仅 APPROVED）、`GET /solutions/mine`（JWT，当前用户全部题解含 status/rejectReason）、`POST /solutions`（JWT）、`PATCH/DELETE /solutions/:id`（JWT，仅作者可编辑且 PENDING/REJECTED 状态，Admin 可删除）— 题解审核系统：新题解默认 PENDING，管理员通过 `PATCH /solutions/:id/approve` 或 `/reject`（附 reason）审核；`GET /solutions/pending` 和 `GET /solutions/admin` 为管理员专用；题目详情页"查看题解"tab 右侧为 markdown 渲染（选中切换），"写题解"通过居中 Modal 编辑（草稿在组件 state 持久化）；个人主页"我的题解"区块显示审核状态标签（已通过/正在审核/被驳回），被驳回显示原因，已通过隐藏编辑按钮
-- **Problem markdown heading**: 服务器在 `create()` / `update()` 时自动将 `problem.md` 第一行强制为 `# {slug} {title}`；编辑页面加载时剥离该 heading（由表单字段生成）；详情页直接渲染
-- **Submission status batch query**: `GET /submissions/status?problemIds=1,2,3` — JWT required, returns `Record<number, 'AC' | 'ATTEMPTED'>` for the current user; used by problem list and problem-list detail pages to show per-problem status icons
-- **Submission rate limiting**: Frontend sliding window — max 3 submissions per 60s per user (client-side `useRef<number[]>` timestamp array)
-- **Optional JWT**: 需要同时支持已登录和未登录访问的端点（如题单详情、题库列表），使用 `OptionalJwtGuard`（`auth/optional-jwt.guard.ts`），有 token 解析用户，无 token 放行
-- **Announcement module**: `GET /announcements`（公开，PUBLISHED，置顶优先）、`GET /announcements/:id`（公开详情）、`GET /announcements/admin/all`（ADMIN，含草稿分页）、`GET /announcements/admin/:id`（ADMIN，任意状态详情）、`POST /announcements`（ADMIN）、`PATCH/DELETE /announcements/:id`（ADMIN）— 公告系统：首页公告栏显示 2 条 + "查看更多"跳转列表页；列表页左侧列表 + 右侧 Markdown/LaTeX 详情，默认选中置顶公告；后台"公告管理"Tab 仅 ADMIN 可见，使用 MDEditor 编辑（与题目创建页相同），支持置顶 + 草稿/已发布状态
-- **Admin page**: Unified `/admin` route with Tabs (problems / lists / solutions / announcements / users); users + announcements tabs visible to ADMIN only; teachers see problems + lists + solutions; solutions tab has sub-tabs: 待审核 + 题解列表
-- **Raw SQL pitfalls**: MySQL `COUNT(*)`/`SUM()` via `$queryRawUnsafe` returns BigInt (must `Number()`); LongText fields return Buffer (must `.toString()`). Avatar in DB already contains `data:image/...;base64,` prefix — frontend should use `src={avatar}` directly, not re-prepend
-- **AI Module**: `/api/ai/chat` (POST) handles LLM chat context building (title, desc, recent codes, wa count). We bypass `@ai-sdk/openai` due to GLM-5/SGLang reasoning models placing thought process in `reasoning_content` instead of `content`. We fetch directly and parse the SSE stream, skipping reasoning content and returning only the final answer via Node `res.write()`. Configuration is stored in Redis (`ai:config:apiBase`, `ai:config:apiKey`, `ai:config:model`, `ai:config:dailyLimit`) and falls back to environment variables. Rate limiting uses Redis key `ai:usage:{userId}:{today}`. Detailed streaming telemetry is persisted in DB table `AiUsageLog` (aggregating model, provider, tokens, timeUsedMs, status, source). Public stats are exposed via the unauthenticated `GET /api/ai/stats/public` route.
+`POST /api/submissions/run` 不创建数据库记录。Server 生成 `runId`，将任务放入 `judge:run`，轮询 `judge:run:result:{runId}`；Judge 单独消费该队列并写入带过期时间的结果键。
 
-### Frontend Patterns
+### WebSocket
 
-- **State**: Zustand (`stores/auth.ts`) — user/token/login/logout; login fetches full profile (including avatar) immediately after token set
-- **UI**: Arco Design (`@arco-design/web-react`) — never use other component libraries
-- **Arco Upload 陷阱**: 使用 `autoUpload={false}` 的 Upload 组件时必须用受控 `fileList` 状态，否则组件内部会缓存上一次的文件，导致重复上传旧文件；导入/上传完成后需在 `finally` 中清空 `fileList`
-- **TypeScript type import**: Vite 的 esbuild 会 strip type-only exports，因此从 `constants/` 导入仅用作类型的符号（如 `DifficultyLevel`）时必须使用 `import type { ... }`，否则运行时报 "does not provide an export" 错误
-- **Charts**: ECharts via `echarts-for-react` — used in profile page for pie, wordCloud (requires `echarts-wordcloud` plugin); heatmap uses `react-github-calendar`
-- **Problem detail submit**: Submit button is async — disabled during polling, result (status tag + score + time/memory) displayed inline next to button; rate-limited to 3 submissions per 60s (sliding window)
-- **Problem detail page tabs**: Left sidebar navigation with three tabs — 题目详情 (problem text), 查看题解 (solution list + markdown rendering, write via Modal), 问问AI (AI chat). When switching tabs, the right-side code editor remains mounted. The left-side content (problem text vs AI chat) is toggled via `display: none / flex` to preserve scroll positions and chat state. Supports `?tab=solutions&edit={solutionId}` query params for deep-linking to edit mode from profile page.
-- **AI Code Block Selection Restriction**: For low-difficulty problems (IRON, BRONZE, SILVER), AI-provided code blocks have `userSelect: none` and custom copy triggers showing a warning, preventing cheating while encouraging manual typing.
-- **Route Guards**: `AuthGuard` and `AdminGuard` components protect `/settings/*` and `/admin` routes respectively. Unauthorized attempts redirect back to `/login` or `/`.
-- **Editor settings**: Gear icon in editor toolbar opens popover for fontSize (default 16px), tabSize (default 4), theme (亮色/暗色/跟随网站); persisted to localStorage
-- **Editor defaults**: No default code templates, code completion disabled (quickSuggestions/suggestOnTriggerCharacters/wordBasedSuggestions all false)
-- **API layer**: `client/src/api/*.ts` — plain objects with async methods using shared Axios instance (auto-attaches JWT, unwraps response, 30s timeout); custom `paramsSerializer` for proper array query parameter serialization (`tags=a&tags=b` format, not `tags[]=a`)
-- **Pages**: default-exported function components, each in own directory under `pages/`
-- **Table pages**: server-side pagination, local filter state, explicit API calls on search (not useEffect-watching filters) — see `pages/admin/users.tsx` or `pages/records/index.tsx` as reference
-- **Algorithm Visualization**: `/visualization` 路由，自建 step-based 可视化引擎。架构分三层：`algorithms/`（算法注册层，每个算法导出 `AlgorithmDef` 接口 + `registerAlgorithm()` 自注册）、`components/visual-engine/`（引擎层，BarChart + PlaybackController + StepInfo）、`pages/visualization/`（页面层）。新增算法只需：1) 创建 `algorithms/sorting/xxx.ts`，2) 在 `registry.ts` 注册一行。排序算法用柱状图（`motion.div` + `layout` 动画），颜色：默认 `#165DFF`、比较 `#FF7D00`、交换 `#F53F3F`、已排序 `#00B42A`、pivot `#722ED1`。播放引擎用 `setInterval` + `BASE_INTERVAL(800ms)/speed` 控制步进。依赖 `framer-motion`（唯一新增依赖）
+- 路径：`/ws/submissions`
+- 客户端先通过 JWT 请求 `POST /api/submissions/ws-ticket`，再用短期 ticket 建立 WebSocket。
+- 普通用户只能订阅自己的提交；TEACHER/ADMIN 可按权限查看其他提交。
+- 无 ticket、无效账号、停用或未审核账号必须拒绝连接。
+- WebSocket 是加速通道，HTTP 查询仍是必要兜底，不能移除。
 
-### Data Storage
+## 权限与账号
 
-- **Database**: MySQL via Prisma — column mapping uses `@map("snake_case")`, tables use `@@map("plural")`
-- **Avatar storage**: Base64 in `User.avatar` field (`@db.LongText`) — no file upload, stored inline
-- **Problem content**: Markdown files on filesystem at `problems/{slug}/problem.md`
-- **Testcases**: Filesystem at `problems/{slug}/testcases/{n}.in` and `{n}.out`
-- **Problem score**: `Problem.score` field (Int, default 0), admin can customize; default by difficulty: IRON=10, BRONZE=20, SILVER=35, GOLD=55, PLATINUM=80, DIAMOND=110, MASTER=150, CHAMPION=200, LEGENDARY=270
-- **Total score**: User's total score = sum of `problem.score` for each problem's first AC only (`UserService.getPublicProfile`)
-- **Problem import/export**: zip format — `{slug}/problem.json` + `{slug}/problem.md` + `{slug}/testcases/`, uses `adm-zip` library；导入时 `difficulty` 字段通过 `normalizeDifficulty()` 容错处理，支持小写/中文/旧版枚举
-- **Difficulty constants**: 前端 `client/src/constants/difficulty.ts`（DIFFICULTY_VALUES + DIFFICULTY_CONFIG），后端 `server/src/problem/difficulty.constants.ts`（DIFFICULTY_VALUES + getDefaultScore + MAX_SCORE）；两侧值必须保持同步
-- **Problem lists**: `problem_lists` + `problem_list_items` tables — 题单支持公共（isPublic=true, ADMIN/TEACHER 管理）和个人（isPublic=false, 用户自管），中间表带 `sort_order` 排序
-- **Solutions**: `solutions` table — 题解内容存 `content`（LongText），关联 `problemId` + `authorId`，每人可对同一题写多篇题解；含 `status`（PENDING/APPROVED/REJECTED）和 `rejectReason` 审核字段
-- **Announcements**: `announcements` table — 公告标题 `title`（VarChar 200）、摘要 `summary`（VarChar 500）、详情 `content`（LongText，Markdown）、`isPinned`（Boolean）、`status`（DRAFT/PUBLISHED）、关联 `authorId`；排序逻辑：置顶优先 + 时间倒序
-- **AI Assistant**: `ai_conversations` (1-to-1 with userId+problemId context) and `ai_messages` (history items) tables. The frontend sends full history per request, and the backend clears & recreates messages for the conversation before streaming the AI response, then appending the AI's final text.
-- **Prisma version**: Pinned to v5 (v7 has breaking changes) — do NOT upgrade
+- 公开注册是“申请制”：`POST /api/auth/register` 通过 Cloudflare Turnstile 后创建 `PENDING` USER，管理员审核通过后才能登录。
+- 被拒用户可通过 `/api/auth/reapply` 重新申请。
+- JWT 解析必须实时检查数据库中的 `isActive` 和审核状态；停用或不再是 `APPROVED` 的旧 token 立即失效。
+- 角色：`USER`、`TEACHER`、`ADMIN`，没有 STUDENT 角色。
+- 普通用户只能查看自己的提交代码；TEACHER/ADMIN 可查看全部。
+- 公开题解列表只能返回 `APPROVED` 内容；作者可查看自己的待审核或驳回题解，管理端可审核。
+- 前端“每分钟最多三次提交”只是交互限制，不是安全边界；需要可靠限流时必须在 Server/Redis 实现。
 
-### Key Enums
+## 项目特有的数据与后端约束
 
-- `Role`: USER, ADMIN, TEACHER (no STUDENT — students are USER)
-- `SubmissionStatus`: PENDING, JUDGING, AC, WA, TLE, MLE, RE, CE, SE
-- `Difficulty`: IRON, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, MASTER, CHAMPION, LEGENDARY
-- `ContestMode`: ACM, OI (schema only, no API yet)
+- Prisma 固定 v5，不升级到 v7；当前没有 migration 流程，schema 变更使用 `db push`，生产操作必须先备份并审查风险。
+- 生产题目目录：`/opt/etloj/data/problems`。
+- 题面：`{slug}/problem.md`；测试点：`{slug}/testcases/{n}.in` 与 `{n}.out`。
+- ZIP 导入格式：`{slug}/problem.json`、`problem.md`、`testcases/`；导入必须限制路径穿越、文件数量、单文件与解压后总大小。
+- 题目 ID 路由同时接受数字 ID 和 slug；控制器中的固定路由（例如 `me/*`、`mine`）必须写在 `:id` 之前。
+- `Problem.tags` JSON 字段只用于导入导出兼容；筛选和统计使用 `ProblemTag` 关系表。
+- 难度常量在 `client/src/constants/difficulty.ts` 和 `server/src/problem/difficulty.constants.ts` 两侧维护，修改时必须同步。
+- 首次 AC 才计入用户总分、热力图和标签统计。
+- 支持语言固定为 C、C++、Java、Python，Judge 与 DTO 必须同步。
+- MySQL 原始 SQL 的 `COUNT/SUM` 可能返回 BigInt，LongText 可能返回 Buffer，响应前需要转换。
 
-## Production Deployment (Bare Metal)
+## AI 与 MCP
 
-裸机部署在云服务器（2C2G，Debian 12），systemd 管理服务，无 Docker。
+- AI Provider 和 Prompt 配置以数据库中的 `AiProvider`、`AiPromptConfig` 为主；Redis 保存全局限额等运行配置，环境变量仅作回退。
+- AI SSE 直接解析兼容 `reasoning_content` 的上游流，只向用户输出最终回答。
+- 隐藏测试点、标准答案或其他不可见题目上下文不得发送给普通用户的 AI 请求。
+- MCP 由 `McpModule` 提供，生产入口包括 `/mcp`、`/mcp/private` 和 OAuth discovery；它们不受 Nest 全局 `/api` 前缀影响。
 
-```
-用户 → :80 Nginx → /var/www/etloj (前端静态文件)
-                 → /api → :3000 server(NestJS) → MariaDB / Redis
-                                         ↑ judge(Node.js) ← Redis 队列 → :5050 go-judge 沙箱
+## 生产环境
+
+裸机 Debian 12，2C2G，无 Docker：
+
+```text
+用户 -> Nginx :80/:443 -> /var/www/etloj
+                       -> /api、/ws、/mcp -> Server :3000
+Server/Judge <-> Redis/MariaDB
+Judge -> go-judge 127.0.0.1:5050
 ```
 
-- **服务器**：150.158.39.151（root，SSH 免密已配）
-- **系统依赖**：mariadb-server, redis-server, nginx, nodejs 20, gcc, g++, python3, go-judge
-- **systemd 服务**：
-  - `etloj-server.service` — NestJS 后端，WorkingDirectory=/opt/etloj/server，ExecStart=node dist/src/main.js
-  - `etloj-judge.service` — 判题服务，WorkingDirectory=/opt/etloj/judge，ExecStart=npx tsx src/index.ts
-  - `etloj-go-judge.service` — 沙箱，ExecStart=/usr/local/bin/go-judge
-- **Nginx**：`/etc/nginx/sites-available/etloj` — 前端 `root /var/www/etloj` + `/api/` 反向代理 `127.0.0.1:3000`
-- **前端部署**：先 `rm -rf /var/www/etloj/*` 清空旧文件，再 `cp -r client/dist/* /var/www/etloj/`（旧 hash 文件不会被覆盖，必须先删）
-- **Prisma schema 同步**：本地构建 + scp 部署路径下，`nest build` 不会更新 `prisma/schema.prisma`。若 schema 有变更，必须额外执行：`scp server/prisma/schema.prisma root@150.158.39.151:/opt/etloj/server/prisma/` → `ssh root@150.158.39.151 "cd /opt/etloj/server && npx prisma generate && npx prisma db push"` → 重启 etloj-server。否则服务器的 Prisma 客户端缺少新模型，运行时 `this.prisma.xxx` 为 undefined 导致 500
-- **数据目录**：`/opt/etloj/data/problems`（题目测试数据）
-- **密钥管理**：`secrets.env`（不入 Git）存放 MYSQL_ROOT_PASSWORD、JWT_SECRET、JUDGE_SECRET；首次部署时 `cp secrets.env.example secrets.env` 并填入真实值；`deploy.sh` 和 `docker-compose.yml` 均从此文件读取
-- **题目不入 Git**：`/problems/` 和 `/data/` 均在 `.gitignore`，题目通过管理后台导入
-- **部署脚本**：`deploy.sh` — 首次安装 + 后续更新（需先配置 `secrets.env`）
-- **服务文件**：`deploy/etloj-*.service` — 部署时复制到 `/etc/systemd/system/`
-- **注意**：服务器无法直连 GitHub，git pull 需代理或手动 scp；go-judge 二进制需从本机下载后 scp 上传
+- 主机：`root@150.158.39.151`（SSH key 已配置）
+- Server：`/opt/etloj/server`，systemd `etloj-server.service`，运行 `node dist/src/main.js`
+- Judge：`/opt/etloj/judge`，systemd `etloj-judge.service`，运行 `node dist/index.js`
+- go-judge：systemd `etloj-go-judge.service`
+- 前端：`/var/www/etloj`
+- Nginx：`/etc/nginx/sites-available/etloj`
+- Server 环境变量：`/opt/etloj/server/.env`
+- Judge 环境变量：`/opt/etloj/judge/.env`
 
-### go-judge 版本与兼容性（重要）
+生产 unit 可能带有内存限制、Node heap 和 go-judge `-parallelism 2` 等现场调优。更新 unit 前必须先读取线上版本并保留这些参数，不能直接用仓库模板覆盖。
 
-- **go-judge 版本必须锁定 v1.9.0**，不能升级到 v1.10+（尤其是 v1.12.0）
-  - v1.12.0 使用 `clone3(CLONE_INTO_CGROUP)` 系统调用，在 Debian 12 的 6.1 内核上与 cgroup v2 存在兼容性问题，会导致所有沙箱执行均返回 `clone: resource temporarily unavailable`，连 `echo hello` 都无法运行
-  - v1.9.0 使用传统 `clone/vfork`，兼容性正常
-- **v1.9.0 API 差异**（judge 代码已适配，修改时注意）：
-  - `files` 字段中 stdin 不能用空对象 `{}`，必须用 `{"src":"/dev/null"}` 或 `{"content":"..."}`
-  - `copyIn` 中引用已编译文件用 `{"fileId":"xxx"}`，不是 v1.12 的 `{"file":"xxx"}`
-  - 返回的 `status` 是字符串（`"Accepted"`、`"Time Limit Exceeded"` 等），不是数字
-- **cgroup pids.max 问题**：go-judge 启动时会自动创建 systemd transient scope `gojudge.scope`，其 `pids.max` 默认继承 systemd 的 2259，会导致容器内 fork 子进程被拒绝（g++ 编译 cc1plus 等子进程超限）。`etloj-go-judge.service` 已配置 `ExecStartPost` 在启动后自动将 `pids.max` 设为 999999
-- **不要覆盖**：部署更新时不要用 `deploy.sh` 中的旧版 go-judge 二进制替换服务器的 v1.9.0
+### Nginx 路由
 
-### 部署注意事项（踩坑记录）
+- `/api/` -> `127.0.0.1:3000`
+- `/api/ai/` -> Server，SSE 关闭 buffering，读写超时 300 秒
+- `/ws/` -> Server，必须设置 HTTP/1.1、Upgrade、Connection，长连接超时 86400 秒
+- `/mcp`、`/mcp/private`、`/.well-known/oauth-*` -> Server
+- `/` -> `/var/www/etloj` SPA
+- `client_max_body_size` 当前要求 100m
 
-- **Nginx 上传限制**：`client_max_body_size` 必须 ≥ Multer 的 `fileSize` 限制（当前 100m）。默认 5m 会导致上传 zip 超过 5MB 时 `ERR_CONNECTION_RESET`。同时 `proxy_read_timeout` 需设为 300s，避免大量题目导入超时
-- **构建必须在本地完成**：服务器只有 2C2G，无法承受 npm install/build 的内存开销（tsx 编译可达 1.4GB）。所有代码构建必须在本机完成（`nest build`、`vite build`、`tsc`），只将 `dist/` 产物打包部署到服务器。judge 服务使用 `node dist/index.js` 运行，不用 `npx tsx`
-- **MariaDB 密码恢复**：若 root 密码丢失，用 `mysqld_safe --skip-grant-tables` 启动后，必须先 `FLUSH PRIVILEGES` 再 `ALTER USER`，否则报 `ERROR 1290`。启动前确保旧进程已完全退出（`killall -9 mysqld mariadbd`），否则 `ibdata1` 文件锁会导致 InnoDB 启动失败
-- **tar 排除路径**：`--exclude='./problems/'` 只排除项目根目录的 problems，不会误伤 `client/src/pages/admin/problems/`。不要用 `--exclude='problems'`（会匹配所有包含 "problems" 的路径）
-- **tar 必须排除所有 .env**：`--exclude='./.env'` 只排除根目录 `.env`，不会排除 `server/.env`。tar 解压会覆盖服务器的 .env（含数据库密码、PROBLEMS_DIR 等生产配置），导致服务崩溃。打包时必须加 `--exclude='*.env'` 排除所有 .env 文件
+仓库当前普通 `/api/` 的 `proxy_read_timeout` 是 30 秒；大量 ZIP 导入若可能超过该时间，必须先调整并验证 Nginx 配置，不能在文档中假定它已经是 300 秒。
 
-## Important Constraints
+## 生产部署规则
 
-- **No public registration** — users created by admins only
-- **Code visibility**: Regular users see only their own submission code; teachers and admins see all
-- **Judge local mode** (Windows dev): No memory tracking, no sandbox — uses `spawnSync` with timeout. Uses `127.0.0.1` by default to avoid DNS issues.
-- **Heatmap logic**: Only counts the **first time** a user ACs a problem (unique per user/problem). Backend uses a composite index for speed.
-- **Tag statistics**: Incremented on first AC. Sync historical data using `server/scripts/backfill-tags.ts`.
-- **Supported languages**: C, C++, Java, Python (hardcoded in judge and `CreateSubmissionDto`)
-- **JWT expiry**: 7 days
-- **No WebSocket yet** — judge results are polled; WebSocket is planned but not implemented
-- **Contest models** exist in Prisma schema but have no server modules or endpoints
+### 禁止事项
+
+- `deploy.sh` 是旧的首次部署脚本，**禁止用于生产更新**。它包含服务器端 `git checkout`、`npm ci`、构建和高风险 `db push`，与当前发布要求冲突。
+- 生产机禁止执行 `npm install`、`npm ci`、Nest/Vite/TypeScript 构建或 Prisma Client 生成。
+- 禁止覆盖任何 `.env`、证书、密钥、数据库文件和 `/opt/etloj/data/problems`。
+- 禁止升级或替换现有 go-judge v1.9.0。
+- 禁止直接清空 `/var/www/etloj` 后再复制前端；必须使用完整暂存目录进行原子交换。
+- 禁止在未备份、未审查影响时执行 `db push --accept-data-loss`。
+
+### 构建与制品
+
+所有构建在本地完成：
+
+- Server：测试、`nest build`，并在 Linux/WSL 环境准备生产 `node_modules` 和 Prisma Debian OpenSSL 3 引擎。
+- Client：`vite build`。
+- Judge：测试、typecheck、`tsc`，生产运行 `dist/index.js`；依赖变化时同时准备 Linux 生产依赖。
+- 发布包必须排除所有 `.env`、`secrets.env`、题目目录、备份、证书和开发缓存。
+- 上传前后计算 SHA-256，远端校验一致后才能解压。
+
+### 发布顺序
+
+1. 记录当前 commit、服务状态、磁盘、API 统计和 Redis 队列长度。
+2. 确认 `judge:queue`、`judge:queue:processing`、`judge:queue:dead`、`judge:run`；需要停机时先排空正式任务。
+3. 备份现有 Server/Judge dist、运行依赖、前端、systemd unit 和 Nginx 配置；schema 变化时额外备份数据库。
+4. 上传到 `/opt/etloj/releases/<commit>/`，扫描内容并核对哈希。
+5. 在旁路目录解压和检查，停止对应服务后用目录重命名交换；保留 `*.pre-<commit>` 或等价回滚目录。
+6. 前端必须整目录交换，避免新旧 hash 静态文件混用。
+7. 只重启本次变更涉及的服务；部署 Judge 前后不得删除 Redis 队列。
+8. 验收完成后再恢复或确认 Nginx 公网流量。
+
+仅 schema 变化时：先备份数据库并审查变更，在本地 Linux 环境生成匹配的 Prisma Client；上传 schema、生成后的 Linux client 和服务制品。生产端只允许在明确确认无破坏后执行 `npx prisma db push --skip-generate`，不得静默忽略错误。
+
+### 上线验收
+
+- `nginx`、`etloj-server`、`etloj-judge`、`etloj-go-judge`、MariaDB、Redis 全部 active。
+- `/api/stats` 与部署前核心数据一致，HTTPS 首页和静态资源正常。
+- go-judge 版本仍为 v1.9.0，只监听 `127.0.0.1:5050`，公网 5050 不可访问。
+- go-judge 执行冒烟通过。
+- Redis 中能看到两个独立阻塞消费者：正式队列为 `brpoplpush`，运行代码队列为 `brpop`；不能共用一个连接。
+- 连续正式提交至少两次，并穿插一次运行代码；结果均能及时返回，processing 和 dead 队列无异常残留。
+- WebSocket 无 ticket 被拒绝，合法订阅能收到结果；HTTP 轮询兜底正常。
+- 检查部署后的 fatal、uncaught、unhandled、error 日志以及内存占用。
+
+### 回滚
+
+回滚前先停止对应消费者，保存当前 Redis 队列快照；如果 processing 中有任务，必须先安全恢复到待判队列。然后恢复上一版目录、unit/Nginx 配置并启动服务，最后重新执行完整验收。不要通过清空 Redis 或覆盖数据目录来回滚。
+
+## go-judge 固定要求
+
+- 版本锁定 v1.9.0。v1.10+，尤其 v1.12.0，在当前 Debian 12 / Linux 6.1 / cgroup v2 环境可能因 `clone3(CLONE_INTO_CGROUP)` 导致全部执行失败。
+- HTTP 只监听 `127.0.0.1:5050`，生产建议保留 `-parallelism 2` 和现有内存限制。
+- v1.9.0 的 stdin 文件必须使用 `{"src":"/dev/null"}` 或 `{"content":"..."}`，不能传空对象。
+- 引用编译产物使用 `{"fileId":"..."}`，不是新版的 `file`。
+- 返回状态是字符串，例如 `Accepted`、`Time Limit Exceeded`。
+- `etloj-go-judge.service` 的 `TasksMax=infinity`、`LimitNPROC=infinity` 和启动后的 `pids.max` 修正不可删除。
+
+## 其他不可忽略的约束
+
+- JWT 有效期 7 天，但账号状态每次鉴权实时校验。
+- Contest 模型仅存在于 Prisma schema，目前没有完整业务模块。
+- 本地 Judge 使用 `spawnSync`，没有生产沙箱隔离能力，只能用于开发。
+- 题目、测试点和生产数据均不进入 Git。
