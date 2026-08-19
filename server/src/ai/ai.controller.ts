@@ -82,9 +82,9 @@ export class AiController {
   @UseGuards(JwtAuthGuard)
   getHistory(
     @Query('problemId', ParseIntPipe) problemId: number,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: { id: number; role: string },
   ) {
-    return this.aiService.getHistory(user.id, problemId);
+    return this.aiService.getHistory(user, problemId);
   }
 
   /** 清空某个题目的聊天记录 */
@@ -92,9 +92,9 @@ export class AiController {
   @UseGuards(JwtAuthGuard)
   clearHistory(
     @Query('problemId', ParseIntPipe) problemId: number,
-    @CurrentUser() user: { id: number },
+    @CurrentUser() user: { id: number; role: string },
   ) {
-    return this.aiService.clearHistory(user.id, problemId);
+    return this.aiService.clearHistory(user, problemId);
   }
 
   /** 获取当前用户剩余使用次数 */

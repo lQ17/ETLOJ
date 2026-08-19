@@ -57,12 +57,12 @@ export class AiService {
     return this.quotaService.getRemainingUses(userId, role);
   }
 
-  getHistory(userId: number, problemId: number) {
-    return this.conversationService.getHistory(userId, problemId);
+  getHistory(user: { id: number; role: string }, problemId: number) {
+    return this.conversationService.getHistory(user, problemId);
   }
 
-  clearHistory(userId: number, problemId: number) {
-    return this.conversationService.clearHistory(userId, problemId);
+  clearHistory(user: { id: number; role: string }, problemId: number) {
+    return this.conversationService.clearHistory(user, problemId);
   }
 
   chat(

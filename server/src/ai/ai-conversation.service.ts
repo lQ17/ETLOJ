@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiProviderService } from './ai-provider.service';
 import { AiQuotaService } from './ai-quota.service';
@@ -17,11 +17,23 @@ export class AiConversationService {
     private promptService: AiPromptService,
   ) {}
 
+  private findAccessibleProblem(user: { id: number; role: string }, problemId: number) {
+    const canManageHidden = user.role === 'ADMIN' || user.role === 'TEACHER';
+    return this.prisma.problem.findFirst({
+      where: {
+        id: problemId,
+        ...(canManageHidden ? {} : { isPublic: true }),
+      },
+    });
+  }
+
   // ─── 会话历史管理 ───
 
-  async getHistory(userId: number, problemId: number) {
+  async getHistory(user: { id: number; role: string }, problemId: number) {
+    const problem = await this.findAccessibleProblem(user, problemId);
+    if (!problem) throw new NotFoundException('题目不存在');
     const conversation = await this.prisma.aiConversation.findUnique({
-      where: { userId_problemId: { userId, problemId } },
+      where: { userId_problemId: { userId: user.id, problemId } },
       include: {
         messages: {
           orderBy: { id: 'asc' },
@@ -32,9 +44,11 @@ export class AiConversationService {
     return conversation?.messages || [];
   }
 
-  async clearHistory(userId: number, problemId: number) {
+  async clearHistory(user: { id: number; role: string }, problemId: number) {
+    const problem = await this.findAccessibleProblem(user, problemId);
+    if (!problem) throw new NotFoundException('题目不存在');
     await this.prisma.aiConversation.deleteMany({
-      where: { userId, problemId },
+      where: { userId: user.id, problemId },
     });
     return { success: true };
   }
@@ -81,7 +95,7 @@ export class AiConversationService {
     try {
       // 2. 并行获取上下文：题目 + 最近提交（含代码，用于「分析错误」）
       const [problem, submissions] = await Promise.all([
-        this.prisma.problem.findUnique({ where: { id: dto.problemId } }),
+        this.findAccessibleProblem(user, dto.problemId),
         this.prisma.submission.findMany({
           where: { userId: user.id, problemId: dto.problemId },
           orderBy: { createdAt: 'desc' },
