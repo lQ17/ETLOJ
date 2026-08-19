@@ -6,6 +6,7 @@ import { SolutionService } from "./solution.service";
 import { CreateSolutionDto } from "./dto/create-solution.dto";
 import { UpdateSolutionDto } from "./dto/update-solution.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { OptionalJwtGuard } from "../auth/optional-jwt.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { Roles } from "../auth/roles.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -48,8 +49,12 @@ export class SolutionController {
   }
 
   @Get(":id")
-  findOne(@Param("id", ParseIntPipe) id: number) {
-    return this.solutionService.findOne(id);
+  @UseGuards(OptionalJwtGuard)
+  findOne(
+    @Param("id", ParseIntPipe) id: number,
+    @CurrentUser() user?: { id: number; role: string },
+  ) {
+    return this.solutionService.findOneVisibleTo(id, user);
   }
 
   @Post()

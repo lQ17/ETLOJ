@@ -29,7 +29,7 @@ export class SolutionService {
     });
   }
 
-  async findOne(id: number) {
+  private async findOne(id: number) {
     const solution = await this.prisma.solution.findUnique({
       where: { id },
       include: {
@@ -37,6 +37,24 @@ export class SolutionService {
       },
     });
     if (!solution) throw new NotFoundException("题解不存在");
+    return solution;
+  }
+
+  async findOneVisibleTo(
+    id: number,
+    user?: { id: number; role: string },
+  ) {
+    const solution = await this.findOne(id);
+    const isAuthor = user?.id === solution.authorId;
+    const isReviewer = user?.role === "ADMIN" || user?.role === "TEACHER";
+    if (
+      solution.status !== SolutionStatus.APPROVED &&
+      !isAuthor &&
+      !isReviewer
+    ) {
+      // 未审核内容对外统一表现为不存在，避免泄露审核状态和题解 ID。
+      throw new NotFoundException("题解不存在");
+    }
     return solution;
   }
 
