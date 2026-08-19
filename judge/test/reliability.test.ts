@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createConnectedQueueClients,
   deliverResult,
   moveToDeadLetter,
   recoverInterruptedTasks,
@@ -20,6 +21,24 @@ const result: JudgeResult = {
   score: 100,
   testcases: [],
 };
+
+test("uses independent Redis connections for blocking queues", async () => {
+  const connected: string[] = [];
+  const runClient = {
+    connect: async () => { connected.push("run"); },
+  };
+  const judgeClient = {
+    duplicate: () => runClient,
+    connect: async () => { connected.push("judge"); },
+  };
+
+  const clients = await createConnectedQueueClients(() => judgeClient);
+
+  assert.equal(clients.judgeClient, judgeClient);
+  assert.equal(clients.runClient, runClient);
+  assert.notEqual(clients.judgeClient, clients.runClient);
+  assert.deepEqual(connected.sort(), ["judge", "run"]);
+});
 
 test("accepts a callback only when the server returns 2xx", async () => {
   const originalFetch = globalThis.fetch;

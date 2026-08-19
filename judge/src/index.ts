@@ -148,14 +148,25 @@ async function judgeQueueLoop(client: any) {
   }
 }
 
+export async function createConnectedQueueClients(
+  factory: () => any = () => createClient({ url: REDIS_URL }),
+) {
+  const judgeClient = factory();
+  // Blocking Redis commands monopolize a connection until a task arrives.
+  // The run queue must therefore use a dedicated connection, otherwise its
+  // BRPOP can prevent judge tasks and acknowledgements from being processed.
+  const runClient = judgeClient.duplicate();
+  await Promise.all([judgeClient.connect(), runClient.connect()]);
+  return { judgeClient, runClient };
+}
+
 async function main() {
   if (!JUDGE_SECRET) {
     console.error("FATAL: JUDGE_SECRET environment variable is required");
     process.exit(1);
   }
 
-  const client = createClient({ url: REDIS_URL });
-  await client.connect();
+  const { judgeClient, runClient } = await createConnectedQueueClients();
   console.log(`Judge service connected to Redis`);
   console.log(`Mode: ${JUDGE_MODE}`);
   if (JUDGE_MODE === "go-judge") {
@@ -167,8 +178,11 @@ async function main() {
   console.log(`Callback: ${SERVER_URL}/api/submissions/callback`);
   console.log("Waiting for tasks...\n");
 
-  await recoverInterruptedTasks(client);
-  await Promise.all([judgeQueueLoop(client), runQueueLoop(client)]);
+  await recoverInterruptedTasks(judgeClient);
+  await Promise.all([
+    judgeQueueLoop(judgeClient),
+    runQueueLoop(runClient),
+  ]);
 }
 
 if (require.main === module) {
