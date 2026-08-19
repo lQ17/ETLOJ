@@ -165,16 +165,39 @@ export class SubmissionService {
   }
 
   async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number; testcases?: Array<{ index: number; status: string; timeUsed: number; memoryUsed: number }> }) {
-    const updated = await this.prisma.submission.update({
-      where: { id: submissionId },
+    const terminalStatuses: SubmissionStatus[] = ["AC", "WA", "TLE", "MLE", "RE", "CE", "SE"];
+    if (!terminalStatuses.includes(result.status as SubmissionStatus)) {
+      throw new BadRequestException("无效的判题结果状态");
+    }
+
+    // 先以状态条件原子认领本次回调；重试或重复投递只能有一个请求获胜。
+    const claimed = await this.prisma.submission.updateMany({
+      where: {
+        id: submissionId,
+        status: { in: ["PENDING", "JUDGING"] },
+      },
       data: {
         status: result.status as any,
         timeUsed: result.timeUsed,
         memoryUsed: result.memoryUsed,
         score: result.score ?? null,
       },
+    });
+
+    if (claimed.count === 0) {
+      const existing = await this.prisma.submission.findUnique({
+        where: { id: submissionId },
+        include: { problem: true },
+      });
+      if (!existing) throw new NotFoundException("提交不存在");
+      return existing;
+    }
+
+    const updated = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
       include: { problem: true },
     });
+    if (!updated) throw new NotFoundException("提交不存在");
 
     // 如果是通过状态，且是首次通过，则增加标签统计
     if (result.status === 'AC') {

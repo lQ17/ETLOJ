@@ -5,6 +5,8 @@ export const JUDGE_SECRET = process.env.JUDGE_SECRET ?? "";
 export const JUDGE_MODE = process.env.JUDGE_MODE ?? "local"; // "local" | "go-judge"
 export const QUEUE_KEY = "judge:queue";
 export const RUN_QUEUE_KEY = "judge:run";
+export const PROCESSING_QUEUE_KEY = "judge:queue:processing";
+export const DEAD_LETTER_QUEUE_KEY = "judge:queue:dead";
 
 export const SUPPORTED_LANGUAGES = ["c", "cpp", "java", "python"];
 export const MAX_CODE_LENGTH = 50000;

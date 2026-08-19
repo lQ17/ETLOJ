@@ -1,0 +1,77 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  deliverResult,
+  moveToDeadLetter,
+  recoverInterruptedTasks,
+} from "../src/index";
+import {
+  DEAD_LETTER_QUEUE_KEY,
+  PROCESSING_QUEUE_KEY,
+  QUEUE_KEY,
+  type JudgeResult,
+} from "../src/types";
+
+const result: JudgeResult = {
+  submissionId: 10,
+  status: "AC",
+  timeUsed: 12,
+  memoryUsed: 100,
+  score: 100,
+  testcases: [],
+};
+
+test("accepts a callback only when the server returns 2xx", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("{}", { status: 200 });
+  try {
+    assert.equal(await deliverResult(result), "accepted");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("moves permanently rejected callbacks toward the dead-letter path", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response("bad", { status: 400 });
+  try {
+    assert.equal(await deliverResult(result), "dead-letter");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("recovers every task left in processing after a crash", async () => {
+  const calls: Array<[string, string]> = [];
+  const pending = ["task-1", "task-2", null];
+  const client = {
+    rPopLPush: async (source: string, destination: string) => {
+      calls.push([source, destination]);
+      return pending.shift();
+    },
+  };
+
+  await recoverInterruptedTasks(client);
+  assert.deepEqual(calls, [
+    [PROCESSING_QUEUE_KEY, QUEUE_KEY],
+    [PROCESSING_QUEUE_KEY, QUEUE_KEY],
+    [PROCESSING_QUEUE_KEY, QUEUE_KEY],
+  ]);
+});
+
+test("dead-lettering removes processing and records evidence atomically", async () => {
+  const operations: unknown[] = [];
+  const transaction = {
+    lRem: (...args: unknown[]) => { operations.push(["lRem", ...args]); return transaction; },
+    lPush: (...args: unknown[]) => { operations.push(["lPush", ...args]); return transaction; },
+    exec: async () => { operations.push(["exec"]); },
+  };
+  const client = { multi: () => transaction };
+
+  await moveToDeadLetter(client, "raw-task", "invalid", result);
+  assert.deepEqual((operations[0] as unknown[]).slice(0, 4), [
+    "lRem", PROCESSING_QUEUE_KEY, 1, "raw-task",
+  ]);
+  assert.equal((operations[1] as unknown[])[1], DEAD_LETTER_QUEUE_KEY);
+  assert.deepEqual(operations[2], ["exec"]);
+});
