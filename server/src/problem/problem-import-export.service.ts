@@ -6,6 +6,12 @@ import { PrismaService } from "../prisma/prisma.service";
 import { DIFFICULTY_VALUES, getDefaultScore } from "./difficulty.constants";
 import type { DifficultyLevel } from "./difficulty.constants";
 
+const MAX_ARCHIVE_ENTRIES = 5000;
+const MAX_ARCHIVE_UNCOMPRESSED_BYTES = 250 * 1024 * 1024;
+const MAX_METADATA_BYTES = 1024 * 1024;
+const MAX_MARKDOWN_BYTES = 10 * 1024 * 1024;
+const MAX_TESTCASE_BYTES = 20 * 1024 * 1024;
+
 @Injectable()
 export class ProblemImportExportService {
   private problemsDir: string;
@@ -53,6 +59,59 @@ export class ProblemImportExportService {
 
   private getTestcasesDir(slug: string) {
     return path.join(this.getProblemDir(slug), "testcases");
+  }
+
+  private validateArchiveEntries(entries: Array<any>): void {
+    if (entries.length > MAX_ARCHIVE_ENTRIES) {
+      throw new BadRequestException(`ZIP 文件条目过多（最多 ${MAX_ARCHIVE_ENTRIES} 个）`);
+    }
+
+    let totalSize = 0;
+    for (const entry of entries) {
+      const name = String(entry.entryName || "");
+      const parts = name.split("/");
+      if (
+        !name ||
+        name.includes("\\") ||
+        name.startsWith("/") ||
+        /^[A-Za-z]:/.test(name) ||
+        parts.some((part) => part === "." || part === "..")
+      ) {
+        throw new BadRequestException(`ZIP 包含不安全路径：${name || "<empty>"}`);
+      }
+
+      if (entry.isDirectory) {
+        const directoryParts = parts.filter(Boolean);
+        if (directoryParts.length > 2 || (directoryParts.length === 2 && directoryParts[1] !== "testcases")) {
+          throw new BadRequestException(`ZIP 包含不支持的目录：${name}`);
+        }
+        continue;
+      }
+
+      let maxFileSize: number;
+      if (parts.length === 2 && parts[1] === "problem.json") {
+        maxFileSize = MAX_METADATA_BYTES;
+      } else if (parts.length === 2 && parts[1] === "problem.md") {
+        maxFileSize = MAX_MARKDOWN_BYTES;
+      } else if (
+        parts.length === 3 &&
+        parts[1] === "testcases" &&
+        /^[1-9]\d*\.(in|out)$/.test(parts[2])
+      ) {
+        maxFileSize = MAX_TESTCASE_BYTES;
+      } else {
+        throw new BadRequestException(`ZIP 包含不支持的文件：${name}`);
+      }
+
+      const size = Number(entry.header?.size);
+      if (!Number.isSafeInteger(size) || size < 0 || size > maxFileSize) {
+        throw new BadRequestException(`ZIP 文件大小非法或超限：${name}`);
+      }
+      totalSize += size;
+      if (totalSize > MAX_ARCHIVE_UNCOMPRESSED_BYTES) {
+        throw new BadRequestException("ZIP 解压后总大小超过 250MB");
+      }
+    }
   }
 
   async exportProblems(slugs: string[]): Promise<Buffer> {
@@ -106,6 +165,7 @@ export class ProblemImportExportService {
     const AdmZip = require('adm-zip');
     const zip = new AdmZip(zipBuffer);
     const entries = zip.getEntries();
+    this.validateArchiveEntries(entries);
 
     // Group entries by top-level directory
     const dirMap = new Map<string, typeof entries>();
@@ -125,7 +185,7 @@ export class ProblemImportExportService {
     for (const [dir, dirEntries] of dirMap) {
       try {
         // Read problem.json
-        const jsonEntry = dirEntries.find(e => e.entryName.endsWith('problem.json'));
+        const jsonEntry = dirEntries.find(e => e.entryName === `${dir}/problem.json`);
         if (!jsonEntry) { errors.push(`${dir}: 缺少 problem.json`); continue; }
 
         const meta = JSON.parse(jsonEntry.getData().toString('utf-8'));
@@ -140,7 +200,7 @@ export class ProblemImportExportService {
         fs.mkdirSync(tcDir, { recursive: true });
 
         // Write problem.md（第一行强制为 # {slug} {title}，以 problem.json 为准）
-        const mdEntry = dirEntries.find(e => e.entryName.endsWith('problem.md'));
+        const mdEntry = dirEntries.find(e => e.entryName === `${dir}/problem.md`);
         const importTitle = meta.title || meta.slug;
         let markdown = mdEntry ? mdEntry.getData().toString('utf-8') : '';
         markdown = this.ensureHeading(markdown, meta.slug, importTitle);
@@ -148,10 +208,14 @@ export class ProblemImportExportService {
 
         // Write testcases
         for (const entry of dirEntries) {
-          if (entry.entryName.includes('/testcases/') && !entry.isDirectory) {
-            const filename = entry.entryName.split('/testcases/')[1];
+          if (entry.entryName.startsWith(`${dir}/testcases/`) && !entry.isDirectory) {
+            const filename = entry.entryName.split('/')[2];
             if (filename) {
-              fs.writeFileSync(path.join(tcDir, filename), entry.getData(), 'utf-8');
+              const target = path.resolve(tcDir, filename);
+              if (path.dirname(target) !== path.resolve(tcDir)) {
+                throw new BadRequestException(`测试数据路径非法：${entry.entryName}`);
+              }
+              fs.writeFileSync(target, entry.getData(), 'utf-8');
             }
           }
         }

@@ -33,7 +33,7 @@
     "@nestjs/platform-ws": "^11.0.1",
     "@nestjs/websockets": "^11.0.1",
     "@prisma/client": "^5.22.0",
-    "adm-zip": "^0.5.17",
+    "adm-zip": "^0.6.0",
     "ai": "^6.0.184",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
