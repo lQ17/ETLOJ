@@ -21,6 +21,8 @@ export const submissionApi = {
 
   getOne: (id: number) => client.get(`/submissions/${id}`),
 
+  getWsTicket: () => client.post("/submissions/ws-ticket"),
+
   cleanDirty: () => client.delete("/submissions/dirty"),
 
   getStatus: (problemIds: number[]) =>

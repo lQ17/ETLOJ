@@ -7,8 +7,10 @@ export function useSubmissionWatch(
 ) {
   const pollRef = useRef<ReturnType<typeof setInterval>>();
   const wsRef = useRef<WebSocket | null>(null);
+  const watchIdRef = useRef(0);
 
   const watchResult = (submissionId: number) => {
+    const watchId = ++watchIdRef.current;
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -46,9 +48,10 @@ export function useSubmissionWatch(
     pollRef.current = setInterval(poll, 1500);
 
     // 同时尝试建立 WebSocket 连接，成功后替代轮询
-    try {
+    submissionApi.getWsTicket().then((ticketResult: any) => {
+      if (isFinished || watchIdRef.current !== watchId) return;
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${protocol}//${window.location.host}/ws/submissions`;
+      const wsUrl = `${protocol}//${window.location.host}/ws/submissions?ticket=${encodeURIComponent(ticketResult.ticket)}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -85,14 +88,15 @@ export function useSubmissionWatch(
       ws.onclose = () => {
         if (wsRef.current === ws) wsRef.current = null;
       };
-    } catch {
+    }).catch(() => {
       // WebSocket 创建失败，轮询已在运行
-    }
+    });
   };
 
   // cleanup on unmount
   useEffect(() => {
     return () => {
+      watchIdRef.current++;
       if (pollRef.current) clearInterval(pollRef.current);
       if (wsRef.current) {
         wsRef.current.close();

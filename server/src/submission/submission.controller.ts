@@ -10,6 +10,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { Roles } from "../auth/roles.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
+import { SubmissionGateway } from "./submission.gateway";
 
 @Controller("submissions")
 export class SubmissionController {
@@ -18,6 +19,7 @@ export class SubmissionController {
   constructor(
     private submissionService: SubmissionService,
     private config: ConfigService,
+    private submissionGateway: SubmissionGateway,
   ) {
     const secret = this.config.get<string>("JUDGE_SECRET");
     if (!secret) {
@@ -42,6 +44,12 @@ export class SubmissionController {
     @Body() body: { code: string; language: string; input: string; problemId: number },
   ) {
     return this.submissionService.run(userId, body);
+  }
+
+  @Post("ws-ticket")
+  @UseGuards(JwtAuthGuard)
+  createWebSocketTicket(@CurrentUser("id") userId: number) {
+    return this.submissionGateway.createTicket(userId);
   }
 
   @Post("callback")

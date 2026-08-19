@@ -5,7 +5,13 @@ import {
   OnGatewayDisconnect,
   SubscribeMessage,
 } from "@nestjs/websockets";
+import { JwtService } from "@nestjs/jwt";
+import type { IncomingMessage } from "http";
 import { Server, WebSocket } from "ws";
+import { PrismaService } from "../prisma/prisma.service";
+
+type SocketUser = { id: number; role: string };
+const MAX_SUBSCRIPTIONS_PER_CLIENT = 10;
 
 @WebSocketGateway({ path: "/ws/submissions" })
 export class SubmissionGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -14,28 +20,93 @@ export class SubmissionGateway implements OnGatewayConnection, OnGatewayDisconne
 
   // 内存存储映射：submissionId -> WebSocket 客户端 Set 集合
   private clientsMap = new Map<number, Set<WebSocket>>();
+  private clientSubscriptions = new Map<WebSocket, Set<number>>();
+  private clientAuth = new WeakMap<WebSocket, Promise<SocketUser | null>>();
 
-  handleConnection(client: WebSocket) {
-    // 客户端建立连接时，可以暂时不做操作或做日志记录
+  constructor(
+    private jwt: JwtService,
+    private prisma: PrismaService,
+  ) {}
+
+  createTicket(userId: number) {
+    return {
+      ticket: this.jwt.sign(
+        { sub: userId, purpose: "submission-ws" },
+        { expiresIn: "60s", audience: "submission-ws" },
+      ),
+      expiresIn: 60,
+    };
   }
 
-  handleDisconnect(client: WebSocket) {
-    // 当连接断开时，遍历映射表，彻底移除所有属于该客户端的订阅，防止连接泄露和内存泄露
-    for (const [subId, clients] of this.clientsMap.entries()) {
-      if (clients.has(client)) {
-        clients.delete(client);
-        if (clients.size === 0) {
-          this.clientsMap.delete(subId);
-        }
-      }
+  async handleConnection(client: WebSocket, request: IncomingMessage) {
+    const authentication = this.authenticate(request);
+    this.clientAuth.set(client, authentication);
+    const user = await authentication;
+    if (!user) client.close(1008, "Unauthorized");
+  }
+
+  private async authenticate(request: IncomingMessage): Promise<SocketUser | null> {
+    try {
+      const url = new URL(request.url || "", "http://localhost");
+      const ticket = url.searchParams.get("ticket");
+      if (!ticket) return null;
+      const payload = await this.jwt.verifyAsync<{ sub: number; purpose: string }>(ticket, {
+        audience: "submission-ws",
+      });
+      if (payload.purpose !== "submission-ws" || !Number.isInteger(payload.sub)) return null;
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, role: true, status: true, isActive: true },
+      });
+      if (!user || !user.isActive || user.status !== "APPROVED") return null;
+      return { id: user.id, role: user.role };
+    } catch {
+      return null;
     }
   }
 
+  handleDisconnect(client: WebSocket) {
+    const subscriptions = this.clientSubscriptions.get(client);
+    for (const subId of subscriptions || []) {
+      const clients = this.clientsMap.get(subId);
+      clients?.delete(client);
+      if (clients?.size === 0) {
+        this.clientsMap.delete(subId);
+      }
+    }
+    this.clientSubscriptions.delete(client);
+  }
+
   @SubscribeMessage("subscribe")
-  handleSubscribe(client: WebSocket, data: { submissionId: number }) {
+  async handleSubscribe(client: WebSocket, data: { submissionId: number }) {
     if (!data || !data.submissionId) return;
     const subId = Number(data.submissionId);
-    if (isNaN(subId)) return;
+    if (!Number.isInteger(subId) || subId < 1) return;
+
+    const user = await this.clientAuth.get(client);
+    if (!user) {
+      client.close(1008, "Unauthorized");
+      return;
+    }
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: subId },
+      select: { userId: true },
+    });
+    const privileged = user.role === "ADMIN" || user.role === "TEACHER";
+    if (!submission || (submission.userId !== user.id && !privileged)) {
+      client.send(JSON.stringify({ event: "error", data: { message: "Forbidden" } }));
+      return;
+    }
+
+    let subscriptions = this.clientSubscriptions.get(client);
+    if (!subscriptions) {
+      subscriptions = new Set();
+      this.clientSubscriptions.set(client, subscriptions);
+    }
+    if (!subscriptions.has(subId) && subscriptions.size >= MAX_SUBSCRIPTIONS_PER_CLIENT) {
+      client.send(JSON.stringify({ event: "error", data: { message: "Too many subscriptions" } }));
+      return;
+    }
 
     let clients = this.clientsMap.get(subId);
     if (!clients) {
@@ -43,6 +114,7 @@ export class SubmissionGateway implements OnGatewayConnection, OnGatewayDisconne
       this.clientsMap.set(subId, clients);
     }
     clients.add(client);
+    subscriptions.add(subId);
   }
 
   @SubscribeMessage("unsubscribe")
@@ -58,6 +130,7 @@ export class SubmissionGateway implements OnGatewayConnection, OnGatewayDisconne
         this.clientsMap.delete(subId);
       }
     }
+    this.clientSubscriptions.get(client)?.delete(subId);
   }
 
   /**
