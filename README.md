@@ -19,7 +19,7 @@ ETLOJ 是面向学校、社团和算法学习者的在线评测平台，提供�
 - 公告、教学反馈分享及公开反馈页面
 - 排序、搜索、前缀和、差分、图搜索等算法可视化
 - AI 辅导、流式回答、配额管理、Provider/Prompt 配置与用量监控
-- 匿名只读 MCP、OAuth 2.1 个人 MCP 和学习进度工具
+- 匿名只读 MCP、OAuth 2.1 个人 MCP、学习进度工具和受限管理员测试数据工具
 
 尚未完成：比赛业务、讨论区和技能树。Prisma 中的 Contest 模型不代表比赛功能已经可用。
 
@@ -68,6 +68,13 @@ PROBLEMS_DIR=../problems
 CLIENT_ORIGIN=http://localhost:5173
 MCP_PUBLIC_BASE_URL=http://localhost:3000
 MCP_ALLOWED_HOSTS=localhost,127.0.0.1,[::1]
+# 管理员测试数据 MCP 的可选安全限制（不填时使用服务端默认值）
+MCP_TESTCASE_MAX_FILE_BYTES=1048576
+MCP_TESTCASE_READ_CHUNK_CHARS=32768
+MCP_TESTCASE_READ_MAX_CHARS=65536
+MCP_TESTCASE_MAX_COUNT=1000
+MCP_ADMIN_WRITE_RATE_LIMIT_MAX=10
+MCP_ADMIN_WRITE_RATE_LIMIT_WINDOW_MS=60000
 # 本地开发可使用 Cloudflare 官方测试 Secret
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 ```
@@ -125,7 +132,7 @@ cp docker/.env.example docker/.env.docker
 mkdir -p data/problems
 ```
 
-编辑 `docker/.env.docker`，替换所有密码和密钥。`MYSQL_PASSWORD` 建议只使用字母、数字、`-` 和 `_`，避免拼入 `DATABASE_URL` 后需要额外编码；部署到域名时，同时修改 `PUBLIC_ORIGIN` 和 `MCP_ALLOWED_HOSTS`。生产 Turnstile 必须换成真实 Secret。
+编辑 `docker/.env.docker`，替换所有密码和密钥。`MYSQL_PASSWORD` 建议只使用字母、数字、`-` 和 `_`，避免拼入 `DATABASE_URL` 后需要额外编码；部署到域名时，同时修改 `PUBLIC_ORIGIN` 和 `MCP_ALLOWED_HOSTS`。生产 Turnstile 必须换成真实 Secret。管理员测试数据 MCP 的文件大小、读取分块、数量和写入限流也可在此调整；默认值已按保守上限配置，只有在完成安全评审后才应放宽。
 
 ### 2. 构建并初始化
 
@@ -155,8 +162,12 @@ Compose 固定使用 `criyle/go-judge:v1.9.0`，不可改成 `latest`。Docker D
 
 - `/mcp`：匿名公开只读，可查询公开题目、标签和题单。
 - `/mcp/private`：OAuth 2.1 Authorization Code + PKCE，可查询授权用户自己的学习进度和提交摘要。
+- `/mcp/private` 的管理员工具仅对实时角色为 `ADMIN` 且显式获得对应 scope 的令牌呈现：
+  - `testcases:read`：`list_problem_testcases`、`get_problem_testcase`，读取测试点元数据、输入和标准输出。
+  - `testcases:write`：`add_problem_testcase`、`delete_problem_testcase`，追加或删除测试点；这是高风险写权限，可能影响后续判题结果。
+- 普通用户、教师和匿名客户端不会看到或调用管理员测试数据工具；管理员也必须逐项申请 scope，不能依靠角色绕过权限检查。
 - 个人工具的 userId 只来自 access token；不接受调用者自行传入 userId，也不返回完整源代码、测试数据、文件路径或内部异常。
-- 当前不提供 MCP 写入提交、运行代码、管理员操作、SQL、Shell 或任意 HTTP 工具。
+- 当前不提供 MCP 写入提交、运行代码、除测试数据外的管理员操作、SQL、Shell 或任意 HTTP 工具。
 
 MCP 的协议设计与安全说明见 [ETLOJ 远程 MCP 服务开发建议与实施任务书.md](./ETLOJ%20远程%20MCP%20服务开发建议与实施任务书.md)。
 

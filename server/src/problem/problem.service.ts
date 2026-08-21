@@ -1,13 +1,19 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import * as fs from "fs";
-import * as path from "path";
-import { PrismaService } from "../prisma/prisma.service";
-import { DIFFICULTY_VALUES, getDefaultScore } from "./difficulty.constants";
-import type { DifficultyLevel } from "./difficulty.constants";
-import { CreateProblemDto } from "./dto/create-problem.dto";
-import { UpdateProblemDto } from "./dto/update-problem.dto";
-import { QueryProblemDto } from "./dto/query-problem.dto";
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
+import { PrismaService } from '../prisma/prisma.service';
+import { DIFFICULTY_VALUES, getDefaultScore } from './difficulty.constants';
+import type { DifficultyLevel } from './difficulty.constants';
+import { CreateProblemDto } from './dto/create-problem.dto';
+import { UpdateProblemDto } from './dto/update-problem.dto';
+import { QueryProblemDto } from './dto/query-problem.dto';
+import { TestcaseStoreService } from '../testcase/testcase-store.service';
 
 @Injectable()
 export class ProblemService {
@@ -16,60 +22,77 @@ export class ProblemService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private readonly testcaseStore: TestcaseStoreService,
   ) {
-    this.problemsDir = this.config.get("PROBLEMS_DIR") || path.resolve(__dirname, "../../../problems");
+    this.problemsDir =
+      this.config.get('PROBLEMS_DIR') ||
+      path.resolve(__dirname, '../../../problems');
   }
 
   /** 将任意难度字符串映射为合法的 Difficulty 枚举值，无法识别时返回 IRON */
   private normalizeDifficulty(raw?: string): DifficultyLevel {
-    if (!raw) return "IRON";
+    if (!raw) return 'IRON';
     const upper = raw.trim().toUpperCase();
     if (DIFFICULTY_VALUES.includes(upper as DifficultyLevel)) {
       return upper as DifficultyLevel;
     }
     // 兼容旧版枚举 / 中文别名
     const ALIASES: Record<string, DifficultyLevel> = {
-      EASY: "IRON", MEDIUM: "BRONZE", HARD: "SILVER",
-      黑铁: "IRON", 青铜: "BRONZE", 白银: "SILVER", 黄金: "GOLD",
-      铂金: "PLATINUM", 钻石: "DIAMOND", 大师: "MASTER",
-      王者: "CHAMPION", 传说: "LEGENDARY",
+      EASY: 'IRON',
+      MEDIUM: 'BRONZE',
+      HARD: 'SILVER',
+      黑铁: 'IRON',
+      青铜: 'BRONZE',
+      白银: 'SILVER',
+      黄金: 'GOLD',
+      铂金: 'PLATINUM',
+      钻石: 'DIAMOND',
+      大师: 'MASTER',
+      王者: 'CHAMPION',
+      传说: 'LEGENDARY',
     };
-    return ALIASES[upper] ?? "IRON";
+    return ALIASES[upper] ?? 'IRON';
   }
 
   private getProblemDir(slug: string) {
     // 防止路径穿越攻击
     if (/\.\.|[\/\\]/.test(slug)) {
-      throw new BadRequestException("slug 不能包含路径分隔符或 ..");
+      throw new BadRequestException('slug 不能包含路径分隔符或 ..');
     }
     return path.join(this.problemsDir, slug);
   }
 
   private getMarkdownPath(slug: string) {
-    return path.join(this.getProblemDir(slug), "problem.md");
+    return path.join(this.getProblemDir(slug), 'problem.md');
   }
 
   private getTestcasesDir(slug: string) {
-    return path.join(this.getProblemDir(slug), "testcases");
+    return path.join(this.getProblemDir(slug), 'testcases');
   }
 
   /** 确保 markdown 第一行为 `# {slug} {title}` */
   private ensureHeading(markdown: string, slug: string, title: string): string {
     const heading = `# ${slug} ${title}`;
-    const stripped = markdown.replace(/^#[^\n]*\n?/, "");
+    const stripped = markdown.replace(/^#[^\n]*\n?/, '');
     return `${heading}\n${stripped}`;
   }
 
   async create(dto: CreateProblemDto) {
-    const existing = await this.prisma.problem.findUnique({ where: { slug: dto.slug } });
-    if (existing) throw new ConflictException("题目编号已存在");
+    const existing = await this.prisma.problem.findUnique({
+      where: { slug: dto.slug },
+    });
+    if (existing) throw new ConflictException('题目编号已存在');
 
     const dir = this.getProblemDir(dto.slug);
     const tcDir = this.getTestcasesDir(dto.slug);
 
     fs.mkdirSync(tcDir, { recursive: true });
-    const mdContent = this.ensureHeading(dto.markdown || "", dto.slug, dto.title);
-    fs.writeFileSync(this.getMarkdownPath(dto.slug), mdContent, "utf-8");
+    const mdContent = this.ensureHeading(
+      dto.markdown || '',
+      dto.slug,
+      dto.title,
+    );
+    fs.writeFileSync(this.getMarkdownPath(dto.slug), mdContent, 'utf-8');
 
     // 如果有 tagIds，获取标签名称用于 JSON 字段
     let tagNames: string[] = dto.tags || [];
@@ -78,7 +101,7 @@ export class ProblemService {
         where: { id: { in: dto.tagIds } },
         select: { name: true },
       });
-      tagNames = tags.map(t => t.name);
+      tagNames = tags.map((t) => t.name);
     }
 
     const difficulty = this.normalizeDifficulty(dto.difficulty as string);
@@ -101,7 +124,7 @@ export class ProblemService {
     // 创建 ProblemTag 关联
     if (dto.tagIds && dto.tagIds.length > 0) {
       await this.prisma.problemTag.createMany({
-        data: dto.tagIds.map(tagId => ({ problemId: problem.id, tagId })),
+        data: dto.tagIds.map((tagId) => ({ problemId: problem.id, tagId })),
       });
     }
 
@@ -109,7 +132,16 @@ export class ProblemService {
   }
 
   async findAll(query: QueryProblemDto, isAdmin = false) {
-    const { page = 1, pageSize = 20, difficulty, keyword, content, tag, tags, tagMode = "OR" } = query;
+    const {
+      page = 1,
+      pageSize = 20,
+      difficulty,
+      keyword,
+      content,
+      tag,
+      tags,
+      tagMode = 'OR',
+    } = query;
     const where: any = {};
 
     if (!isAdmin) {
@@ -131,9 +163,9 @@ export class ProblemService {
 
     // 多标签筛选
     if (tags && tags.length > 0) {
-      if (tagMode === "AND") {
+      if (tagMode === 'AND') {
         // AND 模式：题目必须包含所有选中标签
-        where.AND = tags.map(t => ({
+        where.AND = tags.map((t) => ({
           problemTags: { some: { tag: { name: t } } },
         }));
       } else {
@@ -154,8 +186,12 @@ export class ProblemService {
       const matchedIds: number[] = [];
       for (const candidate of candidates) {
         try {
-          const markdown = fs.readFileSync(this.getMarkdownPath(candidate.slug), "utf-8");
-          if (markdown.toLocaleLowerCase().includes(contentNeedle)) matchedIds.push(candidate.id);
+          const markdown = fs.readFileSync(
+            this.getMarkdownPath(candidate.slug),
+            'utf-8',
+          );
+          if (markdown.toLocaleLowerCase().includes(contentNeedle))
+            matchedIds.push(candidate.id);
         } catch {
           // 缺失题面文件的题目不匹配内容搜索。
         }
@@ -171,7 +207,7 @@ export class ProblemService {
         where,
         skip: (pageNum - 1) * sizeNum,
         take: sizeNum,
-        orderBy: { id: "asc" },
+        orderBy: { id: 'asc' },
         select: {
           id: true,
           slug: true,
@@ -195,8 +231,8 @@ export class ProblemService {
     let acMap = new Map<number, number>();
     if (items.length > 0) {
       const acCounts = await this.prisma.submission.groupBy({
-        by: ["problemId"],
-        where: { status: "AC", problemId: { in: items.map((p) => p.id) } },
+        by: ['problemId'],
+        where: { status: 'AC', problemId: { in: items.map((p) => p.id) } },
         _count: { id: true },
       });
       acMap = new Map(acCounts.map((a) => [a.problemId, a._count.id]));
@@ -204,14 +240,17 @@ export class ProblemService {
 
     const enriched = items.map((p) => ({
       ...p,
-      tags: p.problemTags.map(pt => pt.tag.name),
+      tags: p.problemTags.map((pt) => pt.tag.name),
       problemTags: undefined,
       totalSubmissions: p._count.submissions,
       acceptedCount: acMap.get(p.id) || 0,
       stats: {
         totalSubmissions: p._count.submissions,
         acceptedSubmissions: acMap.get(p.id) || 0,
-        acceptanceRate: p._count.submissions === 0 ? 0 : (acMap.get(p.id) || 0) / p._count.submissions,
+        acceptanceRate:
+          p._count.submissions === 0
+            ? 0
+            : (acMap.get(p.id) || 0) / p._count.submissions,
       },
       _count: undefined,
     }));
@@ -221,64 +260,73 @@ export class ProblemService {
 
   async findOne(idOrSlug: number | string, isAdmin = false) {
     const problem = await this.resolveProblem(idOrSlug, isAdmin);
-    let markdown = "";
+    let markdown = '';
     try {
-      markdown = fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");
+      markdown = fs.readFileSync(this.getMarkdownPath(problem.slug), 'utf-8');
     } catch {
-      markdown = "题面文件未找到";
+      markdown = '题面文件未找到';
     }
 
     // 详情接口只返回面向客户端的字段，避免泄露服务器内部文件路径。
-    const [problemTags, totalSubmissions, acceptedSubmissions] = await Promise.all([
-      this.prisma.problemTag.findMany({
-        where: { problemId: problem.id },
-        select: { tag: { select: { id: true, name: true } } },
-      }),
-      this.prisma.submission.count({ where: { problemId: problem.id } }),
-      this.prisma.submission.count({ where: { problemId: problem.id, status: "AC" } }),
-    ]);
+    const [problemTags, totalSubmissions, acceptedSubmissions] =
+      await Promise.all([
+        this.prisma.problemTag.findMany({
+          where: { problemId: problem.id },
+          select: { tag: { select: { id: true, name: true } } },
+        }),
+        this.prisma.submission.count({ where: { problemId: problem.id } }),
+        this.prisma.submission.count({
+          where: { problemId: problem.id, status: 'AC' },
+        }),
+      ]);
 
     // 获取测试用例数量（不加载内容）
-    const tcDir = this.getTestcasesDir(problem.slug);
-    let testcaseCount = 0;
-    if (fs.existsSync(tcDir)) {
-      const files = fs.readdirSync(tcDir);
-      testcaseCount = files.filter(f => f.endsWith(".in")).length;
-    }
+    const testcaseCount = (await this.testcaseStore.scan(problem.slug))
+      .testcaseCount;
 
-    const { filePath: _filePath, tags: _legacyTags, ...publicProblem } = problem;
+    const {
+      filePath: _filePath,
+      tags: _legacyTags,
+      ...publicProblem
+    } = problem;
 
     return {
       ...publicProblem,
       markdown,
-      tagIds: problemTags.map(pt => pt.tag.id),
-      tags: problemTags.map(pt => pt.tag.name),
+      tagIds: problemTags.map((pt) => pt.tag.id),
+      tags: problemTags.map((pt) => pt.tag.name),
       testcaseCount,
       stats: {
         totalSubmissions,
         acceptedSubmissions,
-        acceptanceRate: totalSubmissions === 0 ? 0 : acceptedSubmissions / totalSubmissions,
+        acceptanceRate:
+          totalSubmissions === 0 ? 0 : acceptedSubmissions / totalSubmissions,
       },
     };
   }
 
   private async resolveProblem(idOrSlug: number | string, isAdmin = false) {
-    const where = typeof idOrSlug === "number"
-      ? { id: idOrSlug }
-      : { slug: idOrSlug };
+    const where =
+      typeof idOrSlug === 'number' ? { id: idOrSlug } : { slug: idOrSlug };
     const problem = await this.prisma.problem.findUnique({ where });
-    if (!problem) throw new NotFoundException("该题目已被删除或不存在");
-    if (!isAdmin && !problem.isPublic) throw new NotFoundException("该题目已被停用，暂不可见");
+    if (!problem) throw new NotFoundException('该题目已被删除或不存在');
+    if (!isAdmin && !problem.isPublic)
+      throw new NotFoundException('该题目已被停用，暂不可见');
     return problem;
+  }
+
+  async findAdminProblemReference(idOrSlug: number | string) {
+    const problem = await this.resolveProblem(idOrSlug, true);
+    return { id: problem.id, slug: problem.slug, title: problem.title };
   }
 
   async getMarkdown(idOrSlug: number | string) {
     const problem = await this.resolveProblem(idOrSlug, false);
 
     try {
-      return fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8");
+      return fs.readFileSync(this.getMarkdownPath(problem.slug), 'utf-8');
     } catch {
-      return "题面文件未找到";
+      return '题面文件未找到';
     }
   }
 
@@ -287,15 +335,25 @@ export class ProblemService {
 
     if (dto.markdown !== undefined) {
       fs.mkdirSync(this.getProblemDir(problem.slug), { recursive: true });
-      const mdContent = this.ensureHeading(dto.markdown || "", problem.slug, dto.title || problem.title);
-      fs.writeFileSync(this.getMarkdownPath(problem.slug), mdContent, "utf-8");
+      const mdContent = this.ensureHeading(
+        dto.markdown || '',
+        problem.slug,
+        dto.title || problem.title,
+      );
+      fs.writeFileSync(this.getMarkdownPath(problem.slug), mdContent, 'utf-8');
     } else if (dto.title && dto.title !== problem.title) {
       // 仅改标题时也要更新 md 文件的 heading
-      let md = "";
-      try { md = fs.readFileSync(this.getMarkdownPath(problem.slug), "utf-8"); } catch {}
+      let md = '';
+      try {
+        md = fs.readFileSync(this.getMarkdownPath(problem.slug), 'utf-8');
+      } catch {}
       if (md) {
         const mdContent = this.ensureHeading(md, problem.slug, dto.title);
-        fs.writeFileSync(this.getMarkdownPath(problem.slug), mdContent, "utf-8");
+        fs.writeFileSync(
+          this.getMarkdownPath(problem.slug),
+          mdContent,
+          'utf-8',
+        );
       }
     }
 
@@ -304,11 +362,13 @@ export class ProblemService {
     // 更新标签关联
     if (tagIds !== undefined) {
       // 删除旧关联
-      await this.prisma.problemTag.deleteMany({ where: { problemId: problem.id } });
+      await this.prisma.problemTag.deleteMany({
+        where: { problemId: problem.id },
+      });
       // 创建新关联
       if (tagIds.length > 0) {
         await this.prisma.problemTag.createMany({
-          data: tagIds.map(tid => ({ problemId: problem.id, tagId: tid })),
+          data: tagIds.map((tid) => ({ problemId: problem.id, tagId: tid })),
         });
       }
       // 同步更新 JSON tags 字段
@@ -317,7 +377,7 @@ export class ProblemService {
           where: { id: { in: tagIds } },
           select: { name: true },
         });
-        data.tags = tags.map(t => t.name);
+        data.tags = tags.map((t) => t.name);
       } else {
         data.tags = [];
       }
@@ -348,111 +408,43 @@ export class ProblemService {
     await this.prisma.$transaction([
       this.prisma.solution.deleteMany({ where: { problemId: problem.id } }),
       this.prisma.submission.deleteMany({ where: { problemId: problem.id } }),
-      this.prisma.problemListItem.deleteMany({ where: { problemId: problem.id } }),
-      this.prisma.contestProblem.deleteMany({ where: { problemId: problem.id } }),
+      this.prisma.problemListItem.deleteMany({
+        where: { problemId: problem.id },
+      }),
+      this.prisma.contestProblem.deleteMany({
+        where: { problemId: problem.id },
+      }),
       this.prisma.problem.delete({ where: { id: problem.id } }),
     ]);
   }
 
-  async saveTestcases(idOrSlug: number | string, testcases: { input: string; output: string }[]) {
+  async saveTestcases(
+    idOrSlug: number | string,
+    testcases: { input: string; output: string }[],
+  ) {
     const problem = await this.resolveProblem(idOrSlug, true);
-
-    const tcDir = this.getTestcasesDir(problem.slug);
-    fs.mkdirSync(tcDir, { recursive: true });
-
-    // 清理旧的测试用例文件
-    if (fs.existsSync(tcDir)) {
-      const oldFiles = fs.readdirSync(tcDir);
-      for (const file of oldFiles) {
-        if (file.endsWith('.in') || file.endsWith('.out')) {
-          fs.unlinkSync(path.join(tcDir, file));
-        }
-      }
-    }
-
-    // 写入新测试用例
-    testcases.forEach((tc, i) => {
-      const num = i + 1;
-      fs.writeFileSync(path.join(tcDir, `${num}.in`), tc.input, "utf-8");
-      fs.writeFileSync(path.join(tcDir, `${num}.out`), tc.output, "utf-8");
-    });
-
-    return { count: testcases.length };
+    const result = await this.testcaseStore.replaceAll(
+      problem.slug,
+      testcases.map((testcase) => ({
+        input: testcase.input,
+        expectedOutput: testcase.output,
+      })),
+    );
+    return { count: result.testcaseCount };
   }
 
   async getTestcases(slug: string) {
-    const tcDir = this.getTestcasesDir(slug);
-    if (!fs.existsSync(tcDir)) return [];
-
-    const files = fs.readdirSync(tcDir).sort();
-    const testcases: { input: string; expectedOutput: string }[] = [];
-    const inFiles = files.filter((f) => f.endsWith(".in"));
-
-    for (const inFile of inFiles) {
-      const num = inFile.replace(".in", "");
-      const outFile = `${num}.out`;
-      if (files.includes(outFile)) {
-        testcases.push({
-          input: fs.readFileSync(path.join(tcDir, inFile), "utf-8"),
-          expectedOutput: fs.readFileSync(path.join(tcDir, outFile), "utf-8"),
-        });
-      }
-    }
-
-    return testcases;
+    return this.testcaseStore.readAll(slug);
   }
 
   async deleteTestcase(idOrSlug: number | string, num: number) {
     const problem = await this.resolveProblem(idOrSlug, true);
-    const tcDir = this.getTestcasesDir(problem.slug);
-
-    if (!fs.existsSync(tcDir)) {
-      throw new NotFoundException("测试用例目录不存在");
-    }
-
-    const inFile = path.join(tcDir, `${num}.in`);
-    const outFile = path.join(tcDir, `${num}.out`);
-
-    if (!fs.existsSync(inFile) && !fs.existsSync(outFile)) {
-      throw new NotFoundException(`测试点 ${num} 不存在`);
-    }
-
-    // 删除指定编号的文件
-    try { fs.unlinkSync(inFile); } catch {}
-    try { fs.unlinkSync(outFile); } catch {}
-
-    // 获取当前所有测试点文件，重排编号
-    const files = fs.readdirSync(tcDir);
-    const inFiles = files.filter(f => f.endsWith(".in")).sort((a, b) => {
-      const numA = parseInt(a.replace(".in", ""));
-      const numB = parseInt(b.replace(".in", ""));
-      return numA - numB;
-    });
-
-    // 重排编号：将剩余文件重新编号为 1, 2, 3...
-    inFiles.forEach((oldInFile, index) => {
-      const newNum = index + 1;
-      const oldNum = parseInt(oldInFile.replace(".in", ""));
-      if (oldNum !== newNum) {
-        const oldOutFile = `${oldNum}.out`;
-        const newInFile = `${newNum}.in`;
-        const newOutFile = `${newNum}.out`;
-
-        const oldInPath = path.join(tcDir, oldInFile);
-        const oldOutPath = path.join(tcDir, oldOutFile);
-        const newInPath = path.join(tcDir, newInFile);
-        const newOutPath = path.join(tcDir, newOutFile);
-
-        if (fs.existsSync(oldInPath)) {
-          fs.renameSync(oldInPath, newInPath);
-        }
-        if (fs.existsSync(oldOutPath)) {
-          fs.renameSync(oldOutPath, newOutPath);
-        }
-      }
-    });
-
-    return { count: inFiles.length };
+    const current = await this.testcaseStore.scan(problem.slug);
+    const result = await this.testcaseStore.deleteAndRenumber(
+      problem.slug,
+      num,
+      current.revision,
+    );
+    return { count: result.testcaseCount };
   }
-
 }

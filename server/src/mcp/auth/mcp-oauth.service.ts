@@ -17,7 +17,14 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { createClient, type RedisClientType } from 'redis';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export const MCP_SCOPES = ['problems:read', 'submissions:read'] as const;
+export const MCP_SCOPES = [
+  'problems:read',
+  'submissions:read',
+  'testcases:read',
+  'testcases:write',
+] as const;
+const MCP_DEFAULT_SCOPES = ['problems:read', 'submissions:read'] as const;
+const MCP_ADMIN_SCOPES = ['testcases:read', 'testcases:write'] as const;
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 const AUTHORIZATION_CODE_TTL_SECONDS = 10 * 60;
@@ -190,13 +197,15 @@ export class McpOAuthService
       return redirect.toString();
     }
 
-    await this.assertActiveUser(userId);
+    const user = await this.assertActiveUser(userId);
+    const scopes = this.parseScopes(input.scope);
+    this.assertScopesAllowedForRole(user.role, scopes);
     const code = randomBytes(32).toString('base64url');
     const record: AuthorizationCodeRecord = {
       clientId: input.client_id,
       redirectUri: input.redirect_uri,
       resource: input.resource,
-      scopes: this.parseScopes(input.scope),
+      scopes,
       codeChallenge: input.code_challenge,
       userId,
     };
@@ -273,7 +282,8 @@ export class McpOAuthService
     ) {
       throw this.oauthRequestError('invalid_grant');
     }
-    await this.assertGrantUser(record.userId);
+    const user = await this.assertGrantUser(record.userId);
+    this.assertScopesAllowedForRole(user.role, record.scopes);
     return this.issueTokens(
       record.clientId,
       record.userId,
@@ -301,7 +311,7 @@ export class McpOAuthService
     ) {
       throw this.oauthRequestError('invalid_grant');
     }
-    await this.assertGrantUser(record.userId);
+    const user = await this.assertGrantUser(record.userId);
     if (input.scope !== undefined && typeof input.scope !== 'string') {
       throw this.oauthRequestError('invalid_scope');
     }
@@ -309,6 +319,7 @@ export class McpOAuthService
       input.scope === undefined ? record.scopes : this.parseScopes(input.scope);
     if (requested.some((scope) => !record.scopes.includes(scope)))
       throw this.oauthRequestError('invalid_scope');
+    this.assertScopesAllowedForRole(user.role, requested);
     return this.issueTokens(clientId, record.userId, resource, requested);
   }
 
@@ -382,10 +393,27 @@ export class McpOAuthService
     }
   }
 
+  private assertScopesAllowedForRole(
+    role: string,
+    scopes: readonly string[],
+  ): void {
+    if (
+      role !== 'ADMIN' &&
+      scopes.some((scope) =>
+        MCP_ADMIN_SCOPES.includes(scope as (typeof MCP_ADMIN_SCOPES)[number]),
+      )
+    ) {
+      throw this.oauthRequestError(
+        'invalid_scope',
+        'Testcase scopes require an ADMIN account.',
+      );
+    }
+  }
+
   private parseScopes(value?: string): string[] {
     const scopes = value
       ? [...new Set(value.split(/\s+/).filter(Boolean))]
-      : [...MCP_SCOPES];
+      : [...MCP_DEFAULT_SCOPES];
     if (
       scopes.length === 0 ||
       scopes.some(

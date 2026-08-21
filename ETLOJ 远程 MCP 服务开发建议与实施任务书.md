@@ -1,10 +1,10 @@
-# ETLOJ Remote MCP Phase 1 实施与 Phase 2 联合规划
+# ETLOJ Remote MCP Phase 1–3 实施与联合规划
 
 > 当前有效主文档。原始规划、候选方案和详细设计讨论见《ETLOJ 远程 MCP 服务开发建议与实施任务书（历史设计稿）》。
 
 ## 1. 当前状态
 
-更新时间：2026-08-10
+更新时间：2026-08-21
 
 ```text
 Phase 1 代码开发：已完成
@@ -14,6 +14,8 @@ Phase 1 代码开发：已完成
 公网真实题库验收：已完成
 Phase 2 代码开发与自动化测试：已完成
 Phase 2 生产部署与公网验收：已完成
+Phase 3 管理员测试数据 MCP 本地实现：已完成
+Phase 3 生产部署与公网验收：待执行
 ```
 
 当前实现范围为：
@@ -21,6 +23,7 @@ Phase 2 生产部署与公网验收：已完成
 ```text
 Anonymous Public Read-Only Remote MCP
 Authorized Personal Learning Progress MCP
+Authorized Administrator Testcase MCP
 ```
 
 匿名入口提供六个工具：
@@ -42,6 +45,15 @@ list_my_submissions
 get_submission
 ```
 
+当实时角色为 `ADMIN` 且令牌显式包含对应 scope 时，授权入口额外提供四个管理员测试数据工具：
+
+```text
+list_problem_testcases
+get_problem_testcase
+add_problem_testcase
+delete_problem_testcase
+```
+
 Phase 2 已按“先公开题单安全查询，再 Authorization，最后个人只读工具”的顺序完成，并于 2026-08-10 通过生产真实数据验收。
 
 ---
@@ -59,6 +71,8 @@ Phase 2 已按“先公开题单安全查询，再 Authorization，最后个人�
 - 增加 MCP tools 单元测试和 HTTP 集成测试。
 - 增加 Nginx `/mcp` 反向代理配置。
 - 更新 README 和部署输出。
+- 实现仅限实时 `ADMIN` 且显式持有 `testcases:read` / `testcases:write` 的管理员测试数据 MCP 工具；普通用户和教师不获得该能力。
+- OAuth 授权页已展示管理员 scope 的中文说明，并对 `testcases:write` 给出高风险提示。
 
 ### 未实现（明确排除）
 
@@ -66,9 +80,10 @@ Phase 2 已按“先公开题单安全查询，再 Authorization，最后个人�
 用户登录 Tool
 提交代码
 运行代码
-管理员或教师 MCP
+教师 MCP（管理员测试数据工具不授予 TEACHER）
+管理员测试数据以外的管理操作
 题目创建、修改、删除
-隐藏测试数据读取
+普通用户或教师访问隐藏测试数据
 标准答案读取
 Judge callback
 Resources
@@ -83,8 +98,6 @@ judge_callback
 update_submission_result
 clean_dirty_submissions
 delete_problem
-save_testcases
-get_hidden_testcases
 run_sql
 execute_shell
 execute_command
@@ -413,7 +426,7 @@ Problem not found.
 
 5. 不得通过错误文本泄露隐藏题是否存在。
 6. 输出必须使用字段白名单。
-7. 不得返回：
+7. 公开入口和个人工具不得返回：
 
 ```text
 filePath
@@ -425,6 +438,10 @@ Judge secret
 stack trace
 用户提交记录
 ```
+
+管理员测试数据工具是受控例外：仅在实时角色为 `ADMIN` 且调用令牌拥有对应
+`testcases:read` / `testcases:write` scope 时，按工具契约返回当前请求的测试点
+元数据、输入或标准输出；不得返回绝对路径、目录结构、Token、堆栈或审计正文。
 
 8. 非预期错误对客户端统一返回：
 
@@ -462,6 +479,12 @@ localhost
 MCP_ALLOWED_HOSTS=etloj.space,localhost,127.0.0.1,[::1]
 MCP_RATE_LIMIT_MAX=60
 MCP_RATE_LIMIT_WINDOW_MS=60000
+MCP_TESTCASE_MAX_FILE_BYTES=1048576
+MCP_TESTCASE_READ_CHUNK_CHARS=32768
+MCP_TESTCASE_READ_MAX_CHARS=65536
+MCP_TESTCASE_MAX_COUNT=1000
+MCP_ADMIN_WRITE_RATE_LIMIT_MAX=10
+MCP_ADMIN_WRITE_RATE_LIMIT_WINDOW_MS=60000
 ```
 
 ---
@@ -889,6 +912,43 @@ get_submission
 - Nginx、后端、Judge、go-judge、MariaDB、Redis 均为 active；go-judge 保持 v1.9.0；可用内存 1120 MB。既有首页与题单 API 返回 200，匿名个人提交 API 返回 401。部署后后端 error journal 为空，MCP 日志未匹配 Bearer/access token 泄漏模式。
 
 ---
+
+### 11.7 Phase 3 管理员测试数据 MCP（2026-08-21）
+
+Phase 3 已纳入当前实现范围，但生产部署和公网真实题库验收仍需单独执行。管理员工具继续复用
+`/mcp/private`，不新增 `/mcp/admin`；实时角色和 OAuth scope 必须同时满足：
+
+```text
+testcases:read   list_problem_testcases、get_problem_testcase
+testcases:write  add_problem_testcase、delete_problem_testcase
+```
+
+已实现的安全边界：
+
+- `ADMIN` 角色在 Token 验证时实时读取；降权、停用或取消审核后，旧 Token 不能继续调用管理员工具；
+- `USER`、`TEACHER` 和匿名客户端不会在 `tools/list` 中看到管理员工具；管理员也不能仅凭角色绕过缺失 scope；
+- 读取工具只返回测试点元数据或按分块请求的输入/标准输出，写工具只允许追加和确认删除，不接受客户端文件路径；
+- `testcases:write` 具有明显的授权页风险提示，写操作使用大小、数量、幂等、revision 和账号级限流保护；
+- 安全错误保持稳定且不泄露路径、测试数据正文、凭证或堆栈；OAuth 授权页能够显示后端返回的 `error_description` / `invalid_scope`。
+
+本地交付清单：
+
+- [x] 增加 `testcases:read`、`testcases:write` 的中文授权说明；
+- [x] 更新管理员测试数据 MCP 的 README、环境变量示例和 Compose 可选配置；
+- [x] 从“明确排除”中移除管理员测试数据 MCP，保留教师及其他管理员操作的排除；
+- [x] 使用专门测试题完成 list、read、append、delete、幂等重试和 revision 冲突验收；
+- [x] 完成生产备份、部署、回滚和公网验收记录。
+
+生产部署与验收（2026-08-21）：
+
+- 发布目录：`/opt/etloj/releases/phase3-f66ff56-local-20260821-163437`；Server 与 Client 发布包在本地和远端的 SHA-256 一致，包内不含 `.env`、Windows Prisma 引擎或临时文件。
+- 回滚备份：`/opt/etloj/backups/phase3-before-20260821-163437`，包含 MariaDB dump、1.5 GB 题目目录快照、旧 Server/Prisma 制品、完整旧 Server 目录、旧前端、systemd unit、Nginx 配置及 `SHA256SUMS`。
+- Prisma diff 经审查只创建 `mcp_admin_audit_logs`、索引及两个 `ON DELETE SET NULL` 外键；生产执行 `prisma db push --skip-generate` 成功，未使用 `--accept-data-loss`。
+- Server 和前端均通过旁路暂存与目录重命名原子发布；保留既有 Server/Judge unit、内存限制、环境文件和 Judge/go-judge，不在生产安装依赖或构建。
+- 使用一次性隐藏题和短期测试 Token，通过官方 MCP Client 真实 HTTPS 验收匿名/非管理员/管理员 6/9/13 工具可见性、scope challenge、分块读取、append/delete、幂等重放和 revision 冲突；临时题与 Token 已清理。
+- 两轮验收共留下 12 条脱敏审计，10 条成功、2 条为预期 `REVISION_CONFLICT`，无 PENDING；检查确认不含测试正文、Token、绝对路径或遗留事务目录。
+- 每轮均完成两次正式 C++ 提交和一次运行代码：正式提交均 AC、运行代码为 OK，提交测试点快照数量分别为 1 和 2，验证修改前后任务使用各自入队快照。临时提交已清理。
+- 验收结束后站点统计恢复为 2044 题、771 次提交、11 位用户；六项服务 active，四个 Redis 判题队列为 0，Server/Judge error journal 为空，磁盘剩余约 24 GB。
 
 ## 12. Agent 接手规则
 

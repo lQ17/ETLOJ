@@ -15,7 +15,45 @@ const { Title, Paragraph, Text } = Typography;
 const scopeDescriptions: Record<string, string> = {
   "problems:read": "读取你对公开题目的完成状态",
   "submissions:read": "读取你自己的公开题提交摘要（不返回源代码正文）",
+  "testcases:read": "管理员读取题目的测试点元数据、输入和标准输出",
+  "testcases:write": "管理员向题目追加或删除测试点",
 };
+
+function getApiErrorMessage(error: unknown): string | null {
+  if (typeof error === "string" && error.trim()) return error;
+  if (!error || typeof error !== "object") return null;
+
+  const record = error as Record<string, unknown>;
+  const response = record.response;
+  if (response && typeof response === "object") {
+    const responseData = (response as Record<string, unknown>).data;
+    const responseMessage = getApiErrorMessage(responseData);
+    if (responseMessage) return responseMessage;
+  }
+
+  const message = record.message;
+  if (typeof message === "string" && message.trim()) return message;
+  if (Array.isArray(message)) {
+    const messages = message.filter(
+      (item): item is string => typeof item === "string" && item.trim().length > 0,
+    );
+    if (messages.length > 0) return messages.join("；");
+  }
+  if (message && typeof message === "object") {
+    const nestedMessage = getApiErrorMessage(message);
+    if (nestedMessage) return nestedMessage;
+  }
+
+  // OAuth errors use { error, error_description } rather than Nest's usual
+  // { message } shape. Prefer the safe, human-readable description when it is
+  // present, and retain the protocol code as a fallback for security failures.
+  const description = record.error_description;
+  if (typeof description === "string" && description.trim()) return description;
+  const code = record.error;
+  if (typeof code === "string" && code.trim()) return code;
+  if (code && typeof code === "object") return getApiErrorMessage(code);
+  return null;
+}
 
 export default function McpAuthorizePage() {
   const [params] = useSearchParams();
@@ -27,6 +65,7 @@ export default function McpAuthorizePage() {
         .filter(Boolean),
     [params],
   );
+  const hasWriteScope = scopes.includes("testcases:write");
 
   const decide = async (approved: boolean) => {
     setLoading(true);
@@ -48,13 +87,7 @@ export default function McpAuthorizePage() {
       const result = await mcpOAuthApi.authorize(body);
       window.location.assign(result.redirect_uri);
     } catch (error: unknown) {
-      const message =
-        error &&
-        typeof error === "object" &&
-        "message" in error &&
-        typeof error.message === "string"
-          ? error.message
-          : "授权请求无效或已失效";
+      const message = getApiErrorMessage(error) || "授权请求无效或已失效";
       Message.error(message);
       setLoading(false);
     }
@@ -71,9 +104,25 @@ export default function McpAuthorizePage() {
             <Paragraph>
               MCP 客户端{" "}
               <Text code>{params.get("client_id") || "未知客户端"}</Text>{" "}
-              请求以你的身份读取以下学习数据。
+              请求使用你的 ETLOJ 身份访问以下个人学习或管理员数据。
             </Paragraph>
           </div>
+          {hasWriteScope && (
+            <Card
+              size="small"
+              style={{
+                borderColor: "var(--color-warning-6)",
+                backgroundColor: "var(--color-warning-light-1)",
+              }}
+            >
+              <Text bold style={{ color: "var(--color-warning-6)" }}>
+                高风险管理员写权限
+              </Text>
+              <Paragraph type="secondary" style={{ margin: "6px 0 0" }}>
+                此权限允许客户端通过 MCP 追加或删除题目测试点，可能直接影响后续判题结果。仅在确认客户端可信且确有需要时授权。
+              </Paragraph>
+            </Card>
+          )}
           <Space direction="vertical" style={{ width: "100%" }}>
             {scopes.map((scope) => (
               <Card key={scope} size="small">
@@ -85,7 +134,7 @@ export default function McpAuthorizePage() {
             ))}
           </Space>
           <Paragraph type="secondary">
-            授权令牌只绑定到 ETLOJ 个人 MCP
+            授权令牌只绑定到 ETLOJ 私有 MCP
             地址；客户端不能选择其他用户。你可撤销令牌，访问令牌过期后需刷新或重新授权。
           </Paragraph>
           <Space style={{ justifyContent: "flex-end", width: "100%" }}>

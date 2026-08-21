@@ -13,6 +13,8 @@ import { McpService } from './mcp.service';
 import { McpOAuthService } from './auth/mcp-oauth.service';
 import type { AuthInfo, OAuthMetadata } from '@modelcontextprotocol/server';
 import { OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
+import { TestcaseStoreService } from '../testcase/testcase-store.service';
+import { McpAdminAuditService } from './admin-audit.service';
 
 describe('Remote MCP HTTP endpoint', () => {
   let httpServer: Server;
@@ -51,6 +53,11 @@ describe('Remote MCP HTTP endpoint', () => {
       }),
       findOne: jest.fn().mockResolvedValue(problem),
       getMarkdown: jest.fn().mockResolvedValue(problem.markdown),
+      findAdminProblemReference: jest.fn().mockResolvedValue({
+        id: problem.id,
+        slug: problem.slug,
+        title: problem.title,
+      }),
     } as unknown as ProblemService;
     const tagService = {
       findPublicTags: jest
@@ -156,22 +163,120 @@ describe('Remote MCP HTTP endpoint', () => {
           token === 'expired'
             ? Math.floor(Date.now() / 1000) - 10
             : Math.floor(Date.now() / 1000) + 3600;
+        const admin = token === 'admin' || token === 'admin-limited';
         return Promise.resolve({
           token,
           clientId: 'test-client',
           scopes:
-            token === 'limited'
+            token === 'limited' || token === 'admin-limited'
               ? ['problems:read']
-              : ['problems:read', 'submissions:read'],
+              : admin
+                ? [
+                    'problems:read',
+                    'submissions:read',
+                    'testcases:read',
+                    'testcases:write',
+                  ]
+                : ['problems:read', 'submissions:read'],
           expiresAt,
           resource: new URL('http://127.0.0.1/mcp/private'),
-          extra: { userId: 42, username: 'teacher', role: 'TEACHER' },
+          extra: {
+            userId: 42,
+            username: admin ? 'admin' : 'teacher',
+            role: admin ? 'ADMIN' : 'TEACHER',
+          },
         });
       }),
     } as unknown as McpOAuthService;
 
     const app = express();
     app.use(express.json());
+    const testcaseStore = {
+      scan: jest.fn().mockResolvedValue({
+        testcaseCount: 1,
+        revision: 'a'.repeat(64),
+        valid: true,
+        anomalies: [],
+        items: [
+          {
+            index: 1,
+            inputBytes: 2,
+            outputBytes: 2,
+            inputSha256: 'b'.repeat(64),
+            outputSha256: 'c'.repeat(64),
+          },
+        ],
+      }),
+      readChunk: jest.fn().mockResolvedValue({
+        index: 1,
+        revision: 'a'.repeat(64),
+        input: {
+          content: 'in',
+          offset: 0,
+          nextOffset: null,
+          totalChars: 2,
+          totalBytes: 2,
+          sha256: 'b'.repeat(64),
+          complete: true,
+        },
+        expectedOutput: {
+          content: 'ok',
+          offset: 0,
+          nextOffset: null,
+          totalChars: 2,
+          totalBytes: 2,
+          sha256: 'c'.repeat(64),
+          complete: true,
+        },
+      }),
+      append: jest.fn().mockResolvedValue({
+        addedIndex: 2,
+        testcaseCount: 2,
+        previousRevision: 'a'.repeat(64),
+        revision: 'd'.repeat(64),
+      }),
+      deleteAndRenumber: jest.fn().mockResolvedValue({
+        testcaseCount: 0,
+        previousRevision: 'a'.repeat(64),
+        revision: 'e'.repeat(64),
+        renumbered: [],
+      }),
+    } as unknown as TestcaseStoreService;
+    const auditRecords: Array<Record<string, any>> = [];
+    const audit = {
+      recordReadSuccess: jest.fn().mockResolvedValue({ id: 1 }),
+      recordReadFailure: jest.fn().mockResolvedValue({ id: 1 }),
+      findWriteByOperationId: jest.fn(
+        (actorUserId: number, operationId: string) =>
+          Promise.resolve(
+            auditRecords.find(
+              (record) =>
+                record.actorUserId === actorUserId &&
+                record.operationId === operationId,
+            ) ?? null,
+          ),
+      ),
+      begin: jest.fn((input: Record<string, unknown>) => {
+        const record = {
+          id: auditRecords.length + 1,
+          ...input,
+          testcaseIndex: input.testcaseIndex ?? null,
+          inputSha256: input.inputSha256 ?? null,
+          outputSha256: input.outputSha256 ?? null,
+          success: null,
+          resultJson: null,
+        };
+        auditRecords.push(record);
+        return Promise.resolve(record);
+      }),
+      completeSuccess: jest.fn((id: number, resultJson: unknown) => {
+        const record = auditRecords.find((item) => item.id === id)!;
+        record.success = true;
+        record.resultJson = resultJson;
+        return Promise.resolve(record);
+      }),
+      completeFailure: jest.fn().mockResolvedValue({ id: 2 }),
+    } as unknown as McpAdminAuditService;
     mountMcpEndpoint(
       app,
       new McpService(
@@ -179,6 +284,8 @@ describe('Remote MCP HTTP endpoint', () => {
         problemListService,
         submissionService as unknown as SubmissionService,
         tagService,
+        testcaseStore,
+        audit,
       ),
       oauthService,
     );
@@ -261,7 +368,12 @@ describe('Remote MCP HTTP endpoint', () => {
     expect(await metadata.json()).toEqual(
       expect.objectContaining({
         resource: 'http://127.0.0.1/mcp/private',
-        scopes_supported: ['problems:read', 'submissions:read'],
+        scopes_supported: [
+          'problems:read',
+          'submissions:read',
+          'testcases:read',
+          'testcases:write',
+        ],
       }),
     );
 
@@ -361,6 +473,114 @@ describe('Remote MCP HTTP endpoint', () => {
         42,
         99,
       );
+    } finally {
+      await limitedClient.close();
+    }
+  });
+
+  it('shows four administrator tools only for the real-time ADMIN role', async () => {
+    const adminTransport = new StreamableHTTPClientTransport(
+      new URL(`${baseUrl}/mcp/private`),
+      { requestInit: { headers: { Authorization: 'Bearer admin' } } },
+    );
+    const adminClient = new Client({ name: 'admin-test', version: '1.0.0' });
+    await adminClient.connect(adminTransport);
+    try {
+      const tools = await adminClient.listTools();
+      expect(tools.tools).toHaveLength(13);
+      expect(tools.tools.map((tool) => tool.name)).toEqual(
+        expect.arrayContaining([
+          'list_problem_testcases',
+          'get_problem_testcase',
+          'add_problem_testcase',
+          'delete_problem_testcase',
+        ]),
+      );
+      const listed = await adminClient.callTool({
+        name: 'list_problem_testcases',
+        arguments: { problem: 'sample-public' },
+      });
+      expect(listed.structuredContent).toEqual(
+        expect.objectContaining({ testcaseCount: 1, valid: true }),
+      );
+      const read = await adminClient.callTool({
+        name: 'get_problem_testcase',
+        arguments: { problem: '7', index: 1, maxCharsPerField: 128 },
+      });
+      expect(read.structuredContent).toEqual(
+        expect.objectContaining({
+          index: 1,
+          input: expect.objectContaining({ content: 'in' }),
+          expectedOutput: expect.objectContaining({ content: 'ok' }),
+        }),
+      );
+
+      const addArguments = {
+        problem: '7',
+        input: 'new input',
+        expectedOutput: 'new output',
+        expectedRevision: 'a'.repeat(64),
+        operationId: '11111111-1111-4111-8111-111111111111',
+      };
+      const added = await adminClient.callTool({
+        name: 'add_problem_testcase',
+        arguments: addArguments,
+      });
+      expect(added.structuredContent).toEqual(
+        expect.objectContaining({ addedIndex: 2, replayed: false }),
+      );
+      const replayed = await adminClient.callTool({
+        name: 'add_problem_testcase',
+        arguments: addArguments,
+      });
+      expect(replayed.structuredContent).toEqual(
+        expect.objectContaining({ addedIndex: 2, replayed: true }),
+      );
+
+      const deleted = await adminClient.callTool({
+        name: 'delete_problem_testcase',
+        arguments: {
+          problem: '7',
+          index: 1,
+          expectedRevision: 'a'.repeat(64),
+          operationId: '22222222-2222-4222-8222-222222222222',
+          confirm: true,
+        },
+      });
+      expect(deleted.structuredContent).toEqual(
+        expect.objectContaining({
+          deletedIndex: 1,
+          replayed: false,
+          testcaseCount: 0,
+          warning: expect.any(String),
+        }),
+      );
+    } finally {
+      await adminClient.close();
+    }
+  });
+
+  it('returns an OAuth scope challenge before an admin testcase call', async () => {
+    const limitedTransport = new StreamableHTTPClientTransport(
+      new URL(`${baseUrl}/mcp/private`),
+      {
+        requestInit: {
+          headers: { Authorization: 'Bearer admin-limited' },
+        },
+      },
+    );
+    const limitedClient = new Client({
+      name: 'admin-limited-test',
+      version: '1.0.0',
+    });
+    await limitedClient.connect(limitedTransport);
+    try {
+      await expect(
+        limitedClient.callTool({
+          name: 'list_problem_testcases',
+          arguments: { problem: 'sample-public' },
+        }),
+      ).rejects.toThrow();
     } finally {
       await limitedClient.close();
     }

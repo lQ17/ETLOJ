@@ -25,6 +25,9 @@ export function mountMcpEndpoint(
   const privateMcpHandler = toNodeHandler(
     createMcpHandler(() => mcpService.createServer(true)),
   );
+  const adminPrivateMcpHandler = toNodeHandler(
+    createMcpHandler(() => mcpService.createServer(true, true)),
+  );
   const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(
     new URL(oauthService.resourceUrl),
   );
@@ -40,8 +43,13 @@ export function mountMcpEndpoint(
   const protectedResourceMetadata = buildOAuthProtectedResourceMetadata({
     oauthMetadata: oauthService.metadata,
     resourceServerUrl: new URL(oauthService.resourceUrl),
-    scopesSupported: ['problems:read', 'submissions:read'],
-    resourceName: 'ETLOJ personal learning progress',
+    scopesSupported: [
+      'problems:read',
+      'submissions:read',
+      'testcases:read',
+      'testcases:write',
+    ],
+    resourceName: 'ETLOJ learning progress and administrator testcases',
     serviceDocumentationUrl: new URL(
       `${oauthService.publicBaseUrl}/#mcp-guide-title`,
     ),
@@ -77,7 +85,11 @@ export function mountMcpEndpoint(
         resourceMetadataUrl,
       });
       (req as Request & { auth: typeof auth }).auth = auth;
-      await privateMcpHandler(req, res, req.body);
+      const handler =
+        auth.extra?.role === 'ADMIN'
+          ? adminPrivateMcpHandler
+          : privateMcpHandler;
+      await handler(req, res, req.body);
     } catch (error) {
       await sendWebResponse(
         res,
@@ -137,6 +149,16 @@ function requiredScopesForRequest(body: unknown): string[] {
     request.params?.name === 'get_submission'
   )
     return ['submissions:read'];
+  if (
+    request.params?.name === 'list_problem_testcases' ||
+    request.params?.name === 'get_problem_testcase'
+  )
+    return ['testcases:read'];
+  if (
+    request.params?.name === 'add_problem_testcase' ||
+    request.params?.name === 'delete_problem_testcase'
+  )
+    return ['testcases:write'];
   return [];
 }
 

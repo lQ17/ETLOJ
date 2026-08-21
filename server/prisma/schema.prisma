@@ -61,32 +61,33 @@ enum AnnouncementStatus {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  username  String    @unique @db.VarChar(50)
-  email     String?   @unique @db.VarChar(100)
-  phone     String?   @unique @db.VarChar(20)
-  password  String    @db.VarChar(255)
-  avatar    String?   @db.LongText
-  signature String?   @db.VarChar(200)
-  role      Role      @default(USER)
-  status    UserStatus @default(APPROVED)
-  remark    String?   @db.VarChar(500)
-  rejectReason String? @map("reject_reason") @db.VarChar(500)
-  isActive      Boolean   @default(true) @map("is_active")
-  aiDailyLimit  Int?      @map("ai_daily_limit")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id           Int        @id @default(autoincrement())
+  username     String     @unique @db.VarChar(50)
+  email        String?    @unique @db.VarChar(100)
+  phone        String?    @unique @db.VarChar(20)
+  password     String     @db.VarChar(255)
+  avatar       String?    @db.LongText
+  signature    String?    @db.VarChar(200)
+  role         Role       @default(USER)
+  status       UserStatus @default(APPROVED)
+  remark       String?    @db.VarChar(500)
+  rejectReason String?    @map("reject_reason") @db.VarChar(500)
+  isActive     Boolean    @default(true) @map("is_active")
+  aiDailyLimit Int?       @map("ai_daily_limit")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  submissions Submission[]
-  contestRanks ContestRank[]
-  tagRecords UserTagRecord[]
-  problemLists ProblemList[]
-  solutions  Solution[]
-  announcements Announcement[]
-  aiConversations AiConversation[]
-  aiUsageLogs AiUsageLog[]
-  feedbacksAsStudent ClassFeedback[] @relation("FeedbackStudent")
-  feedbacksAsCreator ClassFeedback[] @relation("FeedbackCreator")
+  submissions        Submission[]
+  contestRanks       ContestRank[]
+  tagRecords         UserTagRecord[]
+  problemLists       ProblemList[]
+  solutions          Solution[]
+  announcements      Announcement[]
+  aiConversations    AiConversation[]
+  aiUsageLogs        AiUsageLog[]
+  feedbacksAsStudent ClassFeedback[]    @relation("FeedbackStudent")
+  feedbacksAsCreator ClassFeedback[]    @relation("FeedbackCreator")
+  mcpAdminAuditLogs  McpAdminAuditLog[] @relation("McpAdminAuditActor")
 
   @@map("users")
 }
@@ -105,12 +106,13 @@ model Problem {
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
-  submissions    Submission[]
-  contestProblems ContestProblem[]
-  problemLists   ProblemListItem[]
-  problemTags    ProblemTag[]
-  solutions      Solution[]
-  aiConversations AiConversation[]
+  submissions       Submission[]
+  contestProblems   ContestProblem[]
+  problemLists      ProblemListItem[]
+  problemTags       ProblemTag[]
+  solutions         Solution[]
+  aiConversations   AiConversation[]
+  mcpAdminAuditLogs McpAdminAuditLog[]
 
   @@index([isPublic, difficulty])
   @@map("problems")
@@ -151,8 +153,8 @@ model Submission {
   score      Int?             @map("score")
   createdAt  DateTime         @default(now()) @map("created_at")
 
-  problem   Problem             @relation(fields: [problemId], references: [id], onDelete: Restrict)
-  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  problem   Problem              @relation(fields: [problemId], references: [id], onDelete: Restrict)
+  user      User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   testcases SubmissionTestCase[]
 
   @@index([problemId])
@@ -179,14 +181,14 @@ model SubmissionTestCase {
 }
 
 model Contest {
-  id          Int        @id @default(autoincrement())
-  title       String     @db.VarChar(200)
-  description String?    @db.Text
+  id          Int         @id @default(autoincrement())
+  title       String      @db.VarChar(200)
+  description String?     @db.Text
   mode        ContestMode @default(ACM)
-  startTime   DateTime   @map("start_time")
-  endTime     DateTime   @map("end_time")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+  startTime   DateTime    @map("start_time")
+  endTime     DateTime    @map("end_time")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
 
   problems ContestProblem[]
   ranks    ContestRank[]
@@ -208,11 +210,11 @@ model ContestProblem {
 }
 
 model ContestRank {
-  id        Int @id @default(autoincrement())
-  contestId Int @map("contest_id")
+  id        Int  @id @default(autoincrement())
+  contestId Int  @map("contest_id")
   userId    Int? @map("user_id")
-  score     Int @default(0)
-  penalty   Int @default(0)
+  score     Int  @default(0)
+  penalty   Int  @default(0)
 
   contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -244,7 +246,7 @@ model ProblemList {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  creator User?            @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  creator User?             @relation(fields: [creatorId], references: [id], onDelete: SetNull)
   items   ProblemListItem[]
 
   @@index([creatorId])
@@ -271,9 +273,9 @@ model Solution {
   authorId     Int?           @map("author_id")
   content      String         @db.LongText
   status       SolutionStatus @default(PENDING)
-  rejectReason String?        @db.Text            @map("reject_reason")
-  createdAt    DateTime       @default(now())     @map("created_at")
-  updatedAt    DateTime       @updatedAt          @map("updated_at")
+  rejectReason String?        @map("reject_reason") @db.Text
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
 
   problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
   author  User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
@@ -285,15 +287,15 @@ model Solution {
 }
 
 model Announcement {
-  id        Int               @id @default(autoincrement())
-  title     String            @db.VarChar(200)
-  summary   String            @db.VarChar(500)
-  content   String            @db.LongText
-  isPinned  Boolean           @default(false) @map("is_pinned")
+  id        Int                @id @default(autoincrement())
+  title     String             @db.VarChar(200)
+  summary   String             @db.VarChar(500)
+  content   String             @db.LongText
+  isPinned  Boolean            @default(false) @map("is_pinned")
   status    AnnouncementStatus @default(DRAFT)
-  authorId  Int?              @map("author_id")
-  createdAt DateTime          @default(now()) @map("created_at")
-  updatedAt DateTime          @updatedAt @map("updated_at")
+  authorId  Int?               @map("author_id")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
 
   author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
@@ -310,13 +312,13 @@ model AiConversation {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem  Problem     @relation(fields: [problemId], references: [id], onDelete: Cascade)
   messages AiMessage[]
 
+  @@unique([userId, problemId])
   @@index([userId])
   @@index([problemId])
-  @@unique([userId, problemId])
   @@map("ai_conversations")
 }
 
@@ -362,21 +364,21 @@ model AiPromptConfig {
 }
 
 model AiUsageLog {
-  id           Int       @id @default(autoincrement())
-  userId       Int       @map("user_id")
-  providerId   Int?      @map("provider_id")
-  providerName String    @map("provider_name") @db.VarChar(100)
-  modelName    String    @map("model_name") @db.VarChar(100)
-  inputTokens  Int       @default(0) @map("input_tokens")
-  outputTokens Int       @default(0) @map("output_tokens")
-  totalTokens  Int       @default(0) @map("total_tokens")
-  cost         Float     @default(0)
-  timeUsedMs   Int       @default(0) @map("time_used_ms")
-  status       Int       @default(200)
-  source       String    @default("chat") @db.VarChar(50)
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  providerId   Int?     @map("provider_id")
+  providerName String   @map("provider_name") @db.VarChar(100)
+  modelName    String   @map("model_name") @db.VarChar(100)
+  inputTokens  Int      @default(0) @map("input_tokens")
+  outputTokens Int      @default(0) @map("output_tokens")
+  totalTokens  Int      @default(0) @map("total_tokens")
+  cost         Float    @default(0)
+  timeUsedMs   Int      @default(0) @map("time_used_ms")
+  status       Int      @default(200)
+  source       String   @default("chat") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider AiProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -386,7 +388,6 @@ model AiUsageLog {
   @@index([createdAt])
   @@map("ai_usage_logs")
 }
-
 
 model ClassFeedback {
   id          Int       @id @default(autoincrement())
@@ -413,4 +414,47 @@ model ClassFeedback {
   @@index([creatorId])
   @@index([createdAt])
   @@map("class_feedbacks")
+}
+
+/// Persistent audit records for administrator-only MCP testcase operations.
+/// A nullable success value represents a write which is still PENDING. Read
+/// records keep operationId null, so the actor/operation uniqueness constraint
+/// applies only to writes (MySQL permits multiple NULL values in a unique key).
+model McpAdminAuditLog {
+  id                    Int       @id @default(autoincrement())
+  actorUserId           Int?      @map("actor_user_id")
+  actorUsernameSnapshot String?   @map("actor_username_snapshot") @db.VarChar(50)
+  clientId              String?   @map("client_id") @db.VarChar(255)
+  requestId             String?   @map("request_id") @db.VarChar(255)
+  operationId           String?   @map("operation_id") @db.VarChar(100)
+  toolName              String    @map("tool_name") @db.VarChar(100)
+  action                String    @db.VarChar(50)
+  problemId             Int?      @map("problem_id")
+  problemSlugSnapshot   String?   @map("problem_slug_snapshot") @db.VarChar(100)
+  testcaseIndex         Int?      @map("testcase_index")
+  beforeCount           Int?      @map("before_count")
+  afterCount            Int?      @map("after_count")
+  inputBytes            Int?      @map("input_bytes")
+  outputBytes           Int?      @map("output_bytes")
+  inputSha256           String?   @map("input_sha256") @db.Char(64)
+  outputSha256          String?   @map("output_sha256") @db.Char(64)
+  contentOffset         Int?      @map("content_offset")
+  contentLength         Int?      @map("content_length")
+  success               Boolean?
+  errorCode             String?   @map("error_code") @db.VarChar(100)
+  resultJson            Json?     @map("result_json")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  completedAt           DateTime? @map("completed_at")
+
+  actor   User?    @relation("McpAdminAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  problem Problem? @relation(fields: [problemId], references: [id], onDelete: SetNull)
+
+  @@unique([actorUserId, operationId])
+  @@index([actorUserId, createdAt])
+  @@index([problemId, createdAt])
+  @@index([success, createdAt])
+  @@index([operationId])
+  @@index([toolName, createdAt])
+  @@index([action, createdAt])
+  @@map("mcp_admin_audit_logs")
 }

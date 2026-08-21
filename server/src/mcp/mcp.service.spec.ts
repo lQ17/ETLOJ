@@ -5,6 +5,8 @@ import { ProblemListService } from '../problem-list/problem-list.service';
 import { SubmissionService } from '../submission/submission.service';
 import { TagService } from '../tag/tag.service';
 import { McpService } from './mcp.service';
+import { TestcaseStoreService } from '../testcase/testcase-store.service';
+import { McpAdminAuditService } from './admin-audit.service';
 
 describe('McpService problem tools', () => {
   const publicProblem = {
@@ -103,6 +105,8 @@ describe('McpService problem tools', () => {
       problemListService as unknown as ProblemListService,
       submissionService as unknown as SubmissionService,
       tagService as unknown as TagService,
+      {} as TestcaseStoreService,
+      {} as McpAdminAuditService,
     ).createServer();
     const [clientTransport, serverTransport] =
       InMemoryTransport.createLinkedPair();
