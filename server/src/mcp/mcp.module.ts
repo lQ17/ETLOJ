@@ -8,6 +8,8 @@ import { McpOAuthController } from './auth/mcp-oauth.controller';
 import { McpOAuthService } from './auth/mcp-oauth.service';
 import { TestcaseModule } from '../testcase/testcase.module';
 import { McpAdminAuditModule } from './admin-audit.module';
+import { McpAdminController } from './mcp-admin.controller';
+import { McpRateLimitConfigService } from './mcp-rate-limit-config.service';
 
 @Module({
   imports: [
@@ -18,8 +20,8 @@ import { McpAdminAuditModule } from './admin-audit.module';
     TestcaseModule,
     McpAdminAuditModule,
   ],
-  controllers: [McpOAuthController],
-  providers: [McpService, McpOAuthService],
+  controllers: [McpOAuthController, McpAdminController],
+  providers: [McpService, McpOAuthService, McpRateLimitConfigService],
   exports: [McpService, McpOAuthService],
 })
 export class McpModule {}

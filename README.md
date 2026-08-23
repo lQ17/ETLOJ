@@ -68,6 +68,8 @@ PROBLEMS_DIR=../problems
 CLIENT_ORIGIN=http://localhost:5173
 MCP_PUBLIC_BASE_URL=http://localhost:3000
 MCP_ALLOWED_HOSTS=localhost,127.0.0.1,[::1]
+MCP_RATE_LIMIT_MAX=60
+MCP_RATE_LIMIT_WINDOW_MS=60000
 # 管理员测试数据 MCP 的可选安全限制（不填时使用服务端默认值）
 MCP_TESTCASE_MAX_FILE_BYTES=1048576
 MCP_TESTCASE_READ_CHUNK_CHARS=32768
@@ -132,7 +134,7 @@ cp docker/.env.example docker/.env.docker
 mkdir -p data/problems
 ```
 
-编辑 `docker/.env.docker`，替换所有密码和密钥。`MYSQL_PASSWORD` 建议只使用字母、数字、`-` 和 `_`，避免拼入 `DATABASE_URL` 后需要额外编码；部署到域名时，同时修改 `PUBLIC_ORIGIN` 和 `MCP_ALLOWED_HOSTS`。生产 Turnstile 必须换成真实 Secret。管理员测试数据 MCP 的文件大小、读取分块、数量和写入限流也可在此调整；默认值已按保守上限配置，只有在完成安全评审后才应放宽。
+编辑 `docker/.env.docker`，替换所有密码和密钥。`MYSQL_PASSWORD` 建议只使用字母、数字、`-` 和 `_`，避免拼入 `DATABASE_URL` 后需要额外编码；部署到域名时，同时修改 `PUBLIC_ORIGIN` 和 `MCP_ALLOWED_HOSTS`。生产 Turnstile 必须换成真实 Secret。MCP 全局限流与管理员测试数据写入限流可在环境变量中设置初始值，管理员也可在 `/admin` 的“MCP 配额”页即时调整；界面修改值会持久化到 Redis，服务重启后仍然保留。默认值已按保守上限配置，只有在完成安全评审后才应放宽。
 
 ### 2. 构建并初始化
 

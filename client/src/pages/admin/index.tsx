@@ -1,5 +1,5 @@
 import { Tabs, Typography } from "@arco-design/web-react";
-import { IconApps, IconList, IconFile, IconSound, IconUser, IconRobot, IconMessage } from "@arco-design/web-react/icon";
+import { IconApps, IconList, IconFile, IconSound, IconUser, IconRobot, IconMessage, IconSettings } from "@arco-design/web-react/icon";
 import AdminProblemsPage from "./problems";
 import AdminListsPage from "./lists";
 import AdminUsersPage from "./users";
@@ -9,6 +9,7 @@ import AdminFeedbackPage from "./feedback";
 import { useAuthStore } from "../../stores/auth";
 
 import AdminAiPage from "./ai";
+import AdminMcpPage from "./mcp";
 
 export default function AdminPage() {
   const user = useAuthStore((s) => s.user);
@@ -93,6 +94,17 @@ export default function AdminPage() {
           >
             <div style={{ paddingLeft: 32 }}>
               <AdminAiPage />
+            </div>
+          </Tabs.TabPane>
+        )}
+
+        {isAdmin && (
+          <Tabs.TabPane
+            key="mcp"
+            title={<div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15 }}><IconSettings /> MCP 配额</div>}
+          >
+            <div style={{ paddingLeft: 32 }}>
+              <AdminMcpPage />
             </div>
           </Tabs.TabPane>
         )}

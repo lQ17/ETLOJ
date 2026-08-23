@@ -15,6 +15,7 @@ import type { AuthInfo, OAuthMetadata } from '@modelcontextprotocol/server';
 import { OAuthError, OAuthErrorCode } from '@modelcontextprotocol/server';
 import { TestcaseStoreService } from '../testcase/testcase-store.service';
 import { McpAdminAuditService } from './admin-audit.service';
+import { McpRateLimitConfigService } from './mcp-rate-limit-config.service';
 
 describe('Remote MCP HTTP endpoint', () => {
   let httpServer: Server;
@@ -286,6 +287,14 @@ describe('Remote MCP HTTP endpoint', () => {
         tagService,
         testcaseStore,
         audit,
+        {
+          get: () => ({
+            globalRateLimitMax: 60,
+            globalRateLimitWindowMs: 60_000,
+            adminWriteRateLimitMax: 10,
+            adminWriteRateLimitWindowMs: 60_000,
+          }),
+        } as McpRateLimitConfigService,
       ),
       oauthService,
     );

@@ -11,6 +11,10 @@ import { registerPersonalTools } from './tools/personal.tools';
 import { TestcaseStoreService } from '../testcase/testcase-store.service';
 import { McpAdminAuditService } from './admin-audit.service';
 import { registerAdminTestcaseTools } from './tools/admin-testcase.tools';
+import {
+  McpRateLimitConfig,
+  McpRateLimitConfigService,
+} from './mcp-rate-limit-config.service';
 
 interface RateLimitEntry {
   count: number;
@@ -22,23 +26,6 @@ export class McpService {
   private readonly logger = new Logger(McpService.name);
   private readonly rateLimits = new Map<string, RateLimitEntry>();
   private readonly adminWriteRateLimits = new Map<string, RateLimitEntry>();
-  private readonly rateLimitMax = this.readPositiveInteger(
-    'MCP_RATE_LIMIT_MAX',
-    60,
-  );
-  private readonly rateLimitWindowMs = this.readPositiveInteger(
-    'MCP_RATE_LIMIT_WINDOW_MS',
-    60_000,
-  );
-  private readonly adminWriteRateLimitMax = this.readPositiveInteger(
-    'MCP_ADMIN_WRITE_RATE_LIMIT_MAX',
-    10,
-  );
-  private readonly adminWriteRateLimitWindowMs = this.readPositiveInteger(
-    'MCP_ADMIN_WRITE_RATE_LIMIT_WINDOW_MS',
-    60_000,
-  );
-
   constructor(
     private readonly problemService: ProblemService,
     private readonly problemListService: ProblemListService,
@@ -46,6 +33,7 @@ export class McpService {
     private readonly tagService: TagService,
     private readonly testcaseStore: TestcaseStoreService,
     private readonly adminAudit: McpAdminAuditService,
+    private readonly rateLimitConfig: McpRateLimitConfigService,
   ) {}
 
   createServer(
@@ -79,11 +67,12 @@ export class McpService {
     allowed: boolean;
     retryAfterSeconds: number;
   } {
+    const config = this.rateLimitConfig.get();
     return this.consumeLimit(
       this.rateLimits,
       clientKey,
-      this.rateLimitMax,
-      this.rateLimitWindowMs,
+      config.globalRateLimitMax,
+      config.globalRateLimitWindowMs,
     );
   }
 
@@ -91,12 +80,26 @@ export class McpService {
     allowed: boolean;
     retryAfterSeconds: number;
   } {
+    const config = this.rateLimitConfig.get();
     return this.consumeLimit(
       this.adminWriteRateLimits,
       String(actorUserId),
-      this.adminWriteRateLimitMax,
-      this.adminWriteRateLimitWindowMs,
+      config.adminWriteRateLimitMax,
+      config.adminWriteRateLimitWindowMs,
     );
+  }
+
+  getRateLimits(): McpRateLimitConfig {
+    return this.rateLimitConfig.get();
+  }
+
+  async updateRateLimits(
+    next: McpRateLimitConfig,
+  ): Promise<McpRateLimitConfig> {
+    const updated = await this.rateLimitConfig.update(next);
+    this.rateLimits.clear();
+    this.adminWriteRateLimits.clear();
+    return updated;
   }
 
   private consumeLimit(
@@ -139,10 +142,5 @@ export class McpService {
     for (const [key, value] of limits) {
       if (value.resetAt <= now) limits.delete(key);
     }
-  }
-
-  private readPositiveInteger(name: string, fallback: number): number {
-    const parsed = Number(process.env[name]);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
   }
 }

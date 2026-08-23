@@ -7,6 +7,7 @@ import { TagService } from '../tag/tag.service';
 import { McpService } from './mcp.service';
 import { TestcaseStoreService } from '../testcase/testcase-store.service';
 import { McpAdminAuditService } from './admin-audit.service';
+import { McpRateLimitConfigService } from './mcp-rate-limit-config.service';
 
 describe('McpService problem tools', () => {
   const publicProblem = {
@@ -107,6 +108,14 @@ describe('McpService problem tools', () => {
       tagService as unknown as TagService,
       {} as TestcaseStoreService,
       {} as McpAdminAuditService,
+      {
+        get: () => ({
+          globalRateLimitMax: 60,
+          globalRateLimitWindowMs: 60_000,
+          adminWriteRateLimitMax: 10,
+          adminWriteRateLimitWindowMs: 60_000,
+        }),
+      } as McpRateLimitConfigService,
     ).createServer();
     const [clientTransport, serverTransport] =
       InMemoryTransport.createLinkedPair();
