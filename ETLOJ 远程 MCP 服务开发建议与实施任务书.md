@@ -950,6 +950,14 @@ testcases:write  add_problem_testcase、delete_problem_testcase
 - 每轮均完成两次正式 C++ 提交和一次运行代码：正式提交均 AC、运行代码为 OK，提交测试点快照数量分别为 1 和 2，验证修改前后任务使用各自入队快照。临时提交已清理。
 - 验收结束后站点统计恢复为 2044 题、771 次提交、11 位用户；六项服务 active，四个 Redis 判题队列为 0，Server/Judge error journal 为空，磁盘剩余约 24 GB。
 
+MCP 动态配额部署与验收（2026-08-23）：
+
+- 部署提交：`263a055 feat(mcp): add runtime rate limit settings`；发布目录：`/opt/etloj/releases/mcp-rate-limits-263a055-20260823-162918`，回滚备份：`/opt/etloj/backups/mcp-rate-limits-before-20260823-162918`。
+- Server 与 Client 均在本地完成构建，只上传 `dist` 制品；远端 SHA-256 校验一致，制品不含 `.env`、依赖、题目数据或密钥。无依赖、Prisma schema、Judge、go-judge、Nginx 或 systemd unit 变更，生产端未执行安装、构建、Prisma 生成或 `db push`。
+- Server 先以生产数据在旁路端口 3100 启动验证，再与完整前端目录原子切换；旧 Server 和前端分别保留为 `/opt/etloj/server.pre-263a055`、`/var/www/etloj.pre-263a055`。
+- 配额管理 API 真实角色验收通过：未登录 401、非管理员 403、管理员 200、越界 PATCH 400 且配置不变；合法配置写入 Redis 后重启 Server，四项配置均成功恢复。
+- 公网首页、统计和匿名 MCP 6 个公开工具通过；两次正式提交均为 AC、运行代码为 OK，临时提交已清理。验收结束后统计恢复为 2044 题、776 次提交、11 位用户，六项服务 active，四个判题队列为 0，两个阻塞消费者正常，Server/Judge error journal 为空，磁盘剩余约 23 GB。
+
 ## 12. Agent 接手规则
 
 后续 Agent 开始工作前应：
