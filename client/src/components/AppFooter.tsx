@@ -57,7 +57,16 @@ export default function AppFooter() {
                 </div>
             </div>
             <div className="footer-bottom">
-                <div>© 2026 ETLOJ. All rights reserved.</div>
+                <div>
+                    © 2026 ETLOJ. Licensed under{" "}
+                    <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-on-dark-soft)" }}>
+                        AGPL-3.0
+                    </a>
+                    .{" "}
+                    <a href="https://github.com/lQ17/ETLOJ" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-on-dark-soft)" }}>
+                        Source code
+                    </a>
+                </div>
                 <div>
                     <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-on-dark-soft)", textDecoration: "none" }}>
                         豫ICP备2026023742号-1

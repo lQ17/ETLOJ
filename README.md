@@ -211,4 +211,8 @@ CLAUDE.md            项目约束与官方生产运行手册
 
 ## License
 
-Private — All rights reserved.
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
+
+If you modify and deploy this project as a network service, you must offer the
+complete corresponding source code of your modified version to its users, as
+required by AGPL-3.0.
