@@ -9,7 +9,10 @@ import { createHash } from 'node:crypto';
 import * as z from 'zod/v4';
 import { ProblemService } from '../../problem/problem.service';
 import { TestcaseStoreService } from '../../testcase/testcase-store.service';
-import { TestcaseStoreError } from '../../testcase/testcase.types';
+import {
+  MAX_TESTCASE_FILE_BYTES,
+  TestcaseStoreError,
+} from '../../testcase/testcase.types';
 import {
   McpAdminAuditOperationConflictError,
   McpAdminAuditService,
@@ -18,7 +21,7 @@ import {
 const problemIdentifier = z.string().trim().min(1).max(200);
 const revision = z.string().regex(/^[a-f0-9]{64}$/);
 const operationId = z.uuid();
-const testcaseText = z.string().max(8 * 1024 * 1024);
+const testcaseText = z.string().max(MAX_TESTCASE_FILE_BYTES);
 
 const listSchema = z.object({ problem: problemIdentifier });
 const getSchema = z.object({

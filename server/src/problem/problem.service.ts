@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
@@ -14,6 +15,7 @@ import { CreateProblemDto } from './dto/create-problem.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
 import { QueryProblemDto } from './dto/query-problem.dto';
 import { TestcaseStoreService } from '../testcase/testcase-store.service';
+import { TestcaseStoreError } from '../testcase/testcase.types';
 
 @Injectable()
 export class ProblemService {
@@ -423,14 +425,26 @@ export class ProblemService {
     testcases: { input: string; output: string }[],
   ) {
     const problem = await this.resolveProblem(idOrSlug, true);
-    const result = await this.testcaseStore.replaceAll(
-      problem.slug,
-      testcases.map((testcase) => ({
-        input: testcase.input,
-        expectedOutput: testcase.output,
-      })),
-    );
-    return { count: result.testcaseCount };
+    try {
+      const result = await this.testcaseStore.replaceAll(
+        problem.slug,
+        testcases.map((testcase) => ({
+          input: testcase.input,
+          expectedOutput: testcase.output,
+        })),
+      );
+      return { count: result.testcaseCount };
+    } catch (error) {
+      if (
+        error instanceof TestcaseStoreError &&
+        error.code === 'PAYLOAD_TOO_LARGE'
+      ) {
+        throw new PayloadTooLargeException(
+          '单个测试数据文件不能超过 30MB',
+        );
+      }
+      throw error;
+    }
   }
 
   async getTestcases(slug: string) {

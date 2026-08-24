@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import AdmZip = require("adm-zip");
 import { ProblemImportExportService } from "./problem-import-export.service";
+import { MAX_TESTCASE_FILE_BYTES } from "../testcase/testcase.types";
 
 describe("ProblemImportExportService archive validation", () => {
   const prisma = {
@@ -43,7 +44,7 @@ describe("ProblemImportExportService archive validation", () => {
     const entries = [{
       entryName: "P1000/testcases/1.in",
       isDirectory: false,
-      header: { size: 20 * 1024 * 1024 + 1 },
+      header: { size: MAX_TESTCASE_FILE_BYTES + 1 },
     }];
 
     expect(() => (service as any).validateArchiveEntries(entries)).toThrow(BadRequestException);

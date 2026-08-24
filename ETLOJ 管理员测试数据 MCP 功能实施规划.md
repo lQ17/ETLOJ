@@ -261,7 +261,7 @@ problem: string // 正整数形式表示数据库 ID，否则按 slug 解析
 - 新编号固定为当前最大连续编号加一，客户端不能指定目标文件名；
 - `expectedRevision` 与当前集合不一致时返回 `REVISION_CONFLICT`；
 - 同一管理员、同一 `operationId` 的重试返回首次成功结果，不重复追加；
-- 默认每个 input/output 最大 1 MiB，使用 `MCP_TESTCASE_MAX_FILE_BYTES` 配置，但必须设置合理硬上限；
+- 默认且最多每个 input/output 为 30 MiB，使用 `MCP_TESTCASE_MAX_FILE_BYTES` 配置；
 - 空字符串允许存在，因为部分题目的输入或标准输出可能为空；
 - 不得在日志或异常中输出测试数据正文。
 
@@ -363,7 +363,7 @@ ZIP 导入流程也会直接写测试数据。至少需要保证导入新题时�
 新增配置：
 
 ```text
-MCP_TESTCASE_MAX_FILE_BYTES=1048576
+MCP_TESTCASE_MAX_FILE_BYTES=31457280
 MCP_TESTCASE_READ_CHUNK_CHARS=32768
 MCP_TESTCASE_READ_MAX_CHARS=65536
 MCP_TESTCASE_MAX_COUNT=1000

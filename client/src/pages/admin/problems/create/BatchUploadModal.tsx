@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal, Upload, Button, Typography, Message } from "@arco-design/web-react";
-import type { TestCase } from "./constants";
+import { MAX_TESTCASE_FILE_BYTES, type TestCase } from "./constants";
 
 interface BatchUploadModalProps {
   visible: boolean;
@@ -65,11 +65,10 @@ export default function BatchUploadModal({ visible, onClose, onConfirm }: BatchU
     }
 
     // 限制单个文件大小不大于30MB
-    const MAX_SIZE = 30 * 1024 * 1024;
     const seenNames = new Set<string>();
 
     for (const file of files) {
-      if (file.size > MAX_SIZE) {
+      if (file.size > MAX_TESTCASE_FILE_BYTES) {
         Message.error(`文件 ${file.name} 超过 30MB 限制`);
         return;
       }

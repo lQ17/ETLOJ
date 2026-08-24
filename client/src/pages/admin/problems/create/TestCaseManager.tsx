@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Space, Table, Modal, Upload, Typography, Message } from "@arco-design/web-react";
 import Editor from "@monaco-editor/react";
 import { problemApi } from "../../../../api/problem";
-import type { TestCase } from "./constants";
+import { MAX_TESTCASE_FILE_BYTES, type TestCase } from "./constants";
 
 interface TestCaseManagerProps {
   testCases: TestCase[];
@@ -39,6 +39,10 @@ export default function TestCaseManager({ testCases, setTestCases, problemId }: 
   };
 
   const handleUploadTestCase = (file: File, id: string, type: "input" | "output") => {
+    if (file.size > MAX_TESTCASE_FILE_BYTES) {
+      Message.error(`文件 ${file.name} 超过 30MB 限制`);
+      return false;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = (e.target?.result as string) || "";

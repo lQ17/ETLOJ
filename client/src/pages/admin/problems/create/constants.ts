@@ -6,3 +6,5 @@ export interface TestCase {
   input: string;
   output: string;
 }
+
+export const MAX_TESTCASE_FILE_BYTES = 30 * 1024 * 1024;

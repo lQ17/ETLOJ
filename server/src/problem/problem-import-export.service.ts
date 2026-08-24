@@ -5,12 +5,12 @@ import * as path from "path";
 import { PrismaService } from "../prisma/prisma.service";
 import { DIFFICULTY_VALUES, getDefaultScore } from "./difficulty.constants";
 import type { DifficultyLevel } from "./difficulty.constants";
+import { MAX_TESTCASE_FILE_BYTES } from "../testcase/testcase.types";
 
 const MAX_ARCHIVE_ENTRIES = 5000;
 const MAX_ARCHIVE_UNCOMPRESSED_BYTES = 250 * 1024 * 1024;
 const MAX_METADATA_BYTES = 1024 * 1024;
 const MAX_MARKDOWN_BYTES = 10 * 1024 * 1024;
-const MAX_TESTCASE_BYTES = 20 * 1024 * 1024;
 
 @Injectable()
 export class ProblemImportExportService {
@@ -98,7 +98,7 @@ export class ProblemImportExportService {
         parts[1] === "testcases" &&
         /^[1-9]\d*\.(in|out)$/.test(parts[2])
       ) {
-        maxFileSize = MAX_TESTCASE_BYTES;
+        maxFileSize = MAX_TESTCASE_FILE_BYTES;
       } else {
         throw new BadRequestException(`ZIP 包含不支持的文件：${name}`);
       }

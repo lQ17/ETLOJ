@@ -6,6 +6,8 @@ export type TestcaseErrorCode =
   | 'TESTCASE_LIMIT_EXCEEDED'
   | 'INVALID_ARGUMENT';
 
+export const MAX_TESTCASE_FILE_BYTES = 30 * 1024 * 1024;
+
 export class TestcaseStoreError extends Error {
   constructor(
     readonly code: TestcaseErrorCode,

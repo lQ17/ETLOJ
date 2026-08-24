@@ -21,10 +21,10 @@ import {
   TestcaseScanResult,
   TestcaseStoreError,
   TestcaseTextPair,
+  MAX_TESTCASE_FILE_BYTES,
 } from './testcase.types';
 
 const TESTCASE_FILE = /^([1-9]\d*)\.(in|out)$/;
-const HARD_MAX_FILE_BYTES = 8 * 1024 * 1024;
 const HARD_MAX_COUNT = 10_000;
 
 @Injectable()
@@ -46,8 +46,8 @@ export class TestcaseStoreService implements OnModuleInit {
     );
     this.maxFileBytes = this.readBoundedInteger(
       config.get<string>('MCP_TESTCASE_MAX_FILE_BYTES'),
-      1_048_576,
-      HARD_MAX_FILE_BYTES,
+      MAX_TESTCASE_FILE_BYTES,
+      MAX_TESTCASE_FILE_BYTES,
     );
     this.maxChunkChars = this.readBoundedInteger(
       config.get<string>('MCP_TESTCASE_READ_MAX_CHARS'),

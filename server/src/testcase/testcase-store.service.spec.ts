@@ -12,7 +12,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { TestcaseLockService } from './testcase-lock.service';
 import { TestcaseStoreService } from './testcase-store.service';
-import { TestcaseStoreError } from './testcase.types';
+import {
+  MAX_TESTCASE_FILE_BYTES,
+  TestcaseStoreError,
+} from './testcase.types';
 
 describe('TestcaseStoreService', () => {
   let root: string;
@@ -32,6 +35,23 @@ describe('TestcaseStoreService', () => {
 
   afterEach(async () => {
     await rm(root, { recursive: true, force: true });
+  });
+
+  it('uses a 30MB default and hard maximum for each testcase file', () => {
+    expect(service.maxFileBytes).toBe(MAX_TESTCASE_FILE_BYTES);
+  });
+
+  it('rejects testcase files larger than 30MB', async () => {
+    expect(() =>
+      service.replaceAll('p', [
+        {
+          input: 'a'.repeat(MAX_TESTCASE_FILE_BYTES + 1),
+          expectedOutput: '',
+        },
+      ]),
+    ).toThrow(
+      expect.objectContaining({ code: 'PAYLOAD_TOO_LARGE' }),
+    );
   });
 
   it('scans empty and numerically ordered complete testcases', async () => {
