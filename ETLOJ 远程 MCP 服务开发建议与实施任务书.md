@@ -958,6 +958,14 @@ MCP 动态配额部署与验收（2026-08-23）：
 - 配额管理 API 真实角色验收通过：未登录 401、非管理员 403、管理员 200、越界 PATCH 400 且配置不变；合法配置写入 Redis 后重启 Server，四项配置均成功恢复。
 - 公网首页、统计和匿名 MCP 6 个公开工具通过；两次正式提交均为 AC、运行代码为 OK，临时提交已清理。验收结束后统计恢复为 2044 题、776 次提交、11 位用户，六项服务 active，四个判题队列为 0，两个阻塞消费者正常，Server/Judge error journal 为空，磁盘剩余约 23 GB。
 
+测试数据单文件 30 MB 限制部署与验收（2026-08-24）：
+
+- 部署提交：`8091ed5 fix(testcases): raise per-file limit to 30MB`；发布目录：`/opt/etloj/releases/testcase-limit-8091ed5-20260824-164255`，配置备份：`/opt/etloj/backups/testcase-limit-before-8091ed5-20260824-164255`。
+- Server 与 Client 均在本地完成构建，Server 全量 77 项测试通过；上传制品的 SHA-256 前后一致，包内不含 `.env`、依赖、题目数据或密钥。无依赖、Prisma schema、Judge、go-judge、Nginx 或 systemd unit 变更，生产端未执行安装、构建、Prisma 生成或 `db push`。
+- Server 先使用生产数据在旁路端口 3100 验证，再与前端完成目录重命名切换；旧 Server 和前端保留为 `/opt/etloj/server.pre-8091ed5`、`/var/www/etloj.pre-8091ed5`，生产 `.env` 仅将 `MCP_TESTCASE_MAX_FILE_BYTES` 定点更新为 `31457280`。
+- 生产接口以不会落盘的 30 MB + 1 字节请求验证返回 413 和中文超限信息；运行代码返回 `OK` 和预期输出。HTTPS 首页、哈希静态资源、未授权 WebSocket 1008、go-judge v1.9.0、仅本机 5050 监听和公网端口隔离均通过。
+- 验收结束时统计为 2044 题、801 次提交、11 位用户；六项服务 active，四个判题队列均为 0，两个独立阻塞消费者正常，Server error journal 为空。
+
 ## 12. Agent 接手规则
 
 后续 Agent 开始工作前应：
