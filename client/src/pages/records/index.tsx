@@ -54,7 +54,7 @@ export default function RecordsPage() {
   const [loading, setLoading] = useState(false);
 
   const [filterUsername, setFilterUsername] = useState("");
-  const [filterProblemId, setFilterProblemId] = useState("");
+  const [filterProblemSlug, setFilterProblemSlug] = useState("");
   const [filterKeyword, setFilterKeyword] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
 
@@ -73,7 +73,7 @@ export default function RecordsPage() {
     try {
       const params: any = { page: p, pageSize: ps };
       if (filterUsername) params.username = filterUsername;
-      if (filterProblemId) params.problemId = +filterProblemId;
+      if (filterProblemSlug.trim()) params.problemSlug = filterProblemSlug.trim();
       if (filterKeyword) params.keyword = filterKeyword;
       if (filterStatus) params.status = filterStatus;
       const res: any = await submissionApi.list(params);
@@ -84,7 +84,7 @@ export default function RecordsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterUsername, filterProblemId, filterKeyword, filterStatus, page, pageSize]);
+  }, [filterUsername, filterProblemSlug, filterKeyword, filterStatus, page, pageSize]);
 
   useEffect(() => { if (user) fetchData(1); }, [user]);
 
@@ -92,7 +92,7 @@ export default function RecordsPage() {
 
   const handleReset = async () => {
     setFilterUsername("");
-    setFilterProblemId("");
+    setFilterProblemSlug("");
     setFilterKeyword("");
     setFilterStatus(undefined);
     setPage(1);
@@ -262,10 +262,10 @@ export default function RecordsPage() {
           onPressEnter={handleSearch}
         />
         <Input
-          placeholder="题号"
-          value={filterProblemId}
-          onChange={setFilterProblemId}
-          style={{ width: 100 }}
+          placeholder="题号，如 P1041"
+          value={filterProblemSlug}
+          onChange={setFilterProblemSlug}
+          style={{ width: 140 }}
           onPressEnter={handleSearch}
         />
         <Input

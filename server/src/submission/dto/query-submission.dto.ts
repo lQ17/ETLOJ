@@ -25,6 +25,10 @@ export class QuerySubmissionDto {
 
   @IsOptional()
   @IsString()
+  problemSlug?: string;
+
+  @IsOptional()
+  @IsString()
   keyword?: string;
 
   @IsOptional()

@@ -12,6 +12,7 @@ export const submissionApi = {
     pageSize?: number;
     username?: string;
     problemId?: number;
+    problemSlug?: string;
     keyword?: string;
     status?: string;
   }) => client.get("/submissions", { params }),

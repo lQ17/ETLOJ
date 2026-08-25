@@ -113,14 +113,17 @@ export class SubmissionService {
   }
 
   async findAll(query: QuerySubmissionDto) {
-    const { page = 1, pageSize = 20, username, problemId, keyword, status, userId } = query;
+    const { page = 1, pageSize = 20, username, problemId, problemSlug, keyword, status, userId } = query;
     const where: any = {};
 
     if (username) {
       where.user = { username: { contains: username } };
     }
-    if (keyword) {
-      where.problem = { title: { contains: keyword } };
+    if (keyword || problemSlug) {
+      where.problem = {
+        ...(keyword ? { title: { contains: keyword } } : {}),
+        ...(problemSlug ? { slug: problemSlug } : {}),
+      };
     }
     if (problemId) {
       where.problemId = problemId;
