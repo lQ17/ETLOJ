@@ -16,14 +16,14 @@ describe("SubmissionService submission filters", () => {
     prisma.submission.count.mockResolvedValue(0);
   });
 
-  it("filters submissions by the visible problem slug", async () => {
-    await service.findAll({ problemSlug: "P1041" });
+  it("filters submissions by a partial visible problem slug", async () => {
+    await service.findAll({ problemSlug: "1041" });
 
     expect(prisma.submission.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { problem: { slug: "P1041" } } }),
+      expect.objectContaining({ where: { problem: { slug: { contains: "1041" } } } }),
     );
     expect(prisma.submission.count).toHaveBeenCalledWith({
-      where: { problem: { slug: "P1041" } },
+      where: { problem: { slug: { contains: "1041" } } },
     });
   });
 
@@ -34,7 +34,7 @@ describe("SubmissionService submission filters", () => {
       expect.objectContaining({
         where: {
           problem: {
-            slug: "P1041",
+            slug: { contains: "P1041" },
             title: { contains: "排序" },
           },
         },

@@ -122,7 +122,7 @@ export class SubmissionService {
     if (keyword || problemSlug) {
       where.problem = {
         ...(keyword ? { title: { contains: keyword } } : {}),
-        ...(problemSlug ? { slug: problemSlug } : {}),
+        ...(problemSlug ? { slug: { contains: problemSlug } } : {}),
       };
     }
     if (problemId) {
