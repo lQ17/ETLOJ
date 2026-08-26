@@ -101,11 +101,11 @@ export class RankingService {
   private async getAcRanking(timeStart: Date | null, timeEnd: Date | null, limit: number, offset: number) {
     const timeFilter = this.timeWhere("s", timeStart, timeEnd);
     return this.prisma.$queryRaw`
-      SELECT u.id, u.username, u.avatar, COUNT(DISTINCT s.problem_id) as value
+      SELECT u.id, u.username, MAX(u.avatar) AS avatar, COUNT(DISTINCT s.problem_id) as value
       FROM users u
       INNER JOIN submissions s ON s.user_id = u.id AND s.status = 'AC'
       WHERE u.is_active = 1 AND u.role = 'USER' ${timeFilter}
-      GROUP BY u.id, u.username, u.avatar
+      GROUP BY u.id, u.username
       HAVING value > 0
       ORDER BY value DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -130,7 +130,7 @@ export class RankingService {
   private async getScoreRanking(timeStart: Date | null, timeEnd: Date | null, limit: number, offset: number) {
     const timeFilter = this.timeWhere("s", timeStart, timeEnd);
     return this.prisma.$queryRaw`
-      SELECT u.id, u.username, u.avatar, COALESCE(SUM(p.score), 0) as value
+      SELECT u.id, u.username, MAX(u.avatar) AS avatar, COALESCE(SUM(p.score), 0) as value
       FROM users u
       INNER JOIN (
         SELECT user_id, problem_id, MIN(id) as first_ac_id
@@ -141,7 +141,7 @@ export class RankingService {
       INNER JOIN submissions s ON s.id = fa.first_ac_id
       INNER JOIN problems p ON p.id = fa.problem_id
       WHERE u.is_active = 1 AND u.role = 'USER' ${timeFilter}
-      GROUP BY u.id, u.username, u.avatar
+      GROUP BY u.id, u.username
       HAVING value > 0
       ORDER BY value DESC
       LIMIT ${limit} OFFSET ${offset}

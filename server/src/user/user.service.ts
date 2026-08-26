@@ -1,13 +1,15 @@
-import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
+import { Injectable, BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
 import { PrismaService } from "../prisma/prisma.service";
+import { AvatarService } from "./avatar.service";
 
 @Injectable()
 export class UserService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private avatarService: AvatarService,
   ) {}
 
   async create(username: string, email?: string, phone?: string, password?: string, role = "USER") {
@@ -242,11 +244,29 @@ export class UserService {
       if (conflict) throw new ConflictException("邮箱或手机号已被占用");
     }
 
-    return this.prisma.user.update({
+    let avatarUrl: string | undefined;
+    if (data.avatar !== undefined) {
+      if (data.avatar === user.avatar) {
+        avatarUrl = user.avatar || undefined;
+      } else if (data.avatar.startsWith("data:image/")) {
+        avatarUrl = await this.avatarService.saveDataUrl(id, data.avatar);
+      } else {
+        throw new BadRequestException("头像必须通过图片上传");
+      }
+    }
+
+    const updated = await this.prisma.user.update({
       where: { id },
-      data,
+      data: {
+        email: data.email,
+        phone: data.phone,
+        signature: data.signature,
+        ...(avatarUrl !== undefined ? { avatar: avatarUrl } : {}),
+      },
       select: { id: true, username: true, email: true, phone: true, avatar: true, signature: true, role: true, isActive: true, createdAt: true },
     });
+    if (avatarUrl) await this.avatarService.removePrevious(id, avatarUrl, user.avatar);
+    return updated;
   }
 
   async updatePassword(id: number, oldPassword?: string, newPassword?: string) {

@@ -245,9 +245,9 @@ export default function RankingPage() {
       dataIndex: "username",
       render: (username: string, record: RankItem) => (
         <Space size={8}>
-          <Avatar size={28} shape="circle" style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
+          <Avatar size={32} shape="circle" style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
             {record.avatar
-              ? <img src={record.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ? <img src={record.avatar} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               : (username?.[0]?.toUpperCase() || <IconUser />)
             }
           </Avatar>
@@ -347,9 +347,9 @@ export default function RankingPage() {
                       (e.currentTarget as HTMLDivElement).style.background = "transparent";
                     }}
                   >
-                    <Avatar size={22} shape="circle" style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
+                    <Avatar size={32} shape="circle" style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
                       {item.avatar
-                        ? <img src={item.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ? <img src={item.avatar} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         : (item.username?.[0]?.toUpperCase() || <IconUser />)
                       }
                     </Avatar>

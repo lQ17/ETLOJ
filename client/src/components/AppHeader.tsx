@@ -8,10 +8,10 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 
 const { Header } = Layout;
 
-// 验证头像 URL 是否安全（仅允许 data:image 或 http/https URL）
+// 验证头像 URL 是否安全（本站头像或 http/https URL）
 function getSafeAvatar(avatar: string | undefined): string | undefined {
   if (!avatar) return undefined;
-  if (/^data:image\//.test(avatar) || /^https?:\/\//.test(avatar)) return avatar;
+  if (/^\/api\/avatars\/\d+\/[a-f0-9]{16}\.webp$/.test(avatar) || /^https?:\/\//.test(avatar)) return avatar;
   return undefined;
 }
 

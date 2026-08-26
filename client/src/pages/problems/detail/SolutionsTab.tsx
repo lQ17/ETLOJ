@@ -153,7 +153,7 @@ export default function SolutionsTab({
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                       <Avatar size={24} style={{ backgroundColor: "var(--color-primary)", flexShrink: 0 }}>
                         {sol.author.avatar
-                          ? <img src={sol.author.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ? <img src={sol.author.avatar} alt="" loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           : sol.author.username?.[0]?.toUpperCase()
                         }
                       </Avatar>
@@ -193,7 +193,7 @@ export default function SolutionsTab({
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-border)" }}>
                 <Avatar size={36} style={{ backgroundColor: "var(--color-primary)" }}>
                   {selectedSolution.author.avatar
-                    ? <img src={selectedSolution.author.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <img src={selectedSolution.author.avatar} alt="" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : selectedSolution.author.username?.[0]?.toUpperCase()
                   }
                 </Avatar>

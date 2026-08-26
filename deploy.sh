@@ -41,6 +41,7 @@ JWT_SECRET=${JWT_SECRET}
 JUDGE_SECRET=${JUDGE_SECRET}
 GO_JUDGE_URL=http://127.0.0.1:5050
 PROBLEMS_DIR=/opt/etloj/data/problems
+AVATARS_DIR=/opt/etloj/data/avatars
 PORT=3000
 ENVEOF
 fi
@@ -131,7 +132,7 @@ cp "$INSTALL_DIR"/deploy/etloj-*.service /etc/systemd/system/
 systemctl daemon-reload
 
 # 创建数据目录
-mkdir -p "$INSTALL_DIR/data/problems"
+mkdir -p "$INSTALL_DIR/data/problems" "$INSTALL_DIR/data/avatars"
 
 # 启动服务
 systemctl enable etloj-go-judge etloj-server etloj-judge

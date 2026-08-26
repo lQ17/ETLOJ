@@ -16,7 +16,8 @@ export default function GeneralSettings() {
   const user = useAuthStore((s) => s.user);
   const initFromStorage = useAuthStore((s) => s.initFromStorage);
 
-  const [avatarBase64, setAvatarBase64] = useState<string | undefined>(user?.avatar);
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar);
+  const [pendingAvatar, setPendingAvatar] = useState<string | undefined>();
 
   useEffect(() => {
     if (user) {
@@ -26,19 +27,25 @@ export default function GeneralSettings() {
         phone: user.phone,
         signature: user.signature,
       });
-      setAvatarBase64(user.avatar);
+      setAvatarPreview(user.avatar);
+      setPendingAvatar(undefined);
     }
   }, [user, form]);
 
   const handleAvatarChange = (_: any, file: any) => {
+    const originalFile = file.originFile as File | undefined;
+    if (!originalFile) return;
+    if (originalFile.size > 2 * 1024 * 1024) {
+      Message.warning("头像原图不能超过 2MB");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
-      setAvatarBase64(reader.result as string);
-      form.setFieldValue("avatar", reader.result as string);
+      const dataUrl = reader.result as string;
+      setAvatarPreview(dataUrl);
+      setPendingAvatar(dataUrl);
     };
-    if (file.originFile) {
-      reader.readAsDataURL(file.originFile);
-    }
+    reader.readAsDataURL(originalFile);
   };
 
   const handleSubmit = async (values: any) => {
@@ -48,7 +55,7 @@ export default function GeneralSettings() {
         email: values.email,
         phone: values.phone,
         signature: values.signature,
-        avatar: avatarBase64,
+        avatar: pendingAvatar,
       });
       Message.success("基础资料更新成功");
       await initFromStorage(); // Refresh global user state
@@ -103,7 +110,7 @@ export default function GeneralSettings() {
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
                       <Avatar size={120} triggerIcon={<IconCamera />} triggerType="mask" style={{ backgroundColor: 'var(--color-fill-3)' }}>
-                        {avatarBase64 ? <img src={avatarBase64} alt="avatar" /> : <IconUser style={{ fontSize: 48 }} />}
+                        {avatarPreview ? <img src={avatarPreview} alt="avatar" decoding="async" /> : <IconUser style={{ fontSize: 48 }} />}
                       </Avatar>
                       <Typography.Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
                         点击头像上传<br />支持 JPG, PNG, WEBP (最大 2MB)

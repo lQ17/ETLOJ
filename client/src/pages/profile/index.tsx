@@ -49,9 +49,9 @@ export default function ProfilePage() {
         <Col xs={24} md={7} lg={6}>
           <Card bordered={false} className="profile-card user-card">
             <div className="user-card-inner">
-              <Avatar size={96} className="user-avatar" triggerIcon={null}>
+              <Avatar size={128} className="user-avatar" triggerIcon={null}>
                 {getSafeAvatar(profile.avatar)
-                  ? <img src={getSafeAvatar(profile.avatar)} alt="avatar" />
+                  ? <img src={getSafeAvatar(profile.avatar)} alt="avatar" decoding="async" />
                   : <IconUser style={{ fontSize: 48 }} />
                 }
               </Avatar>

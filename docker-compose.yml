@@ -57,6 +57,7 @@ services:
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?set TURNSTILE_SECRET_KEY}
       ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:?set ADMIN_SEED_PASSWORD}
       PROBLEMS_DIR: /data/problems
+      AVATARS_DIR: /data/avatars
       CLIENT_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
       MCP_PUBLIC_BASE_URL: ${PUBLIC_ORIGIN:-http://localhost:8080}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}
@@ -70,6 +71,7 @@ services:
       MCP_ADMIN_WRITE_RATE_LIMIT_WINDOW_MS: ${MCP_ADMIN_WRITE_RATE_LIMIT_WINDOW_MS:-60000}
     volumes:
       - ./data/problems:/data/problems
+      - ./data/avatars:/data/avatars
     networks:
       - frontend
       - backend

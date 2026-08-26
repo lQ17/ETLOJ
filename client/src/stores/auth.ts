@@ -21,7 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const res: any = await authApi.login(account, password);
     localStorage.setItem("token", res.access_token);
     set({ token: res.access_token });
-    // Fetch full profile (including avatar) immediately after login
+    // Fetch profile metadata; avatar is now only a small, independently cached URL.
     const user: any = await authApi.getProfile();
     set({ user });
   },
