@@ -130,6 +130,7 @@ async function judgeQueueLoop(client: any) {
           timeUsed: 0,
           memoryUsed: 0,
           score: 0,
+          diagnostic: "判题服务内部错误，未生成可用诊断。",
           testcases: [],
         };
       }

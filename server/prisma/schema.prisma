@@ -151,6 +151,7 @@ model Submission {
   timeUsed   Int?             @map("time_used")
   memoryUsed Int?             @map("memory_used")
   score      Int?             @map("score")
+  diagnostic String?          @db.Text
   createdAt  DateTime         @default(now()) @map("created_at")
 
   problem   Problem              @relation(fields: [problemId], references: [id], onDelete: Restrict)
@@ -326,6 +327,7 @@ model AiMessage {
   id             Int      @id @default(autoincrement())
   conversationId Int      @map("conversation_id")
   role           String   @db.VarChar(20)
+  action         String?  @db.VarChar(30)
   content        String   @db.LongText
   createdAt      DateTime @default(now()) @map("created_at")
 

@@ -51,5 +51,7 @@ export type JudgeResult = {
   timeUsed: number;
   memoryUsed: number;
   score: number;
+  /** 脱敏、限长后的编译或运行诊断，不包含隐藏测试数据。 */
+  diagnostic?: string;
   testcases: TestCaseResult[];
 };

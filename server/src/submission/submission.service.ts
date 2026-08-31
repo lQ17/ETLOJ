@@ -107,6 +107,7 @@ export class SubmissionService {
       || requestingUserRole === "ADMIN";
     if (!canViewCode) {
       delete (sub as any).code;
+      delete (sub as any).diagnostic;
     }
 
     return sub;
@@ -167,7 +168,7 @@ export class SubmissionService {
     return { items: itemsWithSize, total, page, pageSize };
   }
 
-  async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number; testcases?: Array<{ index: number; status: string; timeUsed: number; memoryUsed: number }> }) {
+  async updateResult(submissionId: number, result: { status: string; timeUsed: number; memoryUsed: number; score?: number; diagnostic?: string; testcases?: Array<{ index: number; status: string; timeUsed: number; memoryUsed: number }> }) {
     const terminalStatuses: SubmissionStatus[] = ["AC", "WA", "TLE", "MLE", "RE", "CE", "SE"];
     if (!terminalStatuses.includes(result.status as SubmissionStatus)) {
       throw new BadRequestException("无效的判题结果状态");
@@ -184,6 +185,7 @@ export class SubmissionService {
         timeUsed: result.timeUsed,
         memoryUsed: result.memoryUsed,
         score: result.score ?? null,
+        diagnostic: result.diagnostic?.trim().slice(0, 4000) || null,
       },
     });
 

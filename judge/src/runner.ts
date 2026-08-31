@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import type { JudgeTask, JudgeResult, RunTask, RunResult, TestCaseResult } from "./types";
-import { validateJudgeTask, validateRunTask, normalizeOutput } from "./validation";
+import { validateJudgeTask, validateRunTask, normalizeOutput, sanitizeStderr } from "./validation";
 import { goJudgeCompile, goJudgeRunOneTest } from "./goJudge";
 import { localCompile, localRunOneTest } from "./localJudge";
 
@@ -20,6 +20,11 @@ function mapGoJudgeStatus(raw: string, exitCode: number): string | null {
 type CompileResult = { ok: boolean; artifact?: string; error?: string };
 type TestRunResult = { status: string; exitCode: number; time: number; memory: number; stdout: string; stderr: string };
 
+function diagnosticText(value: string | undefined): string | undefined {
+  const sanitized = sanitizeStderr(value || "").trim();
+  return sanitized ? sanitized.slice(0, 4000) : undefined;
+}
+
 async function judgeWithBackend(
   task: JudgeTask,
   compile: (code: string, lang: string) => Promise<CompileResult> | CompileResult,
@@ -31,7 +36,15 @@ async function judgeWithBackend(
 
   const compiled = await compile(code, language);
   if (!compiled.ok) {
-    return { submissionId, status: "CE", timeUsed: 0, memoryUsed: 0, score: 0, testcases: [{ index: 1, status: "CE", timeUsed: 0, memoryUsed: 0 }] };
+    return {
+      submissionId,
+      status: "CE",
+      timeUsed: 0,
+      memoryUsed: 0,
+      score: 0,
+      diagnostic: diagnosticText(compiled.error) || "编译失败，但编译器未返回详细信息。",
+      testcases: [{ index: 1, status: "CE", timeUsed: 0, memoryUsed: 0 }],
+    };
   }
 
   const totalCount = testcases.length;
@@ -42,6 +55,7 @@ async function judgeWithBackend(
   const testcaseResults: TestCaseResult[] = [];
   let passedCount = 0;
   let firstFailStatus = "";
+  let firstDiagnostic: string | undefined;
   // 提交级 timeUsed / memoryUsed 取所有测试点的最大值（OJ 常规语义，非总和）
   let maxTime = 0;
   let maxMemory = 0;
@@ -68,6 +82,10 @@ async function judgeWithBackend(
       passedCount++;
     } else if (!firstFailStatus) {
       firstFailStatus = caseStatus;
+      if (caseStatus === "RE") {
+        // 正式测试点的 stderr 可能被用户程序用来回显隐藏输入，不能持久化或发送给 AI。
+        firstDiagnostic = `程序异常退出（exit code ${r.exitCode}）。`;
+      }
     }
 
     testcaseResults.push({
@@ -88,6 +106,7 @@ async function judgeWithBackend(
     timeUsed: Math.round(maxTime / 1e6),
     memoryUsed: Math.round(maxMemory / 1024),
     score: Math.round((passedCount / totalCount) * 100),
+    diagnostic: firstDiagnostic,
     testcases: testcaseResults,
   };
 }
@@ -98,7 +117,7 @@ export async function judge(task: JudgeTask): Promise<JudgeResult> {
   const validationError = validateJudgeTask(task);
   if (validationError) {
     console.warn(`[#${task.submissionId}] 任务校验失败: ${validationError}`);
-    return { submissionId: task.submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0, testcases: [] };
+    return { submissionId: task.submissionId, status: "SE", timeUsed: 0, memoryUsed: 0, score: 0, diagnostic: diagnosticText(validationError), testcases: [] };
   }
 
   if (process.env.JUDGE_MODE === "local") {

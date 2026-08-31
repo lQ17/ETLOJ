@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { TextStreamChatTransport } from 'ai';
 import { Button, Input, Tag, Tooltip, Message, Select } from '@arco-design/web-react';
@@ -27,6 +27,24 @@ SyntaxHighlighter.registerLanguage('typescript', typescript);
 /** 距底部小于此值视为「贴底」，流式输出时自动跟随 */
 const NEAR_BOTTOM_PX = 96;
 
+function friendlyAiError(error: unknown, fallback = 'AI 服务暂时不可用，请稍后重试'): string {
+  const raw = error instanceof Error ? error.message : '';
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.message === 'string') return parsed.message;
+  } catch {
+    // 非 JSON 错误直接展示 SDK 提供的消息。
+  }
+  return raw;
+}
+
+function visibleAssistantText(text: string): string {
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/<think>[\s\S]*$/, '');
+}
+
 interface ChatPanelProps {
   problemId: number;
   currentCode: string;
@@ -35,11 +53,13 @@ interface ChatPanelProps {
   currentLanguage: string;
 }
 
+type ChatAction = 'CHAT' | 'IDEA' | 'CHECK_CODE' | 'OPTIMIZE' | 'ANALYZE_ERROR';
+
 const quickActions = [
-  { icon: <IconBulb />, label: '解题思路', message: '请给我这道题的解题思路提示，不要直接给答案', description: '获取当前题目的解题思路与算法提示（不直接给答案）。适合看懂题目后长时间没有思路的时候使用。' },
-  { icon: <IconThunderbolt />, label: '检查代码', message: '请帮我检查当前代码中可能存在的问题', description: 'AI获取并分析当前编辑器实时代码。适合自己无法排查到bug或边界逻辑错误时使用。' },
-  { icon: <IconClockCircle />, label: '优化建议', message: '请分析我代码的时间复杂度，有什么优化方向？', description: '分析代码的时间与空间复杂度，提供优化方向。适合题目出现TLE、MLE，又不知道如何优化时使用。' },
-  { icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因', description: 'AI获取最后一次提交的评测结果，定位 WA/RE/TLE 等错误的原因。适合提交后出现无法分析出的错误时使用。' },
+  { action: 'IDEA' as const, icon: <IconBulb />, label: '解题思路', message: '请给我这道题的解题思路提示，不要直接给答案', description: '获取当前题目的解题思路与算法提示（不直接给答案）。适合看懂题目后长时间没有思路的时候使用。' },
+  { action: 'CHECK_CODE' as const, icon: <IconThunderbolt />, label: '检查代码', message: '请帮我检查当前代码中可能存在的问题', description: 'AI获取并分析当前编辑器实时代码。适合自己无法排查到 bug 或边界逻辑错误时使用。' },
+  { action: 'OPTIMIZE' as const, icon: <IconClockCircle />, label: '优化建议', message: '请分析我代码的时间复杂度，有什么优化方向？', description: '分析代码的时间与空间复杂度，结合题目限制提供优化方向。' },
+  { action: 'ANALYZE_ERROR' as const, icon: <IconRefresh />, label: '分析错误', message: '请帮我分析最近一次提交的错误原因', description: 'AI锁定最近一次未通过且已完成的提交，定位 WA/RE/TLE 等错误。' },
 ];
 
 function codeComponent(problemDifficulty: string, isDark: boolean) {
@@ -87,31 +107,12 @@ function codeComponent(problemDifficulty: string, isDark: boolean) {
   };
 }
 
-function renderMessageParts(text: string, problemDifficulty: string, isStreaming: boolean, isDark: boolean) {
-  const parts = text.split(/(<think>[\s\S]*?<\/think>)/);
-  const hasOpenThink = isStreaming && text.includes('<think>') && !text.includes('</think>');
+function renderMessageParts(text: string, problemDifficulty: string, _isStreaming: boolean, isDark: boolean) {
+  // 历史数据中可能仍有旧版保存的推理块；只向用户展示最终回答。
+  const visibleText = visibleAssistantText(text);
+  const parts = [visibleText];
 
   return parts.map((part, i) => {
-    const thinkMatch = part.match(/^<think>([\s\S]*?)<\/think>$/);
-    if (thinkMatch) {
-      return (
-        <details key={i} className="ai-think-block">
-          <summary className="ai-think-summary">思考过程</summary>
-          <div className="ai-think-content">{thinkMatch[1].trim()}</div>
-        </details>
-      );
-    }
-
-    if (hasOpenThink && part.startsWith('<think>') && !part.includes('</think>')) {
-      const thinking = part.replace(/^<think>\n?/, '');
-      return (
-        <details key={i} className="ai-think-block" open>
-          <summary className="ai-think-summary">正在思考...</summary>
-          <div className="ai-think-content">{thinking}</div>
-        </details>
-      );
-    }
-
     if (!part.trim()) return null;
     return (
       <ReactMarkdown
@@ -130,8 +131,8 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   const scrollRef = useRef<HTMLDivElement>(null);
   /** 用户是否贴在底部；上滑查看历史时为 false，不再强行滚底 */
   const stickToBottomRef = useRef(true);
-  /** 下一请求是否为「重新生成」（写入 transport body） */
-  const regenerateRef = useRef(false);
+  /** 防止慢历史请求覆盖用户刚发出的新消息 */
+  const hasLocalInteractionRef = useRef(false);
 
   const [remaining, setRemaining] = useState<{ remaining: number; limit: number; unlimited: boolean } | null>(null);
   const [input, setInput] = useState('');
@@ -157,8 +158,11 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
 
   const token = localStorage.getItem('token') || '';
 
-  const latestRef = useRef({ currentCode, currentLanguage, selectedPromptId } as any);
-  latestRef.current = { currentCode, currentLanguage, selectedPromptId };
+  const transport = useMemo(() => new TextStreamChatTransport({
+    api: '/api/ai/chat',
+    headers: { Authorization: `Bearer ${token}` },
+    body: { problemId },
+  }), [problemId, token]);
 
   const {
     messages,
@@ -169,23 +173,12 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     status,
     error,
   } = useChat({
-    transport: new TextStreamChatTransport({
-      api: '/api/ai/chat',
-      headers: { Authorization: `Bearer ${token}` },
-      body: () => ({
-        problemId,
-        currentCode: latestRef.current.currentCode,
-        language: latestRef.current.currentLanguage,
-        promptConfigId: latestRef.current.selectedPromptId,
-        regenerate: regenerateRef.current || undefined,
-      }),
-    }),
+    id: `problem-ai-${problemId}`,
+    transport,
     onError: (err) => {
-      regenerateRef.current = false;
-      Message.error(err.message || 'AI 服务暂时不可用');
+      Message.error(friendlyAiError(err, 'AI 服务暂时不可用'));
     },
     onFinish: () => {
-      regenerateRef.current = false;
       loadRemaining();
     },
   });
@@ -200,10 +193,10 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     } catch { /* ignore */ }
   };
 
-  const loadHistory = async () => {
+  const loadHistory = async (cancelled: () => boolean) => {
     try {
       const data: any = await aiApi.getHistory(problemId);
-      if (Array.isArray(data) && data.length > 0) {
+      if (!cancelled() && !hasLocalInteractionRef.current && Array.isArray(data)) {
         setMessages(
           data.map((msg: any, index: number) => ({
             id: `hist-${index}`,
@@ -211,7 +204,6 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             parts: [{ type: 'text' as const, text: msg.content }],
           }))
         );
-        // 载入历史后滚到底部
         stickToBottomRef.current = true;
       }
     } catch (err) {
@@ -220,13 +212,20 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   };
 
   useEffect(() => {
+    let cancelled = false;
+    hasLocalInteractionRef.current = false;
+    setMessages([]);
     loadRemaining();
-    loadHistory();
+    loadHistory(() => cancelled);
     aiApi.getPromptConfigs().then((res: any) => {
       setPromptConfigs(res);
       const active = res.find((c: any) => c.isActive);
       if (active) setSelectedPromptId(active.id);
     }).catch(() => {});
+    return () => {
+      cancelled = true;
+      stop();
+    };
   }, [problemId]);
 
   // 智能滚动：仅在贴底时跟随；用户上滑阅读历史时不打断
@@ -243,11 +242,23 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
     el.scrollTop = el.scrollHeight;
   }, [messages, isLoading, error]);
 
-  const doSend = (text: string) => {
+  const doSend = (text: string, action: ChatAction = 'CHAT') => {
     if (!text.trim() || isLoading || quotaExhausted) return;
+    if ((action === 'CHECK_CODE' || action === 'OPTIMIZE') && !currentCode.trim()) {
+      Message.warning('请先在编辑器中编写代码');
+      return;
+    }
     stickToBottomRef.current = true;
-    regenerateRef.current = false;
-    sendMessage({ text });
+    hasLocalInteractionRef.current = true;
+    const includeEditor = action === 'CHECK_CODE' || action === 'OPTIMIZE' || action === 'CHAT';
+    sendMessage({ text }, {
+      body: {
+        action,
+        currentCode: includeEditor ? currentCode : undefined,
+        language: includeEditor ? currentLanguage : undefined,
+        promptConfigId: selectedPromptId,
+      },
+    });
     setInput('');
   };
 
@@ -259,16 +270,22 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
       return;
     }
     stickToBottomRef.current = true;
-    regenerateRef.current = true;
+    hasLocalInteractionRef.current = true;
     try {
-      await regenerate();
-    } catch {
-      regenerateRef.current = false;
-    }
+      await regenerate({
+        body: {
+          action: 'CHAT',
+          currentCode,
+          language: currentLanguage,
+          promptConfigId: selectedPromptId,
+          regenerate: true,
+        },
+      });
+    } catch { /* onError 已负责提示 */ }
   };
 
-  const handleQuickAction = (message: string) => {
-    doSend(message);
+  const handleQuickAction = (message: string, action: ChatAction) => {
+    doSend(message, action);
   };
 
   const handleClear = async () => {
@@ -306,7 +323,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
   // 最后一条「有内容」的助手消息可显示重新生成
   const lastAssistantId = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'assistant' && getMessageText(messages[i])) {
+      if (messages[i].role === 'assistant' && visibleAssistantText(getMessageText(messages[i])).trim()) {
         return messages[i].id;
       }
     }
@@ -358,7 +375,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             </Tooltip>
           )}
           {messages.length > 0 && (
-            <Button type="text" size="mini" icon={<IconDelete />} onClick={handleClear}>
+            <Button type="text" size="mini" icon={<IconDelete />} onClick={handleClear} disabled={isLoading}>
               清空
             </Button>
           )}
@@ -393,7 +410,8 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
         )}
 
         {messages.map((m) => {
-          const text = getMessageText(m);
+          const rawText = getMessageText(m);
+          const text = m.role === 'assistant' ? visibleAssistantText(rawText) : rawText;
           if (!text) return null;
           const isLastAssistant = m.role === 'assistant' && m.id === lastAssistantId;
           return (
@@ -452,7 +470,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
             fontSize: 13, textAlign: 'center',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
           }}>
-            <span>⚠️ {error.message || 'AI 服务暂时不可用，请稍后重试'}</span>
+            <span>⚠️ {friendlyAiError(error)}</span>
             {canRegenerate && (
               <Button
                 size="mini"
@@ -533,7 +551,7 @@ export default function ChatPanel({ problemId, currentCode, problemTitle, proble
                   border: '1px solid var(--color-border)',
                   cursor: 'pointer',
                 }}
-                onClick={() => handleQuickAction(action.message)}
+                onClick={() => handleQuickAction(action.message, action.action)}
               >
                 {action.label}
               </Button>

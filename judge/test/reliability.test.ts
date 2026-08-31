@@ -12,6 +12,7 @@ import {
   QUEUE_KEY,
   type JudgeResult,
 } from "../src/types";
+import { judge } from "../src/runner";
 
 const result: JudgeResult = {
   submissionId: 10,
@@ -93,4 +94,19 @@ test("dead-lettering removes processing and records evidence atomically", async 
   ]);
   assert.equal((operations[1] as unknown[])[1], DEAD_LETTER_QUEUE_KEY);
   assert.deepEqual(operations[2], ["exec"]);
+});
+
+test("returns a sanitized diagnostic for invalid judge tasks", async () => {
+  const judged = await judge({
+    submissionId: 99,
+    problemId: 1,
+    code: "int main() {}",
+    language: "unsupported",
+    timeLimit: 1000,
+    memoryLimit: 256,
+    testcases: [],
+  });
+
+  assert.equal(judged.status, "SE");
+  assert.match(judged.diagnostic || "", /不支持的语言/);
 });

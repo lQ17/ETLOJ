@@ -67,7 +67,7 @@ export class AiService {
 
   chat(
     user: { id: number; role: string },
-    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string; promptConfigId?: number; regenerate?: boolean },
+    dto: { messages: any[]; problemId: number; action?: 'CHAT' | 'IDEA' | 'CHECK_CODE' | 'OPTIMIZE' | 'ANALYZE_ERROR'; currentCode?: string; language?: string; promptConfigId?: number; regenerate?: boolean },
     res: any,
     req?: any,
   ) {

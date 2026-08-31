@@ -469,6 +469,7 @@ export default function ProblemDetailPage() {
                   </div>
                 ) : (
                   <ChatPanel
+                    key={problem.id}
                     problemId={problem.id}
                     currentCode={code}
                     problemTitle={problem.title}

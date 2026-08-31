@@ -29,9 +29,15 @@ export class ChatDto {
   @Type(() => Number)
   problemId: number;
 
+  /** 明确的交互意图，服务端据此选择必要上下文，避免四个快捷按钮互相串扰。 */
   @IsOptional()
   @IsString()
-  @MaxLength(5000, { message: '当前代码不能超过 5000 个字符' })
+  @IsIn(['CHAT', 'IDEA', 'CHECK_CODE', 'OPTIMIZE', 'ANALYZE_ERROR'])
+  action?: 'CHAT' | 'IDEA' | 'CHECK_CODE' | 'OPTIMIZE' | 'ANALYZE_ERROR';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50000, { message: '当前代码不能超过 50000 个字符' })
   currentCode?: string;
 
   /** 学生当前编辑器语言，需声明否则会被 ValidationPipe whitelist 丢弃 */

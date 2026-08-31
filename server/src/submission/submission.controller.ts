@@ -55,7 +55,7 @@ export class SubmissionController {
   @Post("callback")
   async callback(
     @Headers("x-judge-secret") secret: string,
-    @Body() body: { submissionId: number; status: string; timeUsed: number; memoryUsed: number; score?: number },
+    @Body() body: { submissionId: number; status: string; timeUsed: number; memoryUsed: number; score?: number; diagnostic?: string; testcases?: Array<{ index: number; status: string; timeUsed: number; memoryUsed: number }> },
   ) {
     if (secret !== this.judgeSecret) {
       throw new UnauthorizedException("无效的评测机密钥");

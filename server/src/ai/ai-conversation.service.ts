@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AiProviderService } from './ai-provider.service';
 import { AiQuotaService } from './ai-quota.service';
 import { AiPromptService } from './ai-prompt.service';
+import type { AiChatAction, AiSubmissionContext } from './ai-prompt.service';
 import * as fs from 'fs';
 import { beijingDateString } from './ai-date.util';
 
@@ -36,12 +37,13 @@ export class AiConversationService {
       where: { userId_problemId: { userId: user.id, problemId } },
       include: {
         messages: {
-          orderBy: { id: 'asc' },
+          orderBy: { id: 'desc' },
+          take: 100,
           select: { role: true, content: true },
         },
       },
     });
-    return conversation?.messages || [];
+    return conversation?.messages ? [...conversation.messages].reverse() : [];
   }
 
   async clearHistory(user: { id: number; role: string }, problemId: number) {
@@ -57,7 +59,7 @@ export class AiConversationService {
 
   async chat(
     user: { id: number; role: string },
-    dto: { messages: any[]; problemId: number; currentCode?: string; language?: string; promptConfigId?: number; regenerate?: boolean },
+    dto: { messages: any[]; problemId: number; action?: 'CHAT' | 'IDEA' | 'CHECK_CODE' | 'OPTIMIZE' | 'ANALYZE_ERROR'; currentCode?: string; language?: string; promptConfigId?: number; regenerate?: boolean },
     res: any,
     req?: any,
   ) {
@@ -65,6 +67,8 @@ export class AiConversationService {
     const quotaCharged = await this.quotaService.checkAndIncrementUsage(user.id, user.role);
     let streamStarted = false;
     let shouldRefund = true; // 成功完成流式输出后置 false
+    let responseConversationId: number | null = null;
+    let streamedResponseContent = '';
 
     const refundQuota = async () => {
       if (quotaCharged && shouldRefund) {
@@ -84,57 +88,16 @@ export class AiConversationService {
     const abortController = new AbortController();
     let clientClosed = false;
     const onClientClose = () => {
+      if (res.writableEnded) return;
       clientClosed = true;
       abortController.abort();
     };
     if (req) {
-      req.on('close', onClientClose);
       req.on('aborted', onClientClose);
     }
+    res.on?.('close', onClientClose);
 
     try {
-      // 2. 并行获取上下文：题目 + 最近提交（含代码，用于「分析错误」）
-      const [problem, submissions] = await Promise.all([
-        this.findAccessibleProblem(user, dto.problemId),
-        this.prisma.submission.findMany({
-          where: { userId: user.id, problemId: dto.problemId },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          select: {
-            status: true,
-            score: true,
-            createdAt: true,
-            language: true,
-            code: true,
-          },
-        }),
-      ]);
-
-      if (!problem) {
-        await failJson(404, '题目不存在');
-        return;
-      }
-
-      // 读取题面 markdown
-      let markdown = '';
-      try {
-        markdown = fs.readFileSync(problem.filePath, 'utf-8');
-      } catch {
-        markdown = problem.title;
-      }
-
-      // 3. 构建 system prompt
-      const systemPrompt = await this.promptService.buildSystemPrompt({
-        title: problem.title,
-        difficulty: problem.difficulty,
-        markdown,
-        currentCode: dto.currentCode,
-        submissions,
-        language: dto.language,
-        promptConfigId: dto.promptConfigId,
-      });
-
-      // 4. 从本轮请求提取最新用户消息（前端可能带完整历史，但 LLM 上下文以 DB 为准）
       const extractText = (msg: any): string => {
         if (msg.parts && Array.isArray(msg.parts)) {
           return msg.parts
@@ -151,11 +114,124 @@ export class AiConversationService {
         .map((m) => ({ role: m.role, text: extractText(m).trim().slice(0, 5000) }))
         .find((m) => m.role === 'user' && m.text)?.text;
 
-      // 新提问必须带用户文本；重新生成可仅依赖 DB 历史
       if (!isRegenerate && !incomingUserText) {
         await failJson(400, '消息内容不能为空');
         return;
       }
+
+      let conversation = await this.prisma.aiConversation.findUnique({
+        where: { userId_problemId: { userId: user.id, problemId: dto.problemId } },
+      });
+
+      const validActions: AiChatAction[] = ['CHAT', 'IDEA', 'CHECK_CODE', 'OPTIMIZE', 'ANALYZE_ERROR'];
+      let action: AiChatAction = dto.action && validActions.includes(dto.action) ? dto.action : 'CHAT';
+      if (isRegenerate) {
+        if (!conversation) {
+          await failJson(400, '没有可重新生成的对话');
+          return;
+        }
+        const lastUser = await this.prisma.aiMessage.findFirst({
+          where: { conversationId: conversation.id, role: 'user' },
+          orderBy: { id: 'desc' },
+          select: { id: true, action: true },
+        });
+        if (!lastUser) {
+          await failJson(400, '没有可重新生成的对话');
+          return;
+        }
+        if (lastUser.action && validActions.includes(lastUser.action as AiChatAction)) {
+          action = lastUser.action as AiChatAction;
+        }
+      }
+
+      if ((action === 'CHECK_CODE' || action === 'OPTIMIZE') && !dto.currentCode?.trim()) {
+        await failJson(400, '请先在编辑器中编写代码');
+        return;
+      }
+
+      // 先校验题目访问权限，再查询任何与用户提交有关的上下文。
+      const problem = await this.findAccessibleProblem(user, dto.problemId);
+
+      if (!problem) {
+        await failJson(404, '题目不存在');
+        return;
+      }
+
+      let markdown = '';
+      try {
+        markdown = await fs.promises.readFile(problem.filePath, 'utf-8');
+      } catch {
+        markdown = problem.title;
+      }
+
+      const terminalStatuses = ['AC', 'WA', 'TLE', 'MLE', 'RE', 'CE', 'SE'] as const;
+      const failedStatuses = ['WA', 'TLE', 'MLE', 'RE', 'CE', 'SE'] as const;
+      let submissions: AiSubmissionContext[] = [];
+      let targetSubmission: AiSubmissionContext | undefined;
+
+      if (action === 'ANALYZE_ERROR') {
+        const found = await this.prisma.submission.findFirst({
+          where: {
+            userId: user.id,
+            problemId: dto.problemId,
+            status: { in: [...failedStatuses] },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: {
+            id: true,
+            status: true,
+            score: true,
+            timeUsed: true,
+            memoryUsed: true,
+            createdAt: true,
+            language: true,
+            code: true,
+            diagnostic: true,
+            testcases: {
+              orderBy: { index: 'asc' },
+              select: { status: true, timeUsed: true, memoryUsed: true },
+            },
+          },
+        });
+        if (!found) {
+          await failJson(409, '当前题目还没有可分析的失败提交');
+          return;
+        }
+        targetSubmission = found as AiSubmissionContext;
+      } else if (action === 'CHAT') {
+        submissions = await this.prisma.submission.findMany({
+          where: {
+            userId: user.id,
+            problemId: dto.problemId,
+            status: { in: [...terminalStatuses] },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          take: 10,
+          select: {
+            id: true,
+            status: true,
+            score: true,
+            timeUsed: true,
+            memoryUsed: true,
+            createdAt: true,
+            language: true,
+          },
+        }) as AiSubmissionContext[];
+      }
+
+      const systemPrompt = await this.promptService.buildSystemPrompt({
+        action,
+        title: problem.title,
+        difficulty: problem.difficulty,
+        markdown,
+        timeLimit: problem.timeLimit,
+        memoryLimit: problem.memoryLimit,
+        currentCode: action === 'IDEA' || action === 'ANALYZE_ERROR' ? undefined : dto.currentCode,
+        submissions,
+        targetSubmission,
+        language: action === 'ANALYZE_ERROR' ? targetSubmission?.language : dto.language,
+        promptConfigId: dto.promptConfigId,
+      });
 
       // 5. 获取模型配置
       const provider = await this.providerService.getActiveProvider();
@@ -164,9 +240,6 @@ export class AiConversationService {
       const modelName = provider.modelName;
 
       // 6. 持久化：新提问追加 user；重新生成则去掉末尾 assistant 后复用同一条 user
-      let conversation = await this.prisma.aiConversation.findUnique({
-        where: { userId_problemId: { userId: user.id, problemId: dto.problemId } },
-      });
       if (!conversation) {
         if (isRegenerate) {
           await failJson(400, '没有可重新生成的对话');
@@ -206,10 +279,12 @@ export class AiConversationService {
           data: {
             conversationId: conversation.id,
             role: 'user',
+            action,
             content: incomingUserText!,
           },
         });
       }
+      responseConversationId = conversation.id;
 
       // 取最近 20 条作为模型上下文唯一来源
       const historyRows = await this.prisma.aiMessage.findMany({
@@ -217,9 +292,12 @@ export class AiConversationService {
         orderBy: { id: 'asc' },
         select: { role: true, content: true },
       });
-      const historyForLlm = historyRows
+      const lastUserRow = [...historyRows].reverse().find((m) => m.role === 'user');
+      const contextRows = action === 'CHAT'
+        ? historyRows.slice(-20)
+        : lastUserRow ? [lastUserRow] : [];
+      const historyForLlm = contextRows
         .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content?.trim())
-        .slice(-20)
         .map((m) => ({
           role: m.role as 'user' | 'assistant',
           // 历史 assistant 中的 <think> 块对模型无益且占 token，发送前剥离
@@ -279,13 +357,33 @@ export class AiConversationService {
       const reader = fetchResp.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let aiResponseContent = '';
       let totalTokens = 0;
       let inputTokens = 0;
       let outputTokens = 0;
       const startTime = Date.now();
-      let reasoningStarted = false;
-      let reasoningEnded = false;
+
+      const processSseLine = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === 'data: [DONE]' || !trimmed.startsWith('data:')) return;
+        const payload = trimmed.slice(5).trimStart();
+        if (!payload || payload === '[DONE]') return;
+        try {
+          const json = JSON.parse(payload);
+          if (json.usage) {
+            totalTokens = json.usage.total_tokens || 0;
+            inputTokens = json.usage.prompt_tokens || 0;
+            outputTokens = json.usage.completion_tokens || 0;
+          }
+          // reasoning_content 属于模型内部推理，不向用户输出，也不写入聊天历史。
+          const content = json.choices?.[0]?.delta?.content;
+          if (content) {
+            if (!clientClosed) res.write(content);
+            streamedResponseContent += content;
+          }
+        } catch {
+          /* 忽略非 JSON 的 SSE 扩展行 */
+        }
+      };
 
       while (true) {
         if (clientClosed) {
@@ -305,47 +403,24 @@ export class AiConversationService {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-          if (!trimmed.startsWith('data: ')) continue;
-
-          try {
-            const json = JSON.parse(trimmed.slice(6));
-            if (json.usage) {
-              totalTokens = json.usage.total_tokens || 0;
-              inputTokens = json.usage.prompt_tokens || 0;
-              outputTokens = json.usage.completion_tokens || 0;
-            }
-            const delta = json.choices?.[0]?.delta;
-
-            if (delta?.reasoning_content) {
-              if (!reasoningStarted) {
-                if (!clientClosed) res.write('<think>\n');
-                aiResponseContent += '<think>\n';
-                reasoningStarted = true;
-              }
-              if (!clientClosed) res.write(delta.reasoning_content);
-              aiResponseContent += delta.reasoning_content;
-            }
-
-            if (delta?.content) {
-              if (reasoningStarted && !reasoningEnded) {
-                if (!clientClosed) res.write('\n</think>\n\n');
-                aiResponseContent += '\n</think>\n\n';
-                reasoningEnded = true;
-              }
-              if (!clientClosed) res.write(delta.content);
-              aiResponseContent += delta.content;
-            }
-          } catch {
-            /* 忽略解析错误 */
-          }
+          processSseLine(line);
         }
       }
 
-      if (reasoningStarted && !reasoningEnded) {
-        if (!clientClosed) res.write('\n</think>\n\n');
-        aiResponseContent += '\n</think>\n\n';
+      buffer += decoder.decode();
+      if (buffer.trim()) processSseLine(buffer);
+
+      if (!clientClosed && !streamedResponseContent.trim()) {
+        await refundQuota();
+        const emptyReply = 'AI 模型未返回有效回答，请重试。';
+        if (!res.writableEnded) {
+          res.write(emptyReply);
+          res.end();
+        }
+        await this.prisma.aiMessage.create({
+          data: { conversationId: conversation.id, role: 'assistant', content: emptyReply },
+        });
+        return;
       }
 
       if (!clientClosed && !res.writableEnded) {
@@ -353,7 +428,7 @@ export class AiConversationService {
       }
 
       // 客户端中途断开且几乎无有效输出：退还额度
-      if (clientClosed && !aiResponseContent.trim()) {
+      if (clientClosed && !streamedResponseContent.trim()) {
         await refundQuota();
         return;
       }
@@ -373,7 +448,7 @@ export class AiConversationService {
         if (!totalTokens) {
           const promptLength = JSON.stringify(llmMessages).length;
           inputTokens = Math.ceil(promptLength / 1.5);
-          outputTokens = Math.ceil(aiResponseContent.length / 1.5);
+          outputTokens = Math.ceil(streamedResponseContent.length / 1.5);
           totalTokens = inputTokens + outputTokens;
         }
         await redis.incrBy(tokenKey, totalTokens);
@@ -399,18 +474,25 @@ export class AiConversationService {
       }
 
       // 保存 AI 回复（追加）
-      if (aiResponseContent) {
+      if (streamedResponseContent) {
         await this.prisma.aiMessage.create({
           data: {
             conversationId: conversation.id,
             role: 'assistant',
-            content: aiResponseContent,
+            content: streamedResponseContent,
           },
         });
       }
     } catch (err: any) {
       if (clientClosed || err?.name === 'AbortError') {
-        await refundQuota();
+        if (streamedResponseContent.trim() && responseConversationId) {
+          shouldRefund = false;
+          await this.prisma.aiMessage.create({
+            data: { conversationId: responseConversationId, role: 'assistant', content: streamedResponseContent },
+          }).catch(() => {});
+        } else {
+          await refundQuota();
+        }
         return;
       }
       this.logger.error('AI chat error', err?.message || err);
@@ -418,16 +500,27 @@ export class AiConversationService {
         await failJson(500, 'AI 服务暂时不可用，请稍后重试');
       } else if (!res.writableEnded) {
         // 流已开始则不退额度（上游可能已产生 token）
-        shouldRefund = false;
+        const interrupted = '\n\n> AI 输出意外中断，请重试。';
+        if (streamedResponseContent.trim() && responseConversationId) {
+          streamedResponseContent += interrupted;
+          shouldRefund = false;
+          res.write(interrupted);
+          await this.prisma.aiMessage.create({
+            data: { conversationId: responseConversationId, role: 'assistant', content: streamedResponseContent },
+          }).catch(() => {});
+        } else {
+          await refundQuota();
+          res.write('AI 服务暂时不可用，请稍后重试。');
+        }
         res.end();
       } else {
         await refundQuota();
       }
     } finally {
       if (req) {
-        req.removeListener?.('close', onClientClose);
         req.removeListener?.('aborted', onClientClose);
       }
+      res.removeListener?.('close', onClientClose);
     }
   }
 }

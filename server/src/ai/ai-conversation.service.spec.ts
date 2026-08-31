@@ -4,8 +4,9 @@ import { AiConversationService } from './ai-conversation.service';
 describe('AiConversationService problem visibility', () => {
   const prisma = {
     problem: { findFirst: jest.fn() },
-    submission: { findMany: jest.fn() },
+    submission: { findMany: jest.fn(), findFirst: jest.fn() },
     aiConversation: { findUnique: jest.fn(), deleteMany: jest.fn() },
+    aiMessage: { findFirst: jest.fn() },
   };
   const quota = {
     checkAndIncrementUsage: jest.fn(),
@@ -75,5 +76,69 @@ describe('AiConversationService problem visibility', () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ message: '题目不存在' });
     expect(quota.decrementUsage).toHaveBeenCalledWith(7, 'USER');
+  });
+
+  it('rejects code actions with an empty editor before calling the model', async () => {
+    quota.checkAndIncrementUsage.mockResolvedValue(true);
+    quota.decrementUsage.mockResolvedValue(undefined);
+    prisma.aiConversation.findUnique.mockResolvedValue(null);
+    const res = {
+      headersSent: false,
+      writableEnded: false,
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      on: jest.fn(),
+      removeListener: jest.fn(),
+    };
+
+    await service.chat(
+      { id: 7, role: 'USER' },
+      { problemId: 2, action: 'CHECK_CODE', currentCode: '  ', messages: [{ role: 'user', content: '检查代码' }] },
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: '请先在编辑器中编写代码' });
+    expect(prisma.problem.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('selects only the latest completed failed submission for error analysis', async () => {
+    quota.checkAndIncrementUsage.mockResolvedValue(true);
+    quota.decrementUsage.mockResolvedValue(undefined);
+    prisma.aiConversation.findUnique.mockResolvedValue(null);
+    prisma.problem.findFirst.mockResolvedValue({
+      id: 2,
+      title: 'P',
+      difficulty: 'IRON',
+      filePath: 'missing.md',
+      timeLimit: 1000,
+      memoryLimit: 256,
+    });
+    prisma.submission.findFirst.mockResolvedValue(null);
+    const res = {
+      headersSent: false,
+      writableEnded: false,
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      on: jest.fn(),
+      removeListener: jest.fn(),
+    };
+
+    await service.chat(
+      { id: 7, role: 'USER' },
+      { problemId: 2, action: 'ANALYZE_ERROR', messages: [{ role: 'user', content: '分析错误' }] },
+      res,
+    );
+
+    expect(prisma.submission.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        userId: 7,
+        problemId: 2,
+        status: { in: ['WA', 'TLE', 'MLE', 'RE', 'CE', 'SE'] },
+      }),
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    }));
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ message: '当前题目还没有可分析的失败提交' });
   });
 });
