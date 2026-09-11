@@ -7,14 +7,30 @@ import { UpdateProblemListDto } from "./dto/update-problem-list.dto";
 export class ProblemListService {
   constructor(private prisma: PrismaService) {}
 
-  private async getAcCounts(userId: number, listIds: number[]): Promise<Record<number, number>> {
+  private canViewHiddenProblems(userRole?: string) {
+    return userRole === "ADMIN" || userRole === "TEACHER";
+  }
+
+  private itemCountSelection(userRole?: string) {
+    return {
+      select: {
+        items: {
+          where: this.canViewHiddenProblems(userRole) ? {} : { problem: { isPublic: true } },
+        },
+      },
+    };
+  }
+
+  private async getAcCounts(userId: number, listIds: number[], userRole?: string): Promise<Record<number, number>> {
     if (!userId || listIds.length === 0) return {};
     const placeholders = listIds.map(() => "?").join(",");
     const rows: { list_id: number; cnt: number }[] = await this.prisma.$queryRawUnsafe(
       `SELECT pli.list_id, COUNT(DISTINCT pli.problem_id) AS cnt
        FROM problem_list_items pli
+       JOIN problems p ON p.id = pli.problem_id
        JOIN submissions s ON s.problem_id = pli.problem_id AND s.user_id = ? AND s.status = 'AC'
        WHERE pli.list_id IN (${placeholders})
+       ${this.canViewHiddenProblems(userRole) ? "" : "AND p.is_public = true"}
        GROUP BY pli.list_id`,
       userId,
       ...listIds,
@@ -24,7 +40,7 @@ export class ProblemListService {
     return map;
   }
 
-  async findAllPublic(page = 1, pageSize = 20, keyword?: string, userId?: number) {
+  async findAllPublic(page = 1, pageSize = 20, keyword?: string, userId?: number, userRole?: string) {
     const where: any = { isPublic: true };
     if (keyword) {
       where.title = { contains: keyword };
@@ -34,7 +50,7 @@ export class ProblemListService {
         where,
         include: {
           creator: { select: { id: true, username: true } },
-          _count: { select: { items: true } },
+          _count: this.itemCountSelection(userRole),
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
@@ -43,7 +59,7 @@ export class ProblemListService {
       this.prisma.problemList.count({ where }),
     ]);
     if (userId && items.length > 0) {
-      const acMap = await this.getAcCounts(userId, items.map((i) => i.id));
+      const acMap = await this.getAcCounts(userId, items.map((i) => i.id), userRole);
       for (const item of items) (item as any).acCount = acMap[item.id] ?? 0;
     }
     return { items, total, page, pageSize };
@@ -132,13 +148,13 @@ export class ProblemListService {
     };
   }
 
-  async findAllByUser(userId: number, page = 1, pageSize = 20) {
+  async findAllByUser(userId: number, page = 1, pageSize = 20, userRole?: string) {
     const where = { creatorId: userId };
     const [items, total] = await Promise.all([
       this.prisma.problemList.findMany({
         where,
         include: {
-          _count: { select: { items: true } },
+          _count: this.itemCountSelection(userRole),
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
@@ -147,7 +163,7 @@ export class ProblemListService {
       this.prisma.problemList.count({ where }),
     ]);
     if (items.length > 0) {
-      const acMap = await this.getAcCounts(userId, items.map((i) => i.id));
+      const acMap = await this.getAcCounts(userId, items.map((i) => i.id), userRole);
       for (const item of items) (item as any).acCount = acMap[item.id] ?? 0;
     }
     return { items, total, page, pageSize };
@@ -158,6 +174,7 @@ export class ProblemListService {
       where: { id },
       include: {
         items: {
+          where: this.canViewHiddenProblems(userRole) ? {} : { problem: { isPublic: true } },
           include: {
             problem: {
               select: { id: true, slug: true, title: true, difficulty: true, score: true },
@@ -179,7 +196,10 @@ export class ProblemListService {
     return list;
   }
 
-  async create(userId: number, dto: CreateProblemListDto) {
+  async create(userId: number, dto: CreateProblemListDto, userRole?: string) {
+    if (dto.isPublic && !this.canViewHiddenProblems(userRole)) {
+      throw new ForbiddenException("仅管理员和教师可创建公共题单");
+    }
     return this.prisma.problemList.create({
       data: {
         title: dto.title,
@@ -194,6 +214,9 @@ export class ProblemListService {
     const list = await this.prisma.problemList.findUnique({ where: { id } });
     if (!list) throw new NotFoundException("题单不存在");
     const isAdminOrTeacher = userRole === "ADMIN" || userRole === "TEACHER";
+    if (dto.isPublic && !isAdminOrTeacher) {
+      throw new ForbiddenException("仅管理员和教师可发布公共题单");
+    }
     if (list.isPublic && !isAdminOrTeacher) {
       throw new ForbiddenException("仅管理员和教师可编辑公共题单");
     }
@@ -216,7 +239,7 @@ export class ProblemListService {
     return this.prisma.problemList.delete({ where: { id } });
   }
 
-  async addItems(listId: number, slugs: string[]) {
+  async addItems(listId: number, slugs: string[], userRole?: string) {
     const list = await this.prisma.problemList.findUnique({ where: { id: listId } });
     if (!list) throw new NotFoundException("题单不存在");
     const maxSort = await this.prisma.problemListItem.aggregate({
@@ -228,7 +251,7 @@ export class ProblemListService {
     const errors: string[] = [];
     for (const slug of slugs) {
       const problem = await this.prisma.problem.findUnique({ where: { slug } });
-      if (!problem) { errors.push(slug); continue; }
+      if (!problem || (!problem.isPublic && !this.canViewHiddenProblems(userRole))) { errors.push(slug); continue; }
       const existing = await this.prisma.problemListItem.findUnique({
         where: { listId_problemId: { listId, problemId: problem.id } },
       });

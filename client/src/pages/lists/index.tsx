@@ -60,8 +60,10 @@ export default function ProblemListsPage() {
 
   useEffect(() => {
     if (activeTab === "public") {
+      setPublicPage(1);
       fetchPublic(1);
     } else {
+      setMyPage(1);
       fetchMy(1);
     }
   }, [activeTab]);

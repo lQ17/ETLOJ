@@ -92,7 +92,7 @@ function ManageLists({ onEdit, onManageItems }: { onEdit: (id: number) => void; 
     { title: "简介", dataIndex: "description", ellipsis: true },
     {
       title: "题目数量",
-      dataIndex: "itemCount",
+      dataIndex: ["_count", "items"],
       width: 100,
       render: (v: number) => v ?? 0,
     },

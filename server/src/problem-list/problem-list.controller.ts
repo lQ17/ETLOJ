@@ -25,12 +25,14 @@ export class ProblemListController {
     @Query("pageSize") pageSize?: string,
     @Query("keyword") keyword?: string,
     @CurrentUser("id") userId?: number,
+    @CurrentUser("role") userRole?: string,
   ) {
     return this.problemListService.findAllPublic(
       Number(page) || 1,
       Number(pageSize) || 20,
       keyword,
       userId,
+      userRole,
     );
   }
 
@@ -40,11 +42,13 @@ export class ProblemListController {
     @CurrentUser("id") userId: number,
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string,
+    @CurrentUser("role") userRole?: string,
   ) {
     return this.problemListService.findAllByUser(
       userId,
       Number(page) || 1,
       Number(pageSize) || 20,
+      userRole,
     );
   }
 
@@ -62,8 +66,9 @@ export class ProblemListController {
   create(
     @CurrentUser("id") userId: number,
     @Body() dto: CreateProblemListDto,
+    @CurrentUser("role") userRole: string,
   ) {
-    return this.problemListService.create(userId, dto);
+    return this.problemListService.create(userId, dto, userRole);
   }
 
   @Patch(":id")
@@ -125,7 +130,7 @@ export class ProblemListController {
     @Body() body: { slugs: string[] },
   ) {
     await this.assertUserCanModify(id, userId, userRole);
-    return this.problemListService.addItems(id, body.slugs);
+    return this.problemListService.addItems(id, body.slugs, userRole);
   }
 
   @Delete(":id/items/:problemId")
