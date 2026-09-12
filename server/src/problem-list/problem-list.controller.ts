@@ -10,6 +10,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { OptionalJwtGuard } from "../auth/optional-jwt.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { PrismaService } from "../prisma/prisma.service";
+import { ListQueryDto } from "./dto/category.dto";
 
 @Controller("problem-lists")
 export class ProblemListController {
@@ -21,18 +22,18 @@ export class ProblemListController {
   @Get()
   @UseGuards(OptionalJwtGuard)
   findAllPublic(
-    @Query("page") page?: string,
-    @Query("pageSize") pageSize?: string,
-    @Query("keyword") keyword?: string,
+    @Query() query: ListQueryDto,
     @CurrentUser("id") userId?: number,
     @CurrentUser("role") userRole?: string,
   ) {
     return this.problemListService.findAllPublic(
-      Number(page) || 1,
-      Number(pageSize) || 20,
-      keyword,
+      query.page,
+      query.pageSize,
+      query.keyword,
       userId,
       userRole,
+      query.categoryId,
+      query.uncategorized,
     );
   }
 

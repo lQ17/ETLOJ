@@ -15,6 +15,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { problemListApi } from "../../../api/problem-list";
 import DifficultyTag from "../../../components/DifficultyTag";
 import AddProblemsModal from "../../../components/AddProblemsModal";
+import ManageCategories from "./ManageCategories";
 
 const { Text } = Typography;
 const FormItem = Form.Item;
@@ -41,14 +42,16 @@ export default function AdminListsPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
         <Button type={activeTab === "manage" ? "primary" : "default"} onClick={() => handleTabChange("manage")}>管理题单</Button>
         <Button type={activeTab === "create" ? "primary" : "default"} onClick={() => handleTabChange("create")}>{editingId ? "编辑题单" : "创建题单"}</Button>
         <Button type={activeTab === "items" ? "primary" : "default"} onClick={() => handleTabChange("items")} disabled={!managingListId}>题目管理</Button>
+        <Button type={activeTab === "categories" ? "primary" : "default"} onClick={() => handleTabChange("categories")}>分类与编排</Button>
       </div>
       {activeTab === "manage" && <ManageLists onEdit={handleEdit} onManageItems={handleManageItems} />}
       {activeTab === "create" && <CreateOrEditList listId={editingId} onFinish={() => handleTabChange("manage")} />}
       {activeTab === "items" && managingListId && <ManageItems listId={managingListId} />}
+      {activeTab === "categories" && <ManageCategories />}
     </div>
   );
 }

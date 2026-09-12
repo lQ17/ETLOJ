@@ -1,0 +1,277 @@
+.problem-lists-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  color: var(--color-text-1);
+  line-height: 1.7;
+}
+
+.problem-lists-heading {
+  margin-bottom: 24px;
+}
+
+.problem-lists-title.arco-typography {
+  margin: 0;
+}
+
+.problem-lists-subtitle.arco-typography {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.problem-lists-tabs {
+  margin: 0;
+}
+
+.problem-lists-tabs .arco-tabs-nav {
+  margin-bottom: 0;
+}
+
+.problem-lists-category-alert {
+  margin-top: 28px;
+}
+
+.problem-lists-category-zone {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--rounded-lg);
+  background: var(--color-fill-1);
+}
+
+.problem-lists-category-alert + .problem-lists-category-zone {
+  margin-top: 16px;
+}
+
+.problem-lists-primary-nav {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 0 0 2px;
+  scrollbar-width: none;
+}
+
+.problem-lists-primary-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.problem-lists-primary-button.arco-btn {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 18px;
+  line-height: 42px;
+}
+
+.problem-lists-secondary-panel.arco-card {
+  margin-top: 20px;
+  border-color: var(--color-border-2);
+  background: var(--color-bg-1);
+}
+
+.problem-lists-secondary-panel .arco-card-body {
+  padding: 20px 22px;
+}
+
+.problem-lists-secondary-actions {
+  gap: 8px 10px;
+}
+
+.problem-lists-secondary-actions .arco-btn {
+  min-height: 34px;
+  line-height: 32px;
+}
+
+.problem-lists-secondary-description.arco-typography {
+  max-width: 820px;
+  margin: 16px 0 0;
+  line-height: 1.7;
+}
+
+.problem-lists-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.problem-lists-search-input.arco-input-search {
+  flex: 1 1 360px;
+  width: 420px;
+  max-width: 460px;
+}
+
+.problem-lists-sort-hint {
+  margin-left: auto;
+}
+
+.problem-lists-mine-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 28px;
+}
+
+.problem-lists-results {
+  min-width: 0;
+  margin-top: 32px;
+}
+
+.problem-lists-grid {
+  align-items: stretch;
+}
+
+.problem-lists-grid > .arco-col {
+  display: flex;
+}
+
+.problem-list-card.arco-card {
+  width: 100%;
+  height: 100%;
+}
+
+.problem-list-card .arco-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 26px;
+}
+
+.problem-list-card-link {
+  display: block;
+  min-width: 0;
+  color: var(--color-text-1);
+  text-decoration: none;
+}
+
+.problem-list-card-meta.arco-typography {
+  display: block;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.problem-list-card-title.arco-typography {
+  margin: 10px 0 12px;
+  line-height: 1.4;
+}
+
+.problem-list-card-description.arco-typography {
+  min-height: 48px;
+  margin: 0 0 22px;
+  line-height: 1.7;
+}
+
+.problem-list-card-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.problem-list-card .arco-progress {
+  margin: 0;
+}
+
+.problem-list-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-2);
+}
+
+.problem-lists-loading,
+.problem-lists-empty-state {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  line-height: 1.7;
+}
+
+.problem-lists-empty-state .arco-empty {
+  margin: 0;
+}
+
+.problem-lists-pagination.arco-pagination {
+  margin-top: 32px;
+}
+
+@media (max-width: 600px) {
+  .problem-lists-heading {
+    margin-bottom: 20px;
+  }
+
+  .problem-lists-category-alert {
+    margin-top: 24px;
+  }
+
+  .problem-lists-category-zone {
+    margin-top: 24px;
+    padding: 16px;
+  }
+
+  .problem-lists-category-alert + .problem-lists-category-zone {
+    margin-top: 12px;
+  }
+
+  .problem-lists-primary-button.arco-btn {
+    min-height: 40px;
+    padding: 0 15px;
+    line-height: 38px;
+  }
+
+  .problem-lists-secondary-panel.arco-card {
+    margin-top: 16px;
+  }
+
+  .problem-lists-secondary-panel .arco-card-body {
+    padding: 16px;
+  }
+
+  .problem-lists-search-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .problem-lists-search-input.arco-input-search {
+    flex-basis: auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  .problem-lists-sort-hint {
+    margin-left: 0;
+  }
+
+  .problem-lists-mine-actions {
+    margin-top: 24px;
+  }
+
+  .problem-lists-results {
+    margin-top: 28px;
+  }
+
+  .problem-list-card .arco-card-body {
+    padding: 20px;
+  }
+
+  .problem-list-card-description.arco-typography {
+    margin-bottom: 20px;
+  }
+
+  .problem-lists-loading,
+  .problem-lists-empty-state {
+    min-height: 200px;
+    padding: 40px 16px;
+  }
+
+  .problem-lists-pagination.arco-pagination {
+    margin-top: 28px;
+  }
+}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Table, Tag, Breadcrumb, Message, Typography, Space, Popconfirm, Button } from "@arco-design/web-react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { IconPlus } from "@arco-design/web-react/icon";
 import { problemListApi } from "../../api/problem-list";
 import { submissionApi } from "../../api/submission";
@@ -12,30 +12,40 @@ const { Title, Text, Paragraph } = Typography;
 
 export default function ProblemListDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get("from");
+  const backTo = from === "/lists" || from?.startsWith("/lists?") ? from : "/lists";
   const user = useAuthStore((s) => s.user);
 
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [statusMap, setStatusMap] = useState<Record<number, string>>({});
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const requestId = useRef(0);
+  const currentListId = useRef(id);
+  currentListId.current = id;
 
   const fetchDetail = async () => {
-    if (!id) return;
+    if (!id || currentListId.current !== id) return;
+    const currentRequest = ++requestId.current;
+    const isCurrent = () => currentRequest === requestId.current && currentListId.current === id;
     setLoading(true);
+    setStatusMap({});
     try {
       const res: any = await problemListApi.getDetail(+id);
+      if (!isCurrent()) return;
       setDetail(res);
       if (user && res.items?.length > 0) {
         const ids = res.items.map((item: any) => item.problem?.id).filter(Boolean);
         try {
           const status: any = await submissionApi.getStatus(ids);
-          setStatusMap(status);
+          if (isCurrent()) setStatusMap(status);
         } catch { /* ignore */ }
       }
     } catch {
-      Message.error("加载题单详情失败");
+      if (isCurrent()) Message.error("加载题单详情失败");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
 
@@ -67,7 +77,7 @@ export default function ProblemListDetailPage() {
 
   useEffect(() => {
     fetchDetail();
-  }, [id]);
+  }, [id, user?.id]);
 
   const statusIcon = (problemId: number) => {
     const s = statusMap[problemId];
@@ -161,12 +171,12 @@ export default function ProblemListDetailPage() {
     <div>
       <Breadcrumb style={{ marginBottom: 16 }}>
         <Breadcrumb.Item>
-          <Link to="/lists">题单</Link>
+          <Link to={backTo}>题单</Link>
         </Breadcrumb.Item>
         <Breadcrumb.Item>{detail.title}</Breadcrumb.Item>
       </Breadcrumb>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
           <Title heading={4} style={{ marginBottom: 8 }}>{detail.title}</Title>
           <Paragraph type="secondary" style={{ marginBottom: 8 }}>

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateProblemListDto } from "./dto/create-problem-list.dto";
 import { UpdateProblemListDto } from "./dto/update-problem-list.dto";
@@ -40,10 +40,38 @@ export class ProblemListService {
     return map;
   }
 
-  async findAllPublic(page = 1, pageSize = 20, keyword?: string, userId?: number, userRole?: string) {
+  async findAllPublic(page = 1, pageSize = 20, keyword?: string, userId?: number, userRole?: string, categoryId?: number, uncategorized = false) {
     const where: any = { isPublic: true };
     if (keyword) {
       where.title = { contains: keyword };
+    }
+    if (uncategorized) {
+      if (!this.canViewHiddenProblems(userRole)) throw new ForbiddenException("仅教师和管理员可查看未分类题单");
+      if (categoryId) throw new BadRequestException("categoryId 与 uncategorized 不能同时使用");
+      where.categories = { none: {} };
+    }
+    if (categoryId) {
+      const category = await this.prisma.problemListCategory.findUnique({ where: { id: categoryId }, include: { parent: true } });
+      if (!category || !category.enabled || (category.parent && !category.parent.enabled)) throw new NotFoundException("分类不存在或已停用");
+      if (category.parentId !== null) {
+        const membershipWhere = { categoryId, list: where };
+        const [memberships, total] = await Promise.all([
+          this.prisma.problemListCategoryItem.findMany({
+            where: membershipWhere,
+            orderBy: [{ sortOrder: "asc" }, { listId: "asc" }],
+            skip: (page - 1) * pageSize, take: pageSize,
+            include: { list: { include: { creator: { select: { id: true, username: true } }, _count: this.itemCountSelection(userRole) } } },
+          }),
+          this.prisma.problemListCategoryItem.count({ where: membershipWhere }),
+        ]);
+        const items = memberships.map(member => member.list);
+        if (userId && items.length) {
+          const acMap = await this.getAcCounts(userId, items.map(item => item.id), userRole);
+          return { items: items.map(item => ({ ...item, acCount: acMap[item.id] ?? 0 })), total, page, pageSize };
+        }
+        return { items, total, page, pageSize };
+      }
+      where.categories = { some: { category: { parentId: categoryId, enabled: true } } };
     }
     const [items, total] = await Promise.all([
       this.prisma.problemList.findMany({
@@ -52,7 +80,7 @@ export class ProblemListService {
           creator: { select: { id: true, username: true } },
           _count: this.itemCountSelection(userRole),
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),

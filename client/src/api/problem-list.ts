@@ -1,7 +1,7 @@
 import client from "./client";
 
 export const problemListApi = {
-  getPublicLists: (params?: { page?: number; pageSize?: number; keyword?: string }) =>
+  getPublicLists: (params?: { page?: number; pageSize?: number; keyword?: string; categoryId?: number; uncategorized?: boolean }) =>
     client.get("/problem-lists", { params }),
 
   getMyLists: (params?: { page?: number; pageSize?: number }) =>

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ProblemListService } from './problem-list.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -119,6 +119,13 @@ describe('ProblemListService web permissions and visibility', () => {
     await expect(service.update(1, 1, 'STUDENT', { isPublic: true }))
       .rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.problemList.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects the contradictory category and uncategorized filters', async () => {
+    await expect(service.findAllPublic(1, 20, undefined, undefined, 'ADMIN', 5, true))
+      .rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.problemList.findMany).not.toHaveBeenCalled();
+    expect(prisma.problemList.count).not.toHaveBeenCalled();
   });
 
   it.each(['ADMIN', 'TEACHER'])('allows %s to create public lists', async (role) => {
